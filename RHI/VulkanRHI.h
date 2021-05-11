@@ -1,9 +1,36 @@
 #pragma once
 
-#include	 "vulkan.h"
+#define GLFW_INCLUDE_VULKAN
+#include "glfw3.h"
+#include "vulkan/vulkan.hpp"
 
-namespace MetaInit {
+#include <memory>
 
+
+namespace MetaInit 
+{
+	class VulkanRendererEngine
+	{
+	public:
+		using Ptr = std::unique_ptr<VulkanRendererEngine>;
+		struct VulkanRendererParameters
+		{
+
+		};
+		using Parameter = VulkanRendererParameters;
+		void Init();
+		void	 UnInit();
+		static Ptr Create(const Parameter&);
+		~VulkanRendererEngine() { UnInit(); }
+	private:
+		VulkanRendererEngine() = default;
+		VulkanRendererEngine(const VulkanRendererEngine&) = delete;
+		VulkanRendererEngine& operator=(const VulkanRendererEngine&) = delete;
+	private:
+		vk::UniqueInstance	instance_{ VK_NULL_HANDLE };
+		vk::Device			device_{ VK_NULL_HANDLE };
+
+	};
 
 }
 

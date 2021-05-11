@@ -1,3 +1,60 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="RHI">
+      <UniqueIdentifier>{93a75ccd-ffea-49e4-bac9-f8c2e1803409}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{10924f9e-562d-4f7f-86c0-2af583c49d63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{85f13a87-0be4-4d4f-8318-0e337d00cd94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{4d11364c-acdc-4002-aa44-022c0359f640}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Render">
+      <UniqueIdentifier>{b8f34e2c-0273-421e-8354-6cc6f57ae520}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RHI\VulkanRHI.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderingPipeline.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Scene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderingPass.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\RtRenderGraph.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RHI\VulkanRHI.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderingPipeline.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Scene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderingShader.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderGraph.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\CommonUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderPass.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
