@@ -92,8 +92,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\Exp\MetaInit\Externals\Assimp\include;D:\Exp\MetaInit\Externals\googletest\include;D:\Exp\MetaInit;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\Exp\MetaInit\Externals\Assimp\lib;D:\Exp\MetaInit\Externals\googletest\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\Exp\MetaInit\Externals\GLM\glm;D:\Exp\MetaInit\Externals\GLFW\include;D:\Exp\MetaInit\Externals\Assimp\include;D:\Exp\MetaInit\Externals\googletest\include;D:\Exp\MetaInit;C:\VulkanSDK\1.2.176.1\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Exp\MetaInit\Externals\GLFW\lib;D:\Exp\MetaInit\Externals\Assimp\lib;D:\Exp\MetaInit\Externals\googletest\lib;C:\VulkanSDK\1.2.176.1\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -158,7 +158,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>gtest.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;gtest.lib;assimp-vc142-mt.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>

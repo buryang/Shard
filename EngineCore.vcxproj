@@ -34,6 +34,14 @@
     <ClInclude Include="RHI\VulkanRHI.h" />
     <ClInclude Include="Scene\Scene.h" />
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\frag_shader.frag">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\shape_shader.vert" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -90,18 +98,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include</IncludePath>
-    <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include</IncludePath>
-    <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include</IncludePath>
+    <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include</IncludePath>
+    <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -172,6 +184,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
     </Link>
+    <PostBuildEvent>
+      <Command>for %%f in (*.vert *.tesc *.tese *.geom *.frag *.comp) \ do %VK_SDK_PATH%\Bin\glslangValidator.exe -V -o $(OutDir)\%%f.spv %%f</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

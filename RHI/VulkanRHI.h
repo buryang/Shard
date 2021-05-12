@@ -21,11 +21,13 @@ namespace MetaInit
 		void Init();
 		void	 UnInit();
 		static Ptr Create(const Parameter&);
+		void CreateGraphicsPipeLine();
 		~VulkanRendererEngine() { UnInit(); }
 	private:
 		VulkanRendererEngine() = default;
 		VulkanRendererEngine(const VulkanRendererEngine&) = delete;
 		VulkanRendererEngine& operator=(const VulkanRendererEngine&) = delete;
+		void QueryDevice();
 	private:
 		vk::UniqueInstance	instance_{ VK_NULL_HANDLE };
 		vk::Device			device_{ VK_NULL_HANDLE };

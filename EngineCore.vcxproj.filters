@@ -57,4 +57,14 @@
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\frag_shader.frag">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\shape_shader.vert">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
 </Project>
