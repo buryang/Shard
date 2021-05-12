@@ -53,12 +53,13 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		vkGetPhysicalDeviceProperties(phd, &device_props);
 		std::cout << std::uppercase << device_props.deviceName << std::endl;
 		std::cout << device_props.deviceType << std::endl;
-		uint32_t extension_count;
-		vkEnumerateDeviceExtensionProperties(phd, nullptr, &extension_count, nullptr);
-		std::vector<VkExtensionProperties> extensions(extension_count);
-		vkEnumerateDeviceExtensionProperties(phd, nullptr, &extension_count, extensions.data());
+		uint32_t device_extension_count = 0;
+		vkEnumerateDeviceExtensionProperties(phd, nullptr, &device_extension_count, nullptr);
+		ASSERT_GT(device_extension_count, 0) << "device extension for NVIDIA";
+		std::vector<VkExtensionProperties> device_extensions(device_extension_count);
+		vkEnumerateDeviceExtensionProperties(phd, nullptr, &device_extension_count, device_extensions.data());
 		std::cout << "------------------------------------" << std::endl;
-		for (const auto& ext : extensions)
+		for (const auto& ext : device_extensions)
 		{
 			std::cout << ext.extensionName << ":" << ext.specVersion << "\n";
 		}
