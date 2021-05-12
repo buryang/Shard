@@ -25,7 +25,7 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 	EXPECT_GE(extension_count, 1) << "NV GPU should support more than 1 extensions";
 	std::vector<VkExtensionProperties> extension_props(extension_count);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extension_props.data());	
+	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extension_props.data());
 	for (const auto& prop : extension_props)
 	{
 		std::cout << prop.extensionName << ":" << prop.specVersion << "\n";
@@ -53,6 +53,15 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		vkGetPhysicalDeviceProperties(phd, &device_props);
 		std::cout << std::uppercase << device_props.deviceName << std::endl;
 		std::cout << device_props.deviceType << std::endl;
+		uint32_t extension_count;
+		vkEnumerateDeviceExtensionProperties(phd, nullptr, &extension_count, nullptr);
+		std::vector<VkExtensionProperties> extensions(extension_count);
+		vkEnumerateDeviceExtensionProperties(phd, nullptr, &extension_count, extensions.data());
+		std::cout << "------------------------------------" << std::endl;
+		for (const auto& ext : extensions)
+		{
+			std::cout << ext.extensionName << ":" << ext.specVersion << "\n";
+		}
 	}
 	std::cout << std::endl;
 	//create logic device
@@ -70,6 +79,7 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 	auto queue_family = [&](const uint32_t queue_flags)
 	{
 		uint32_t family_count = 0;
+		int queue_count = -1;
 		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices[0], &family_count, nullptr);
 		std::vector<VkQueueFamilyProperties> familys_props(family_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices[0], &family_count, familys_props.data());
@@ -81,17 +91,21 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 			if (family.queueFlags & queue_flags)
 			{
 				family_indice = index;
+				queue_count = family.queueCount;
 				break;
 			}
 			++index;
 		}
+
+		return queue_count;
 	};
 	
-	queue_family(VK_QUEUE_COMPUTE_BIT);
+	auto queue_count = queue_family(VK_QUEUE_COMPUTE_BIT);
 	ASSERT_TRUE(family_indice.has_value());
 	VkDeviceQueueCreateInfo queue_info{};
 	queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queue_info.queueFamilyIndex = family_indice.value();
+	queue_info.queueCount = queue_count; //1;
 	constexpr float queue_prior = 1.0f;
 	queue_info.pQueuePriorities = &queue_prior;
 	queue_info.pNext = nullptr;
