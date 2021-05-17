@@ -2,6 +2,7 @@
 #include "GLM/glm.hpp"
 
 #include <string>
+#include <vector>
 #include <fstream>
 
 namespace 

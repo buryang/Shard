@@ -86,6 +86,9 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices[0], &family_count, familys_props.data());
 		
 		uint32_t index = 0;
+		/*https://stackoverflow.com/questions/52015730/vulkan-queue-families?answertab=votes#tab-top
+		  Queue flags: {Graphics | Compute | Transfer | SparseBinding}
+		*/
 		for (const auto& family : familys_props)
 		{
 			std::cout << family.queueFlags << std::endl;
@@ -123,4 +126,14 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 	//gtest other things
 	vkDestroyDevice(device, nullptr);
 	vkDestroyInstance(instance, nullptr);
+}
+
+/*render a simple triangle for test*/
+TEST(TEST_RHI_MODULE, TEST_SIMPLE_TRIANGLE)
+{
+	glfwInit();
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	auto window = glfwCreateWindow(800, 600, "TEST_TRIANGLE", VK_NULL_HANDLE, VK_NULL_HANDLE);
+
+	ASSERT_TRUE(glfwVulkanSupported()) << "glfw do not support vulkan";
 }

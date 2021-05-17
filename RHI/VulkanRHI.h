@@ -2,13 +2,18 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include "glfw3.h"
-#include "vulkan/vulkan.hpp"
 
 #include <memory>
 
 
 namespace MetaInit 
 {
+	class VulkanDeviceAPI
+	{
+
+	};
+
+
 	class VulkanRendererEngine
 	{
 	public:
@@ -29,8 +34,8 @@ namespace MetaInit
 		VulkanRendererEngine& operator=(const VulkanRendererEngine&) = delete;
 		void QueryDevice();
 	private:
-		vk::UniqueInstance	instance_{ VK_NULL_HANDLE };
-		vk::Device			device_{ VK_NULL_HANDLE };
+		VkInstance			instance_{ VK_NULL_HANDLE };
+		VkDevice				device_{ VK_NULL_HANDLE };
 
 	};
 
