@@ -2,42 +2,34 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include "glfw3.h"
-
 #include <memory>
 
 
 namespace MetaInit 
 {
-	class VulkanDeviceAPI
-	{
-
-	};
-
-
-	class VulkanRendererEngine
+	class VulkanDevice
 	{
 	public:
-		using Ptr = std::unique_ptr<VulkanRendererEngine>;
-		struct VulkanRendererParameters
+		VkDevice get() { return device_; }
+	private:
+		VkDevice device_;
+	};
+	
+	class VulkanInstance
+	{
+	public:
+		struct VulkanInstanceParams
 		{
 
 		};
-		using Parameter = VulkanRendererParameters;
-		void Init();
-		void	 UnInit();
-		static Ptr Create(const Parameter&);
-		void CreateGraphicsPipeLine();
-		~VulkanRendererEngine() { UnInit(); }
+		using Parameters = VulkanInstanceParams;
+		using Ptr = std::unique_ptr<VulkanInstance>;
+		static Ptr Create(const Parameters& params);
+		VkInstance get() { return instance_; }
+		~VulkanInstance() { vkDestroyInstance(instance_, nullptr); }
 	private:
-		VulkanRendererEngine() = default;
-		VulkanRendererEngine(const VulkanRendererEngine&) = delete;
-		VulkanRendererEngine& operator=(const VulkanRendererEngine&) = delete;
-		void QueryDevice();
-	private:
-		VkInstance			instance_{ VK_NULL_HANDLE };
-		VkDevice				device_{ VK_NULL_HANDLE };
-
+		VkInstance instance_ = VK_NULL_HANDLE;
 	};
-
+	
 }
 

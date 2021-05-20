@@ -53,6 +53,8 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		vkGetPhysicalDeviceProperties(phd, &device_props);
 		std::cout << std::uppercase << device_props.deviceName << std::endl;
 		std::cout << device_props.deviceType << std::endl;
+		std::cout << "max vertexes: " << device_props.limits.maxVertexInputBindings << std::endl;
+
 		uint32_t device_extension_count = 0;
 		vkEnumerateDeviceExtensionProperties(phd, nullptr, &device_extension_count, nullptr);
 		ASSERT_GT(device_extension_count, 0) << "device extension for NVIDIA";
@@ -62,6 +64,16 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		for (const auto& ext : device_extensions)
 		{
 			std::cout << ext.extensionName << ":" << ext.specVersion << "\n";
+		}
+
+		uint32_t device_layer_count = 0;
+		vkEnumerateDeviceLayerProperties(phd, &device_layer_count, nullptr);
+		std::cout << "+++++++++++++++++++++++++++++++++++++" << std::endl;
+		std::vector<VkLayerProperties> device_layers;
+		vkEnumerateDeviceLayerProperties(phd, &device_layer_count, device_layers.data());
+		for (const auto& layer : device_layers)
+		{
+			std::cout << layer.layerName << " : " << layer.specVersion << "\n";
 		}
 	}
 	std::cout << std::endl;
@@ -136,4 +148,5 @@ TEST(TEST_RHI_MODULE, TEST_SIMPLE_TRIANGLE)
 	auto window = glfwCreateWindow(800, 600, "TEST_TRIANGLE", VK_NULL_HANDLE, VK_NULL_HANDLE);
 
 	ASSERT_TRUE(glfwVulkanSupported()) << "glfw do not support vulkan";
+
 }

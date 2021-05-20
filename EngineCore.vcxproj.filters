@@ -21,40 +21,72 @@
     <ClCompile Include="RHI\VulkanRHI.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRenderingPipeline.cpp">
-      <Filter>RHI</Filter>
-    </ClCompile>
     <ClCompile Include="Scene\Scene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRenderingPass.cpp">
-      <Filter>RHI</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer\RtRenderGraph.cpp">
       <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\CommonUtils.cpp" />
+    <ClCompile Include="RHI\VulkanCmdContext.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRayTraceKHR.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderPass.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderPipeline.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanResource.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderGraph.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanMem.cpp">
+      <Filter>RHI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RHI\VulkanRHI.h">
       <Filter>RHI</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\VulkanRenderingPipeline.h">
-      <Filter>RHI</Filter>
-    </ClInclude>
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRenderingShader.h">
-      <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\RtRenderGraph.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\CommonUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\RtRenderPass.h">
       <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\CommonUtils.h" />
+    <ClInclude Include="RHI\VulkanResource.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanCmdContext.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRayTraceKHR.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderPass.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderPipeline.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderShader.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanRenderGraph.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanMem.h">
+      <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +96,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\shape_shader.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ray_trace.rgen" />
+    <None Include="Shaders\ray_trace.rmiss" />
+    <None Include="Shaders\ray_trace.rchit">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ray_trace.defi">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

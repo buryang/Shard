@@ -7,22 +7,18 @@
 #endif 
 
 #include "glm/glm.hpp"
+#include "folly/FBVector.h"
+#include "folly/small_vector.h"
 #include <memory>
 #include <vector>
 #include <set>
 #include <array>
 #include <algorithm>
 
+namespace MetaInit {
 
-class HostMemoryManager
-{
-public:
-	static HostMemoryManager& Create();
-	HostMemoryManager(const HostMemoryManager&) = delete;
-	HostMemoryManager& operator=(const HostMemoryManager&) = delete;
-	void* Alloc();
-	void* ReAlloc();
-	void Free();
-private:
-	HostMemoryManager() = default;
-};
+	template<typename Containers>
+	using Vector = folly::fbvector<Containers>;
+	template<typename Containers>
+	using SmallVector = folly::small_vector<Containers>;
+}

@@ -5,29 +5,9 @@
 #include <vector>
 #include <fstream>
 
-namespace 
-{
-	const char* 
-}
-
 namespace MetaInit 
 {
-	void VulkanRendererEngine::Init()
-	{
-
-	}
-
-	void	 VulkanRendererEngine::UnInit()
-	{
-
-	}
-
-	Ptr VulkanRendererEngine::Create(const Parameter& params)
-	{
-
-	}
-
-	void VulkanRendererEngine::CreateGraphicsPipeLine()
+	void VulkanInstance::CreateGraphicsPipeLine()
 	{
 		/*spv load function*/
 		auto load_spv = [&](const std::string& file_name){
