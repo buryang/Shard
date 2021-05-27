@@ -27,7 +27,6 @@
     <ClCompile Include="Renderer\RtRenderGraph.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="RHI\VulkanCmdContext.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
@@ -46,7 +45,13 @@
     <ClCompile Include="RHI\VulkanRenderGraph.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanMem.cpp">
+    <ClCompile Include="Shaders\VulkanRenderShader.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\CommonUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanMemAllocator.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
   </ItemGroup>
@@ -63,7 +68,6 @@
     <ClInclude Include="Renderer\RtRenderPass.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\CommonUtils.h" />
     <ClInclude Include="RHI\VulkanResource.h">
       <Filter>RHI</Filter>
     </ClInclude>
@@ -85,7 +89,10 @@
     <ClInclude Include="RHI\VulkanRenderGraph.h">
       <Filter>RHI</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\VulkanMem.h">
+    <ClInclude Include="Utils\CommonUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanMemAllocator.h">
       <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>
@@ -98,12 +105,16 @@
     <None Include="Shaders\shape_shader.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\ray_trace.rgen" />
-    <None Include="Shaders\ray_trace.rmiss" />
     <None Include="Shaders\ray_trace.rchit">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\ray_trace.defi">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ray_trace.rmiss">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ray_trace.rgen">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

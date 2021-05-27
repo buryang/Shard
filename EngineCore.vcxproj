@@ -21,7 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Renderer\RtRenderGraph.cpp" />
     <ClCompile Include="RHI\VulkanCmdContext.cpp" />
-    <ClCompile Include="RHI\VulkanMem.cpp" />
+    <ClCompile Include="RHI\VulkanMemAllocator.cpp" />
     <ClCompile Include="RHI\VulkanRayTraceKHR.cpp" />
     <ClCompile Include="RHI\VulkanRenderGraph.cpp" />
     <ClCompile Include="RHI\VulkanRenderPass.cpp" />
@@ -29,13 +29,14 @@
     <ClCompile Include="RHI\VulkanResource.cpp" />
     <ClCompile Include="RHI\VulkanRHI.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Shaders\VulkanRenderShader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\RtRenderGraph.h" />
     <ClInclude Include="Renderer\RtRenderPass.h" />
     <ClInclude Include="RHI\VulkanCmdContext.h" />
-    <ClInclude Include="RHI\VulkanMem.h" />
+    <ClInclude Include="RHI\VulkanMemAllocator.h" />
     <ClInclude Include="RHI\VulkanRayTraceKHR.h" />
     <ClInclude Include="RHI\VulkanRenderGraph.h" />
     <ClInclude Include="RHI\VulkanRenderPass.h" />
@@ -113,22 +114,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
     <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\;$(IncludePath)</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;$(IncludePath)</IncludePath>
     <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

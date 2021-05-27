@@ -5,18 +5,11 @@
 #include <vector>
 #include <fstream>
 
-namespace MetaInit 
+namespace MetaInit
 {
-	void VulkanInstance::CreateGraphicsPipeLine()
-	{
-		/*spv load function*/
-		auto load_spv = [&](const std::string& file_name){
-			std::ifstream spv_file(file_name, std::ios::ate|std::ios::binary);
-			auto file_size = spv_file.tellg();
-			spv_file.seekg(0);
-			std::vector<uint8_t> spv_bytes(file_size);
-			spv_file.read(spv_bytes.data(), file_size);
-			return spv_bytes;
-		};
-	}
+	/*for:"this feature is not used, the implementation will 
+	  perform its own memory allocations. Since most memory 
+	  allocations are off the critical path", so just set null*/
+	VkAllocationCallbacks* g_host_alloc = VK_NULL_HANDLE;
+
 }
