@@ -4,12 +4,16 @@
 
 namespace MetaInit
 {
+	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count);
+	VkCommandBufferBeginInfo MakeCommandBufferBeginInfo(VkCommandBufferUsageFlags flags);
+	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index);
+	
 	class VulkanCmdPool
 	{
 	public:
 		VulkanCmdPool() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdPool);
-		void Submit();
+		void Submit(VkQueue queue);
 		void SubmitAsync();
 		virtual ~VulkanCmdPool();
 	private:
@@ -22,18 +26,19 @@ namespace MetaInit
 	class VulkanCmdBuffer
 	{
 	public:
-		struct VulkanCmdBufferParameters
-		{
-
-		};
-		using Parameters = VulkanCmdBufferParameters;
 		using Ptr = std::unique_ptr<VulkanCmdBuffer>;
-		static Ptr Create(const Parameters& params, VulkanCmdPool& cmd_pool);
+		static Ptr Create(const VkCommandBufferAllocateInfo& cmd_info, VulkanCmdPool& cmd_pool);
 		~VulkanCmdBuffer();
-		const Parameters& get_params()const { return parameters_; };
 		VkCommandBuffer Get() {
 			return buffer_;
 		}
+		/*cmd buffer type*/
+		enum class Type :uint8_t
+		{
+			PRIMARY,
+			SECONDARY,
+			COUNT
+		};
 		/*cmd buffer state*/
 		enum class State:uint32_t
 		{
@@ -44,6 +49,8 @@ namespace MetaInit
 			INVALID,
 			COUNT
 		};
+		void SetViewPoint();
+		void SetSwapChain();
 		void Begin();
 		void End();
 		void BeginPass(VulkanRenderPass& render_pass);
@@ -53,13 +60,14 @@ namespace MetaInit
 		void Draw();
 		void TraceRay();
 		void Copy();
-		void Submit(VulkanQueue& queue);
+		void Submit(VkQueue& queue);
+		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();
 	private:
 		friend class VulkanCmdPool;
 		VkCommandBuffer		buffer_ = VK_NULL_HANDLE;
-		Parameters			parameters_;
-		State				state_{State::INITIAL};
+		State				state_{ State::INITIAL };
+		Type					type_{ Type::PRIMARY };
 	};
 
 

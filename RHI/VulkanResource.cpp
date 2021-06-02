@@ -17,7 +17,15 @@ namespace MetaInit
 
 	static inline VkImageViewType GetImageViewType(VkImageType image_type)
 	{
-
+		switch (image_type)
+		{
+		case	 VK_IMAGE_TYPE_1D:
+			return VK_IMAGE_VIEW_TYPE_1D;
+		case VK_IMAGE_TYPE_2D:
+			return VK_IMAGE_VIEW_TYPE_2D;
+		default:
+			assert(0&&"image type not supported");
+		}
 	}
 
 	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImage image, const VkImageCreateInfo& image_info)
@@ -30,31 +38,49 @@ namespace MetaInit
 	}
 
 
-	DescriptorPoolManager::DescriptorPoolManager(VulkanDevice device, size_t pool_size,
-													const VkDescriptorSetLayoutCreateInfo& layout)
+	DescriptorPool::DescriptorPool(VulkanDevice device, uint32_t set_size,
+										const VkDescriptorSetLayoutCreateInfo& layout)
 	{
-		Init(device, pool_size, layout);
+		Init(device, set_size, layout);
 	}
 
-	void DescriptorPoolManager::Init(VulkanDevice device, size_t pool_size,
-										const VkDescriptorSetLayoutCreateInfo& layout)
+	void DescriptorPool::Init(VulkanDevice device, uint32_t set_size,
+		const VkDescriptorSetLayoutCreateInfo& layout_info)
 	{
 		device_ = device;
 		curr_ = VK_NULL_HANDLE;
 
 		//todo check device support layout
 		VkDescriptorSetLayoutSupport support;
-		vkGetDescriptorSetLayoutSupport(device_.Get(), &layout, &support);
+		vkGetDescriptorSetLayoutSupport(device_.Get(), &layout_info, &support);
 
 		if (!support.supported)
 		{
 			throw std::runtime_error("descriptorset layout not supported by device");
 		}
 
-		std::span<>
+		Span<const VkDescriptorSetLayoutBinding> bindings{ layout_info.pBindings, layout_info.bindingCount };
+
+		uint32_t desc_buffer_count = 0, desc_tex_count = 0;
+		for (auto& binding : bindings)
+		{
+			if (binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+				binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{
+				++desc_buffer_count;
+			}
+			else if (0)
+			{
+				++desc_tex_count;
+			}
+		}
+		
+		pool_size_ = (desc_buffer_count + desc_tex_count) * set_size;
+		auto ret = vkCreateDescriptorSetLayout(device_.Get(), &layout_info, g_host_alloc, &layout_);
+		assert(ret == VK_SUCCESS && "create descriptor layout failed");
 	}
 
-	void DescriptorPoolManager::UnInit()
+	void DescriptorPool::UnInit()
 	{
 		for (auto pool : avalaible_)
 		{
@@ -67,14 +93,15 @@ namespace MetaInit
 			vkDestroyDescriptorPool(device_.Get(), pool, g_host_alloc);
 		}
 		used_.clear();
+		vkDestroyDescriptorSetLayout(device_.Get(), layout_, g_host_alloc);
 	}
 
-	VkDescriptorSet DescriptorPoolManager::CreateDescriptorSet()
+	VkDescriptorSet DescriptorPool::CreateDescriptorSet()
 	{
 
 	}
 
-	void DescriptorPoolManager::Reset()
+	void DescriptorPool::Reset()
 	{
 		std::copy(used_.begin(), used_.end(), avalaible_.end());
 		used_.clear();
@@ -88,7 +115,7 @@ namespace MetaInit
 	}
 
 
-	void DescriptorPoolManager::AddNewPool()
+	void DescriptorPool::AddNewPool()
 	{
 		VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo();
 		//TODO

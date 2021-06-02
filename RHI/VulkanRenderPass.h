@@ -3,6 +3,10 @@
 
 namespace MetaInit
 {
+
+	VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
+													Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps);
+
 	class VulkanCmdBuffer;
 	//interface for vulkan render pass
 	class VulkanRenderPass

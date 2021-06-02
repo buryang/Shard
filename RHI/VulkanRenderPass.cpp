@@ -10,7 +10,13 @@ namespace
 
 namespace MetaInit {
 
-	static VkRenderPass create_render_pass(VkDevice device, VulkanRTLayout rt_layout)
+	VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
+		Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps)
+	{
+		return VkRenderPassCreateInfo();
+	}
+
+	static VkRenderPass create_render_pass(VkDevice device, VkRenderPassCreateInfo pass_info)
 	{
 		std::array<VkAttachmentDescription, max_render_targets> attach_descs;
 		std::array<VkAttachmentReference, max_render_targets> attach_refs;
