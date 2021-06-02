@@ -1,8 +1,9 @@
 #version 450
+#extension GL_KHR_vulkan_glsl : enable
 
-layout(location = 0) in vec2 in_position;
-layout(location = 1) in vec3 in_color;
-layout(location = 2) in vec2 in_tex_coord;
+layout(set = 0, location = 0) in vec2 in_position;
+layout(set = 0, location = 1) in vec3 in_color;
+layout(set = 0. location = 2) in vec2 in_tex_coord;
 layout(push_constant) uniform CameraParameters{
 	mat4 model;
 	mat4 proj;

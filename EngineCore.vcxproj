@@ -114,22 +114,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\</IncludePath>
     <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;$(IncludePath)</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\googletest\include;.\Externals\vma;.\;$(IncludePath)</IncludePath>
     <LibraryPath>.\Externals\GLFW\lib;.\Externals\Assimp\lib;.\Externals\googletest\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
