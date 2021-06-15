@@ -8,6 +8,7 @@ namespace MetaInit
 	VkCommandBufferBeginInfo MakeCommandBufferBeginInfo(VkCommandBufferUsageFlags flags);
 	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index);
 	
+	class VulkanRayTraceBindTable;
 	class VulkanCmdPool
 	{
 	public:
@@ -51,15 +52,17 @@ namespace MetaInit
 		};
 		void SetViewPoint();
 		void SetSwapChain();
+		void SetLight();
 		void Begin();
 		void End();
 		void BeginPass(VulkanRenderPass& render_pass);
 		void EndPass(VulkanRenderPass& render_pass);
 		void Dispatch();
+		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);
 		void Draw();
-		void Draw();
-		void TraceRay();
-		void Copy();
+		void TraceRay(const std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
+		template<typename DataHandle>
+		void Copy(DataHandle dst, DataHandle src);
 		void Submit(VkQueue& queue);
 		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();

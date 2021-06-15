@@ -27,14 +27,38 @@ namespace MetaInit
 		vkGetDeviceQueue(device_, family_index, index, &queue);
 		return queue;
 	}
+
+	VkQueue VulkanDevice::GetQueue(VkQueueFlags flags)const
+	{
+		uint32_t family_count = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices_, &family_count, nullptr);
+		SmallVector<VkQueueFamilyProperties> family_props(family_count);
+		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices_, &family_count, family_props.data());
+
+		for (auto findex = 0; findex < family_props.size(); ++findex)
+		{
+			auto& prop = family_props[findex];
+			if (prop.queueFlags & flags)
+			{
+				//to check flags
+				return GetQueue(findex, 0);
+			}
+		}
+
+		return VK_NULL_HANDLE;
+	}
 	
-	
+	/*
 	VkPhysicalDevice VulkanDevice::operator[](uint32_t index)
 	{
 		assert(index < phy_devices_.size());
 		return phy_devices_[index];
 	}
-
+	*/
+	void VulkanDevice::WaitIdle()const
+	{
+		vkDeviceWaitIdle(device_);
+	}
 
 
 

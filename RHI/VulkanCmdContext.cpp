@@ -1,5 +1,6 @@
 #include "VulkanCmdContext.h"
 #include "VulkanRenderPass.h"
+#include "VulkanRayTraceKHR.h"
 
 namespace MetaInit
 {
@@ -7,10 +8,10 @@ namespace MetaInit
 	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count)
 	{
 		VkCommandBufferAllocateInfo alloc_info{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-		alloc_info.pNext					= VK_NULL_HANDLE;
-		alloc_info.commandPool			= pool;
-		alloc_info.level					= level;
-		alloc_info.commandBufferCount	= buffer_count;
+		alloc_info.pNext = VK_NULL_HANDLE;
+		alloc_info.commandPool = pool;
+		alloc_info.level = level;
+		alloc_info.commandBufferCount = buffer_count;
 		return alloc_info;
 	}
 
@@ -39,7 +40,7 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::Begin()
 	{
-		VkCommandBufferBeginInfo begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+		VkCommandBufferBeginInfo begin_info{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 		begin_info.pNext = VK_NULL_HANDLE;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
@@ -64,9 +65,22 @@ namespace MetaInit
 	void VulkanCmdBuffer::Dispatch()
 	{
 		//FIXME
-		vkCmdDispatch(buffer_,0, 0, 0);
+		vkCmdDispatch(buffer_, 0, 0, 0);
 	}
 
+	void VulkanCmdBuffer::Draw( uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count)
+	{
+		vkCmdDraw(buffer_, vertex_count, instance_count, first_vertex, first_instance);
+	}
+
+	void VulkanCmdBuffer::TraceRay(const std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
+	{
+		vkCmdTraceRaysKHR(buffer_, ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RGEN)],
+			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RMISS)],
+			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RHIT)],
+			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RCALL)],
+			dims.x, dims.y, dims.z);
+	}
 	void VulkanCmdBuffer::Submit(VkQueue& queue)
 	{
 		//FIXME

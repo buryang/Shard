@@ -23,11 +23,12 @@
     <ClCompile Include="RHI\VulkanCmdContext.cpp" />
     <ClCompile Include="RHI\VulkanMemAllocator.cpp" />
     <ClCompile Include="RHI\VulkanRayTraceKHR.cpp" />
-    <ClCompile Include="RHI\VulkanRenderGraph.cpp" />
+    <ClCompile Include="RHI\VulkanFrameGraph.cpp" />
     <ClCompile Include="RHI\VulkanRenderPass.cpp" />
     <ClCompile Include="RHI\VulkanRenderPipeline.cpp" />
     <ClCompile Include="RHI\VulkanResource.cpp" />
     <ClCompile Include="RHI\VulkanRHI.cpp" />
+    <ClCompile Include="RHI\VulkanWindowSystem.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Shaders\VulkanRenderShader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
@@ -38,12 +39,13 @@
     <ClInclude Include="RHI\VulkanCmdContext.h" />
     <ClInclude Include="RHI\VulkanMemAllocator.h" />
     <ClInclude Include="RHI\VulkanRayTraceKHR.h" />
-    <ClInclude Include="RHI\VulkanRenderGraph.h" />
+    <ClInclude Include="RHI\VulkanFrameGraph.h" />
     <ClInclude Include="RHI\VulkanRenderPass.h" />
     <ClInclude Include="RHI\VulkanRenderPipeline.h" />
     <ClInclude Include="RHI\VulkanRenderShader.h" />
     <ClInclude Include="RHI\VulkanResource.h" />
     <ClInclude Include="RHI\VulkanRHI.h" />
+    <ClInclude Include="RHI\VulkanWindowSystem.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
   </ItemGroup>

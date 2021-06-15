@@ -15,6 +15,7 @@ namespace MetaInit
 	class VulkanRenderPipeline
 	{
 	public:
+		//todo: support task and mesh shader
 		enum class PipeType:uint8_t
 		{
 			COMPUTE,
