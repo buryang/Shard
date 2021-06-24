@@ -9,16 +9,16 @@ namespace MetaInit
 	class VulkanSceneAccStructure
 	{
 	public:
-		VkAccelerationStructureKHR get() {
+		VkAccelerationStructureKHR Get() {
 			return scene_;
 		}
 		void Build();
 		void Update();
 	private:
-		void BuildTlas();
-		void UpdateTlas();
-		void BuildBlas();
-		void UpdateBlas();
+		void BuildTLAS();
+		void UpdateTLAS();
+		void BuildBLAS();
+		void UpdateBLAS();
 	private:
 		VkAccelerationStructureKHR			scene_ = VK_NULL_HANDLE;
 		Internal::VulkanVMAMemAllocator		mem_allocator_;
@@ -61,14 +61,14 @@ namespace MetaInit
 		void Compile(const std::string& glsl_file);
 		void Load(const std::string& spv_file);
 	private:
-		Table				shader_tbl_;
-		TableImpl			shader_tbl_impl_{ VK_NULL_HANDLE };
+		Table					shader_tbl_;
+		TableImpl				shader_tbl_impl_{ VK_NULL_HANDLE };
 		VkDeviceSize			offset_;
 		VkDeviceSize			stride_;
 		VkDeviceSize			size_;
 		Type					type_;
 		Vector<HitEntry>		hit_entries_;
-		Vector<MissEntry>	miss_entries_;
+		Vector<MissEntry>		miss_entries_;
 
 
 	};

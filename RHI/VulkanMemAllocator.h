@@ -8,16 +8,16 @@ namespace MetaInit {
 	struct VMAAllocation
 	{
 		union {
-			VkImage image_{ VK_NULL_HANDLE };
-			VkBuffer	 buffer_;
+			VkImage		image_{ VK_NULL_HANDLE };
+			VkBuffer	buffer_;
 		};
 		VmaAllocation	allocation_{ nullptr };
 	};
 
 	struct VMAAccerleraion
 	{
-		VMAAllocation alloc_;
-		VkAccelerationStructureKHR acc_{VK_NULL_HANDLE};
+		VMAAllocation				alloc_;
+		VkAccelerationStructureKHR	acc_{VK_NULL_HANDLE};
 	};
 
 	class VulkanVMAWrapper {

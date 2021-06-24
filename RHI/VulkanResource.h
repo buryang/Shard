@@ -8,14 +8,14 @@ namespace MetaInit
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
 	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImage image, const VkImageCreateInfo& imageInfo);
 	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size, 
-											const Vector<uint32_t>& family_indices);
+											const SmallVector<uint32_t>& family_indices);
 	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
 													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
 	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags);
 	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
-																		const Vector<VkDescriptorSetLayoutBinding>& bindings);
+																		const SmallVector<VkDescriptorSetLayoutBinding>& bindings);
 	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets, 
-															const Vector<VkDescriptorPoolSize>& pool_size);
+															const SmallVector<VkDescriptorPoolSize>& pool_size);
 
 
 	class DescriptorPool
@@ -40,7 +40,7 @@ namespace MetaInit
 		List used_;
 		VkDescriptorPool			curr_{VK_NULL_HANDLE};
 		VulkanDevice				device_;
-		VkDescriptorSetLayout	layout_;
+		VkDescriptorSetLayout		layout_;
 		uint32_t					pool_size_;
 	};
 
@@ -71,7 +71,7 @@ namespace MetaInit
 		DescriptorSetsWrapper& operator=(const DescriptorSetsWrapper&) = delete;
 		~DescriptorSetsWrapper();
 	private:
-		VulkanDevice						device_;
+		VulkanDevice					device_;
 		DescriptorPoolManager			pool_repo_;
 		Vector<VkDescriptorSet>			sets_;
 		Vector<VkDescriptorSetLayout>	layouts_;

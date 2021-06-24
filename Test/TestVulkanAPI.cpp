@@ -1,6 +1,9 @@
 //#include "RHI/VulkanRHI.h"
 
 #include "gtest/gtest.h"
+#define VOLK_IMPLEMENTATION
+#define VK_NV_cooperative_matrix
+#include "volk/volk.h"
 #include <vector>
 #include <optional>
 
@@ -16,11 +19,15 @@ TEST(TEST_RHI_MODULE, TEST_VULKAN_PIPLINE)
 	EXPECT_TRUE(true);
 }
 
-#define GLFW_INCLUDE_VULKAN
+//#define GLFW_INCLUDE_VULKAN
 #include "glfw3.h"
 
 TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 {
+	{
+		auto result = volkInitialize();
+		EXPECT_TRUE(result == VK_SUCCESS && "initial volk faild");
+	}
 	uint32_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 	EXPECT_GE(extension_count, 1) << "NV GPU should support more than 1 extensions";
@@ -40,6 +47,8 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 	VkResult result = vkCreateInstance(&instance_info, nullptr, &instance);
 	ASSERT_EQ(result, VK_SUCCESS);
 	EXPECT_TRUE(instance != nullptr);
+
+	volkLoadInstance(instance);
 
 	//query device
 	uint32_t device_count = 0;
@@ -74,6 +83,19 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		for (const auto& layer : device_layers)
 		{
 			std::cout << layer.layerName << " : " << layer.specVersion << "\n";
+		}
+
+		//check where support tensorcore
+		uint32_t device_cm_count = 0;
+		vkGetPhysicalDeviceCooperativeMatrixPropertiesNV(phd, &device_cm_count, nullptr);
+		if (device_cm_count)
+		{
+			std::vector<VkCooperativeMatrixPropertiesNV> device_cms(device_cm_count);
+			vkGetPhysicalDeviceCooperativeMatrixPropertiesNV(phd, &device_cm_count, device_cms.data());
+			for (auto cm : device_cms)
+			{
+				//
+			}
 		}
 	}
 	std::cout << std::endl;

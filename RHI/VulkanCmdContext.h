@@ -18,8 +18,8 @@ namespace MetaInit
 		void SubmitAsync();
 		virtual ~VulkanCmdPool();
 	private:
-		VulkanDevice					device_;
-		VkCommandPool				pool_ = VK_NULL_HANDLE;
+		VulkanDevice::Ptr			device_;
+		VkCommandPool				pool_{ VK_NULL_HANDLE };
 		Vector<VkCommandBuffer>		buffers_;
 	};
 
@@ -68,9 +68,9 @@ namespace MetaInit
 		void Reset();
 	private:
 		friend class VulkanCmdPool;
-		VkCommandBuffer		buffer_ = VK_NULL_HANDLE;
+		VkCommandBuffer		buffer_{ VK_NULL_HANDLE };
 		State				state_{ State::INITIAL };
-		Type					type_{ Type::PRIMARY };
+		Type				type_{ Type::PRIMARY };
 	};
 
 

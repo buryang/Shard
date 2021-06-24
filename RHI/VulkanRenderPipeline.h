@@ -32,9 +32,9 @@ namespace MetaInit
 		VkPipeline Get() {
 			return handle_;
 		}
-		~VulkanRenderPipeline() { vkDestroyPipeline(device_.get(), handle_, nullptr); }
+		~VulkanRenderPipeline() { vkDestroyPipeline(device_.Get(), handle_, nullptr); }
 	private:
-		VkPipeline		handle_ = VK_NULL_HANDLE;
+		VkPipeline			handle_{ VK_NULL_HANDLE };
 		VulkanDevice		device_;
 		PipeType			pipe_type_;
 
