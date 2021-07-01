@@ -26,6 +26,9 @@ namespace MetaInit
 		Attribute<vec3>		normals_;
 		Attribute<vec2>		tex_coords_;
 		Attribute<uint32_t> indices_;
+		uint32_t			face_num_;
+		uint32_t			vertex_num_;
+
 
 		template<typename T>
 		static T Get(const Attribute<T>& attr, uint32_t face, uint32_t vert) {
@@ -48,9 +51,13 @@ namespace MetaInit
 			return T();
 		}
 
+		void AddPosition(vec3 pos) { positions_.data_.emplace_back(pos); }
 		vec3 GetPosition(uint32_t face, uint32_t vert)const { return Get(positions_, face, vert); }
+		void AddNormal(vec3 normal) { normals_.data_.emplace_back(normal); }
 		vec3 GetNormal(uint32_t face, uint32_t vert)const { return Get(normals_, face, vert); }
+		void AddTexCoord(vec2 uv) { tex_coords_.data_.emplace_back(uv); }
 		vec2 GetTexCoord(uint32_t face, uint32_t vert)const { return Get(tex_coords_, face, vert); }
+		void AddIndice(uint32_t index) { indices_.data_.emplace_back(index); }
 
 		struct Vertex
 		{
@@ -72,7 +79,10 @@ namespace MetaInit
 
 	struct Curve
 	{
-
+		Vector<vec3>	ctrl_points_;
+		Vector<float>	segments_;
+		void ToSpherePorint() const;
+		Mesh ToMesh() const;
 	};
 
 	struct Light
@@ -106,6 +116,53 @@ namespace MetaInit
 
 		//extrinsics
 		mat4	trans_;
+	};
+
+	struct Volume
+	{
+
+	};
+
+	template<typename T>
+	struct Texture
+	{
+		Vector<T>	textures_;
+		uint32_t	width_;
+		uint32_t	height_;
+	};
+
+	//texture sampler interface
+	struct Sampler
+	{
+		uint32_t mag_filter_;
+		uint32_t min_filter_;
+		uint32_t warpS_;
+		uint32_t warpT_;
+	};
+
+	struct Material
+	{
+		enum class AlphaMode : uint8_t
+		{
+			OPAQUE,
+			MASK,
+			BLEND,
+		};
+		using TextureType = Texture<float>;
+		using TexturePtr = TextureType*;
+		AlphaMode alpha_mode_ = AlphaMode::OPAQUE;
+		float alpha_cutoff_ = 1.0f;
+		float metal_factor_ = 1.0f;
+		float roughness_factor_ = 1.0f;
+		vec4 base_color_factor_{ 1.0f };
+		vec4 emissive_factor_{ 1.0f };
+
+		//texture data structure
+		TexturePtr base_color_texture_ = nullptr;
+		TexturePtr metal_roughness_texture_ = nullptr;
+		TexturePtr normal_texture_ = nullptr;
+		TexturePtr occlusion_texture_ = nullptr;
+		TexturePtr emissive_texture_ = nullptr;
 	};
 
 }

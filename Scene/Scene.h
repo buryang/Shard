@@ -9,38 +9,56 @@
 namespace MetaInit
 {
 
-	class ScenceProxyHelper
+	class SceneProxyHelper
 	{
 	public:
-		ScenceProxyHelper() = default;
-		void SetCamera();
-		void GetCamera() const;
-		void AddLight();
-		void GetLight() const;
-		void AddMesh();
-		void GetMesh() const;
-		void AddMaterials();
-		void GetMaterials() const;
+		using CurveList = Vector<Curve>;
+		using MeshList = Vector<Mesh>;
+		using MaterialList = Vector<Material>;
+		using LightList = Vector<Light>;
+		using VolumeList = Vector<Volume>;
+		using CameraList = Vector<Camera>;
+		SceneProxyHelper() = default;
+		SceneProxyHelper& SetCamera();
+		SceneProxyHelper& AddCamera(Camera&& camera);
+		Camera GetCamera() const;
+		SceneProxyHelper& AddLight(Light&& light);
+		Light GetLight() const;
+		SceneProxyHelper& AddMesh(Mesh&& mesh);
+		Mesh GetMesh() const;
+		SceneProxyHelper& AddMaterials(Material&& material);
+		Material GetMaterial(uint32_t id) const;
+		SceneProxyHelper& AddTexture(Texture&& texture);
+		Texture GetTexture(uint32_t id) const;
 	private:
-		Vector<Mesh>	prims_;
-		Vector<Light>	lights_;
+		//load post proc functions
+
+	private:
+		CameraList		cameras_;
+		Camera			curr_camera_;
+		MeshList		meshes_;
+		LightList		lights_;
+		MaterialList	materials_;
 	};
 
 	class ISceneParser
 	{
 	public:
-		virtual void Import(const std::string& file, ScenceProxyHelper& helper) = 0;
+		virtual void Import(const std::string& file, SceneProxyHelper& helper) = 0;
+		virtual ~ISceneParser() {};
 	};
 
 	class SceneGltfParser:public ISceneParser
 	{
 	public:
-		void Import(const std::string& gltf_file, ScenceProxyHelper& helper) override;
+		void Import(const std::string& gltf_file, SceneProxyHelper& helper) override;
 	private:
-		void ParseMesh(ScenceProxyHelper& helper);
-		void ParseMaterial(ScenceProxyHelper& helper);
-		void ParseLight(ScenceProxyHelper& helper);
-		void ParseCamera(ScenceProxyHelper& helper);
+		void ParseMeshes(SceneProxyHelper& helper);
+		void ParseMaterials(SceneProxyHelper& helper);
+		void ParseLights(SceneProxyHelper& helper);
+		void ParseCameras(SceneProxyHelper& helper);
+		void ParseSampler(SceneProxyHelper& helper);
+		void ParseTextures(SceneProxyHelper& helper);
 	private:
 		tinygltf::Model			gltf_model_;
 		tinygltf::TinyGLTF		gltf_loader_;
