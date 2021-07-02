@@ -10,7 +10,7 @@ namespace MetaInit
 	{
 	public:
 		VkAccelerationStructureKHR Get() {
-			return scene_;
+			return Scene_;
 		}
 		void Build();
 		void Update();
@@ -20,7 +20,7 @@ namespace MetaInit
 		void BuildBLAS();
 		void UpdateBLAS();
 	private:
-		VkAccelerationStructureKHR			scene_ = VK_NULL_HANDLE;
+		VkAccelerationStructureKHR			Scene_ = VK_NULL_HANDLE;
 		Internal::VulkanVMAMemAllocator		mem_allocator_;
 	};
 
@@ -55,11 +55,11 @@ namespace MetaInit
 		using CallEntry = _Entry;
 
 		VulkanRayTraceBindTable() = default;
-		VulkanRayTraceBindTable(const std::string& spv_file);
+		VulkanRayTraceBindTable(const String& spv_file);
 		const Table& GetBindTable()const;
 	private:
-		void Compile(const std::string& glsl_file);
-		void Load(const std::string& spv_file);
+		void Compile(const String& glsl_file);
+		void Load(const String& spv_file);
 	private:
 		Table					shader_tbl_;
 		TableImpl				shader_tbl_impl_{ VK_NULL_HANDLE };

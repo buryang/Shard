@@ -16,6 +16,9 @@
     <Filter Include="Render">
       <UniqueIdentifier>{b8f34e2c-0273-421e-8354-6cc6f57ae520}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Passes">
+      <UniqueIdentifier>{f9377743-716d-449f-9cb8-b755d88da258}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RHI\VulkanRHI.cpp">
@@ -56,6 +59,15 @@
     </ClCompile>
     <ClCompile Include="RHI\VulkanWindowSystem.cpp">
       <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Primitive.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Material.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Mesh.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +112,18 @@
     </ClInclude>
     <ClInclude Include="RHI\VulkanWindowSystem.h">
       <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Primitive.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BaseComputePass.h">
+      <Filter>Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BaseGraphicsPass.h">
+      <Filter>Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\BaseScreenSpacePass.h">
+      <Filter>Passes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

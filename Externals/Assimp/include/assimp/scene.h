@@ -41,12 +41,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---------------------------------------------------------------------------
 */
 
-/** @file scene.h
- *  @brief Defines the data structures in which the imported scene is returned.
+/** @file Scence.h
+ *  @brief Defines the data structures in which the imported Scence is returned.
  */
 #pragma once
-#ifndef AI_SCENE_H_INC
-#define AI_SCENE_H_INC
+#ifndef AI_Scence_H_INC
+#define AI_Scence_H_INC
 
 #include "types.h"
 #include "texture.h"
@@ -74,7 +74,7 @@ extern "C" {
  * Each node has name, a parent node (except for the root node),
  * a transformation relative to its parent and possibly several child nodes.
  * Simple file formats don't support hierarchical structures - for these formats
- * the imported scene does consist of only a single root node without children.
+ * the imported Scence does consist of only a single root node without children.
  */
 // -------------------------------------------------------------------------------
 struct ASSIMP_API aiNode
@@ -119,7 +119,7 @@ struct ASSIMP_API aiNode
     unsigned int mNumMeshes;
 
     /** The meshes of this node. Each entry is an index into the
-      * mesh list of the #aiScene.
+      * mesh list of the #aiScence.
       */
     unsigned int* mMeshes;
 
@@ -142,7 +142,7 @@ struct ASSIMP_API aiNode
 
     /** Searches for a node with a specific name, beginning at this
      *  nodes. Normally you will call this method on the root node
-     *  of the scene.
+     *  of the Scence.
      *
      *  @param name Name to search for
      *  @return NULL or a valid Node if the search was successful.
@@ -176,19 +176,19 @@ struct ASSIMP_API aiNode
 
 // -------------------------------------------------------------------------------
 /**
- * Specifies that the scene data structure that was imported is not complete.
+ * Specifies that the Scence data structure that was imported is not complete.
  * This flag bypasses some internal validations and allows the import
  * of animation skeletons, material libraries or camera animation paths
  * using Assimp. Most applications won't support such data.
  */
-#define AI_SCENE_FLAGS_INCOMPLETE   0x1
+#define AI_Scence_FLAGS_INCOMPLETE   0x1
 
 /**
  * This flag is set by the validation postprocess-step (aiPostProcess_ValidateDS)
- * if the validation is successful. In a validated scene you can be sure that
+ * if the validation is successful. In a validated Scence you can be sure that
  * any cross references in the data structure (e.g. vertex indices) are valid.
  */
-#define AI_SCENE_FLAGS_VALIDATED    0x2
+#define AI_Scence_FLAGS_VALIDATED    0x2
 
 /**
  * This flag is set by the validation postprocess-step (aiPostProcess_ValidateDS)
@@ -198,7 +198,7 @@ struct ASSIMP_API aiNode
  * In most cases you should still be able to use the import. This flag could
  * be useful for applications which don't capture Assimp's log output.
  */
-#define AI_SCENE_FLAGS_VALIDATION_WARNING   0x4
+#define AI_Scence_FLAGS_VALIDATION_WARNING   0x4
 
 /**
  * This flag is currently only set by the aiProcess_JoinIdenticalVertices step.
@@ -206,7 +206,7 @@ struct ASSIMP_API aiNode
  * verbose format anymore. In the verbose format all vertices are unique,
  * no vertex is ever referenced by more than one face.
  */
-#define AI_SCENE_FLAGS_NON_VERBOSE_FORMAT   0x8
+#define AI_Scence_FLAGS_NON_VERBOSE_FORMAT   0x8
 
  /**
  * Denotes pure height-map terrain data. Pure terrains usually consist of quads,
@@ -220,15 +220,15 @@ struct ASSIMP_API aiNode
  * as long as possible (typically you'll do the triangulation when you actually
  * need to render it).
  */
-#define AI_SCENE_FLAGS_TERRAIN 0x10
+#define AI_Scence_FLAGS_TERRAIN 0x10
 
  /**
- * Specifies that the scene data can be shared between structures. For example:
- * one vertex in few faces. \ref AI_SCENE_FLAGS_NON_VERBOSE_FORMAT can not be
- * used for this because \ref AI_SCENE_FLAGS_NON_VERBOSE_FORMAT has internal
+ * Specifies that the Scence data can be shared between structures. For example:
+ * one vertex in few faces. \ref AI_Scence_FLAGS_NON_VERBOSE_FORMAT can not be
+ * used for this because \ref AI_Scence_FLAGS_NON_VERBOSE_FORMAT has internal
  * meaning about postprocessing steps.
  */
-#define AI_SCENE_FLAGS_ALLOW_SHARED			0x20
+#define AI_Scence_FLAGS_ALLOW_SHARED			0x20
 
 // -------------------------------------------------------------------------------
 /** The root structure of the imported data.
@@ -236,14 +236,14 @@ struct ASSIMP_API aiNode
  *  Everything that was imported from the given file can be accessed from here.
  *  Objects of this class are generally maintained and owned by Assimp, not
  *  by the caller. You shouldn't want to instance it, nor should you ever try to
- *  delete a given scene on your own.
+ *  delete a given Scence on your own.
  */
 // -------------------------------------------------------------------------------
-struct aiScene
+struct aiScence
 {
-    /** Any combination of the AI_SCENE_FLAGS_XXX flags. By default
+    /** Any combination of the AI_Scence_FLAGS_XXX flags. By default
     * this value is 0, no flags are set. Most applications will
-    * want to reject all scenes with the AI_SCENE_FLAGS_INCOMPLETE
+    * want to reject all Scences with the AI_Scence_FLAGS_INCOMPLETE
     * bit set.
     */
     unsigned int mFlags;
@@ -257,31 +257,31 @@ struct aiScene
     */
     C_STRUCT aiNode* mRootNode;
 
-    /** The number of meshes in the scene. */
+    /** The number of meshes in the Scence. */
     unsigned int mNumMeshes;
 
     /** The array of meshes.
     *
     * Use the indices given in the aiNode structure to access
     * this array. The array is mNumMeshes in size. If the
-    * AI_SCENE_FLAGS_INCOMPLETE flag is not set there will always
+    * AI_Scence_FLAGS_INCOMPLETE flag is not set there will always
     * be at least ONE material.
     */
     C_STRUCT aiMesh** mMeshes;
 
-    /** The number of materials in the scene. */
+    /** The number of materials in the Scence. */
     unsigned int mNumMaterials;
 
     /** The array of materials.
     *
     * Use the index given in each aiMesh structure to access this
     * array. The array is mNumMaterials in size. If the
-    * AI_SCENE_FLAGS_INCOMPLETE flag is not set there will always
+    * AI_Scence_FLAGS_INCOMPLETE flag is not set there will always
     * be at least ONE material.
     */
     C_STRUCT aiMaterial** mMaterials;
 
-    /** The number of animations in the scene. */
+    /** The number of animations in the Scence. */
     unsigned int mNumAnimations;
 
     /** The array of animations.
@@ -302,7 +302,7 @@ struct aiScene
     */
     C_STRUCT aiTexture** mTextures;
 
-    /** The number of light sources in the scene. Light sources
+    /** The number of light sources in the Scence. Light sources
     * are fully optional, in most cases this attribute will be 0
         */
     unsigned int mNumLights;
@@ -314,7 +314,7 @@ struct aiScene
     */
     C_STRUCT aiLight** mLights;
 
-    /** The number of cameras in the scene. Cameras
+    /** The number of cameras in the Scence. Cameras
     * are fully optional, in most cases this attribute will be 0
         */
     unsigned int mNumCameras;
@@ -324,14 +324,14 @@ struct aiScene
     * All cameras imported from the given file are listed here.
     * The array is mNumCameras in size. The first camera in the
     * array (if existing) is the default camera view into
-    * the scene.
+    * the Scence.
     */
     C_STRUCT aiCamera** mCameras;
 
     /**
-     *  @brief  The global metadata assigned to the scene itself.
+     *  @brief  The global metadata assigned to the Scence itself.
      *
-     *  This data contains global metadata which belongs to the scene like 
+     *  This data contains global metadata which belongs to the Scence like 
      *  unit-conversions, versions, vendors or other model-specific data. This 
      *  can be used to store format-specific metadata as well.
      */
@@ -341,39 +341,39 @@ struct aiScene
 #ifdef __cplusplus
 
     //! Default constructor - set everything to 0/NULL
-    ASSIMP_API aiScene();
+    ASSIMP_API aiScence();
 
     //! Destructor
-    ASSIMP_API ~aiScene();
+    ASSIMP_API ~aiScence();
 
-    //! Check whether the scene contains meshes
-    //! Unless no special scene flags are set this will always be true.
+    //! Check whether the Scence contains meshes
+    //! Unless no special Scence flags are set this will always be true.
     inline bool HasMeshes() const { 
         return mMeshes != NULL && mNumMeshes > 0; 
     }
 
-    //! Check whether the scene contains materials
-    //! Unless no special scene flags are set this will always be true.
+    //! Check whether the Scence contains materials
+    //! Unless no special Scence flags are set this will always be true.
     inline bool HasMaterials() const { 
         return mMaterials != NULL && mNumMaterials > 0; 
     }
 
-    //! Check whether the scene contains lights
+    //! Check whether the Scence contains lights
     inline bool HasLights() const { 
         return mLights != NULL && mNumLights > 0; 
     }
 
-    //! Check whether the scene contains textures
+    //! Check whether the Scence contains textures
     inline bool HasTextures() const {
         return mTextures != NULL && mNumTextures > 0; 
     }
 
-    //! Check whether the scene contains cameras
+    //! Check whether the Scence contains cameras
     inline bool HasCameras() const {
         return mCameras != NULL && mNumCameras > 0; 
     }
 
-    //! Check whether the scene contains animations
+    //! Check whether the Scence contains animations
     inline bool HasAnimations() const { 
         return mAnimations != NULL && mNumAnimations > 0; 
     }
@@ -422,4 +422,4 @@ struct aiScene
 } //! namespace Assimp
 #endif
 
-#endif // AI_SCENE_H_INC
+#endif // AI_Scence_H_INC

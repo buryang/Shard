@@ -106,16 +106,19 @@ namespace MetaInit
 			ORTHO,
 		};
 
+		Type	type_;
 		//intrisics
 		vec3	pos_;
 		vec2	center_;
 		float	fov_;
 		float	skew_;
-		float	near_;
-		float	far_;
+		float	znear_;
+		float	zfar_;
+		float	xmag_;
+		float	ymag_;
 
 		//extrinsics
-		mat4	trans_;
+		mat4	affine_;
 	};
 
 	struct Volume

@@ -115,7 +115,7 @@ extern "C" {
  * *different* primitive types mixed up (e.g. lines and triangles) in several
  * 'clean' submeshes. Furthermore there is a configuration option (
  * #AI_CONFIG_PP_SBP_REMOVE) to force #aiProcess_SortByPType to remove
- * specific kinds of primitives from the imported scene, completely and forever.
+ * specific kinds of primitives from the imported Scence, completely and forever.
  * In many cases you'll probably want to set this setting to
  * @code
  * aiPrimitiveType_LINE|aiPrimitiveType_POINT
@@ -563,9 +563,9 @@ enum aiMorphingMethod
 *
 * A Mesh uses only a single material which is referenced by a material ID.
 * @note The mPositions member is usually not optional. However, vertex positions
-* *could* be missing if the #AI_SCENE_FLAGS_INCOMPLETE flag is set in
+* *could* be missing if the #AI_Scence_FLAGS_INCOMPLETE flag is set in
 * @code
-* aiScene::mFlags
+* aiScence::mFlags
 * @endcode
 */
 struct aiMesh
@@ -665,7 +665,7 @@ struct aiMesh
     /** The faces the mesh is constructed from.
     * Each face refers to a number of vertices by their indices.
     * This array is always present in a mesh, its size is given
-    * in mNumFaces. If the #AI_SCENE_FLAGS_NON_VERBOSE_FORMAT
+    * in mNumFaces. If the #AI_Scence_FLAGS_NON_VERBOSE_FORMAT
     * is NOT set each face references an unique set of vertices.
     */
     C_STRUCT aiFace* mFaces;
@@ -684,7 +684,7 @@ struct aiMesh
     /** The material used by this mesh.
      * A mesh uses only a single material. If an imported model uses
      * multiple materials, the import splits up the mesh. Use this value
-     * as index into the scene's material list.
+     * as index into the Scence's material list.
      */
     unsigned int mMaterialIndex;
 
@@ -785,11 +785,11 @@ struct aiMesh
     }
 
     //! Check whether the mesh contains positions. Provided no special
-    //! scene flags are set, this will always be true
+    //! Scence flags are set, this will always be true
     bool HasPositions() const
         { return mVertices != nullptr && mNumVertices > 0; }
 
-    //! Check whether the mesh contains faces. If no special scene flags
+    //! Check whether the mesh contains faces. If no special Scence flags
     //! are set this should always return true
     bool HasFaces() const
         { return mFaces != nullptr && mNumFaces > 0; }

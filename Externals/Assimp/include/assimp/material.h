@@ -754,7 +754,7 @@ public:
      *    per texture type.
      *  @param path Receives the path to the texture.
      *    If the texture is embedded, receives a '*' followed by the id of
-     *    the texture (for the textures stored in the corresponding scene) which
+     *    the texture (for the textures stored in the corresponding Scence) which
      *    can be converted to an int using a function like atoi.
      *    NULL is a valid value.
      *  @param mapping The texture mapping.
@@ -1545,7 +1545,7 @@ ASSIMP_API unsigned int aiGetMaterialTextureCount(const C_STRUCT aiMaterial* pMa
  *     textures in a particular texture stack.
  *  @param[out] path Receives the output path
  *     If the texture is embedded, receives a '*' followed by the id of
- *     the texture (for the textures stored in the corresponding scene) which
+ *     the texture (for the textures stored in the corresponding Scence) which
  *     can be converted to an int using a function like atoi.
  *     This parameter must be non-null.
  *  @param mapping The texture mapping mode to be used.

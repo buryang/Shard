@@ -2743,7 +2743,7 @@ typedef enum VmaMemoryUsage
 
     Usage:
 
-    - Resources written by device, read by host - results of some computations, e.g. screen capture, average scene luminance for HDR tone mapping.
+    - Resources written by device, read by host - results of some computations, e.g. screen capture, average Scene luminance for HDR tone mapping.
     - Any resources read or accessed randomly on host, e.g. CPU-side copy of vertex buffer used as source of transfer, but also used for collision detection.
     */
     VMA_MEMORY_USAGE_GPU_TO_CPU = 4,

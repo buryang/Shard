@@ -1,6 +1,4 @@
 #pragma once
-
-#include "Utils/CommonUtils.h"
 #include "Scene/Primitive.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14
@@ -53,12 +51,16 @@ namespace MetaInit
 	public:
 		void Import(const std::string& gltf_file, SceneProxyHelper& helper) override;
 	private:
-		void ParseMeshes(SceneProxyHelper& helper);
+		struct NodeCache {
+			mat4 affine_ = mat4{1.0f};
+		};
 		void ParseMaterials(SceneProxyHelper& helper);
 		void ParseLights(SceneProxyHelper& helper);
-		void ParseCameras(SceneProxyHelper& helper);
+		void ParseCamera(SceneProxyHelper& helper, const tinygltf::Camera& camera, const NodeCache& node);
 		void ParseSampler(SceneProxyHelper& helper);
 		void ParseTextures(SceneProxyHelper& helper);
+		void ParseMeshes(SceneProxyHelper& helper, const tinygltf::Mesh& mesh, const NodeCache& node);
+		void ParseNode(SceneProxyHelper& helper, const tinygltf::Node& node, const NodeCache& parent=NodeCache());
 	private:
 		tinygltf::Model			gltf_model_;
 		tinygltf::TinyGLTF		gltf_loader_;

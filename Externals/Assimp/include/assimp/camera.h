@@ -58,7 +58,7 @@ extern "C" {
  *
  * Cameras have a representation in the node graph and can be animated.
  * An important aspect is that the camera itself is also part of the
- * scene-graph. This means, any values such as the look-at vector are not
+ * Scence-graph. This means, any values such as the look-at vector are not
  * *absolute*, they're <b>relative</b> to the coordinate system defined
  * by the node which corresponds to the camera. This allows for camera
  * animations. For static cameras parameters like the 'look-at' or 'up' vectors
@@ -69,13 +69,13 @@ extern "C" {
  * // Get the camera matrix for a camera at a specific time
  * // if the node hierarchy for the camera does not contain
  * // at least one animated node this is a static computation
- * get-camera-matrix (node sceneRoot, camera cam) : matrix
+ * get-camera-matrix (node ScenceRoot, camera cam) : matrix
  * {
  *    node   cnd = find-node-for-camera(cam)
  *    matrix cmt = identity()
  *
  *    // as usual - get the absolute camera transformation for this frame
- *    for each node nd in hierarchy from sceneRoot to cnd
+ *    for each node nd in hierarchy from ScenceRoot to cnd
  *      matrix cur
  *      if (is-animated(nd))
  *         cur = eval-animation(nd)
@@ -100,8 +100,8 @@ struct aiCamera
 {
     /** The name of the camera.
      *
-     *  There must be a node in the scenegraph with the same name.
-     *  This node specifies the position of the camera in the scene
+     *  There must be a node in the Scencegraph with the same name.
+     *  This node specifies the position of the camera in the Scence
      *  hierarchy and can be animated.
      */
     C_STRUCT aiString mName;

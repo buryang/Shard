@@ -205,19 +205,19 @@ enum aiPostProcessSteps
     /** <hr>Removes the node graph and pre-transforms all vertices with
     * the local transformation matrices of their nodes.
     *
-    * The output scene still contains nodes, however there is only a
+    * The output Scene still contains nodes, however there is only a
     * root node with children, each one referencing only one mesh,
     * and each mesh referencing one material. For rendering, you can
     * simply render all meshes in order - you don't need to pay
     * attention to local transformations and the node hierarchy.
     * Animations are removed during this step.
-    * This step is intended for applications without a scenegraph.
+    * This step is intended for applications without a Scenegraph.
     * The step CAN cause some problems: if e.g. a mesh of the asset
     * contains normals and another, using the same material index, does not,
     * they will be brought together, but the first meshes's part of
     * the normal list is zeroed. However, these artifacts are rare.
     * @note The <tt>#AI_CONFIG_PP_PTV_NORMALIZE</tt> configuration property
-    * can be set to normalize the scene's spatial dimension to the -1...1
+    * can be set to normalize the Scene's spatial dimension to the -1...1
     * range.
     */
     aiProcess_PreTransformVertices = 0x100,
@@ -239,7 +239,7 @@ enum aiPostProcessSteps
     aiProcess_LimitBoneWeights = 0x200,
 
     // -------------------------------------------------------------------------
-    /** <hr>Validates the imported scene data structure.
+    /** <hr>Validates the imported Scene data structure.
      * This makes sure that all indices are valid, all animations and
      * bones are linked correctly, all material references are correct .. etc.
      *
@@ -257,7 +257,7 @@ enum aiPostProcessSteps
      * <li>Warning: There are some minor issues (e.g. 1000000 animation
      *   keyframes with the same time), but further postprocessing and use
      *   of the data structure is still safe. Warning details are written
-     *   to the log file, <tt>#AI_SCENE_FLAGS_VALIDATION_WARNING</tt> is set
+     *   to the log file, <tt>#AI_Scene_FLAGS_VALIDATION_WARNING</tt> is set
      *   in #aiScene::mFlags</li>
      * </ul>
      *
@@ -358,7 +358,7 @@ enum aiPostProcessSteps
      *   <li>Set the <tt>#AI_CONFIG_PP_SBP_REMOVE</tt> importer property to
      *       @code aiPrimitiveType_POINTS | aiPrimitiveType_LINES
      *       @endcode to cause SortByPType to reject point
-     *       and line meshes from the scene.
+     *       and line meshes from the Scene.
      *   </li>
      * </ul>
      *
@@ -450,7 +450,7 @@ enum aiPostProcessSteps
 
 
     // -------------------------------------------------------------------------
-    /** <hr>A post-processing step to optimize the scene hierarchy.
+    /** <hr>A post-processing step to optimize the Scene hierarchy.
      *
      *  Nodes without animations, bones, lights or cameras assigned are
      *  collapsed and joined.
@@ -470,7 +470,7 @@ enum aiPostProcessSteps
      *  This flag is designed to be used with #aiProcess_OptimizeMeshes for best
      *  results.
      *
-     *  @note 'Crappy' scenes with thousands of extremely small meshes packed
+     *  @note 'Crappy' Scenes with thousands of extremely small meshes packed
      *  in deeply nested nodes exist for almost all file formats.
      *  #aiProcess_OptimizeMeshes in combination with #aiProcess_OptimizeGraph
      *  usually fixes them all and makes them renderable.
@@ -529,7 +529,7 @@ enum aiPostProcessSteps
      *
      *  Use <tt>#AI_CONFIG_PP_DB_THRESHOLD</tt> to control this.
      *  Use <tt>#AI_CONFIG_PP_DB_ALL_OR_NONE</tt> if you want bones removed if and
-     *  only if all bones within the scene qualify for removal.
+     *  only if all bones within the Scene qualify for removal.
     */
     aiProcess_Debone  = 0x4000000,
 

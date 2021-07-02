@@ -1,13 +1,17 @@
 #pragma once
 
 #ifdef WIN32
-#define WINAPI __declspec(dllexport)
+#define EXPORT_API __declspec(dllexport)
 #else 
-#define WINAPI
+#define EXPORT_API
 #endif 
 
+#define GLM_FORCE_CTOR_INIT
 #include "glm/glm.hpp"
+#include "glm/gtc/type_ptr.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include "folly/FBVector.h"
+#include "folly/FBString.h"
 #include "folly/small_vector.h"
 #include "absl/types/span.h"
 #include <memory>
@@ -22,11 +26,28 @@ class_name##& operator=(const class_name##&)=delete;
 
 namespace MetaInit {
 
-	template<typename Containers>
-	using Vector = folly::fbvector<Containers>;
-	template<typename Containers>
-	using SmallVector = folly::small_vector<Containers>;
+	using vec2 = glm::vec2;
+	using vec3 = glm::vec3;
+	using vec4 = glm::vec4;
+
+	using mat3 = glm::mat3;
+	using mat4 = glm::mat4;
+
+	using uvec2 = glm::uvec2;
+	using uvec3 = glm::uvec3;
+	using uvec4 = glm::uvec4;
+
+	using bvec2 = glm::bvec2;
+	using bvec3 = glm::bvec3;
+	using bvec4 = glm::bvec4;
+
+	template<typename T>
+	using Vector = folly::fbvector<T>;
+	template<typename T, int reverse_size=16>
+	using SmallVector = folly::small_vector<T, reverse_size>;
 	
-	template<typename Containers>
-	using Span = absl::Span<Containers>;
+	template<typename T>
+	using Span = absl::Span<T>;
+
+	using String = folly::fbstring;
 }
