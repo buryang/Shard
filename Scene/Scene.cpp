@@ -8,13 +8,13 @@
 namespace MetaInit
 {
 
-	SceneProxyHelper& SceneProxyHelper::SetCamera()
+	SceneProxyHelper& SceneProxyHelper::SetCamera(uint32_t index)
 	{
-		curr_camera_ = nullptr;
+		curr_camera_ = &cameras_[index];
 		return *this;
 	}
 
-	SceneProxyHelper& SceneProxyHelper::AddCamera(Camera camera)
+	SceneProxyHelper& SceneProxyHelper::AddCamera(Camera&& camera)
 	{
 		cameras_.emplace_back(camera);
 		return *this;
@@ -25,7 +25,7 @@ namespace MetaInit
 
 	}
 
-	SceneProxyHelper& SceneProxyHelper::AddLight(Light light)
+	SceneProxyHelper& SceneProxyHelper::AddLight(Light&& light)
 	{
 
 		return *this;
@@ -80,12 +80,6 @@ namespace MetaInit
 			ParseLights(helper);
 		}
 
-		//load camera
-		if (!gltf_model_.cameras.empty())
-		{
-			ParseCameras(helper);
-		}
-
 		if (!gltf_model_.materials.empty())
 		{
 			ParseMaterials(helper);
@@ -93,7 +87,9 @@ namespace MetaInit
 		}
 
 		//deal with scene and node
-		for (const auto& scene : gltf_model_.Scenes)
+		auto default_scene = gltf_model_.defaultScene >= 0 ? gltf_model_.defaultScene : 0;
+		const auto& scene = gltf_model_.scenes[default_scene];
+		//for (const auto& scene : gltf_model_.Scenes)
 		{
 			//FIXME for access node from scene, so will not access one node twice
 			for (const auto& node : scene.nodes)
@@ -139,7 +135,7 @@ namespace MetaInit
 
 				if (values.find("baseColorFactor") != values.end())
 				{
-					material_helper.base_color_factor_ = static_cast<float>(values["baseColorFactor"].Factor());
+					material_helper.base_color_factor_ = vec4(glm::make_vec3(values["baseColorFactor"].ColorFactor().data()), 1.0f);
 				}
 
 			}
@@ -167,12 +163,12 @@ namespace MetaInit
 					auto& param = values["alphaMode"];
 					if (param.string_value == "BLEND")
 					{
-						material_helper.alpha_mode_ = Material::AlphaMode::BLEND;
+						material_helper.alpha_mode_ = Material::AlphaMode::ABLEND;
 					}
 					else if (param.string_value == "MASK")
 					{
 						material_helper.alpha_cutoff_ = 0.5f;
-						material_helper.alpha_mode_ = Material::AlphaMode::MASK;
+						material_helper.alpha_mode_ = Material::AlphaMode::AMASK;
 					}
 
 				}
@@ -200,17 +196,17 @@ namespace MetaInit
 		if (camera.type == "perspective")
 		{
 			camera_helper.type_ = Camera::Type::PERSPECTIVE;
-			camera_helper.fov_ = camera.perspective.yfov;
-			camera_helper.zfar_ = camera.perspective.zfar;
-			camera_helper.znear_ = camera.perspective.znear;
+			camera_helper.fov_ = static_cast<float>(camera.perspective.yfov);
+			camera_helper.zfar_ = static_cast<float>(camera.perspective.zfar);
+			camera_helper.znear_ = static_cast<float>(camera.perspective.znear);
 		}
 		else
 		{
 			camera_helper.type_ = Camera::Type::ORTHO;
-			camera_helper.xmag_ = camera.orthographic.xmag;
-			camera_helper.ymag_ = camera.orthographic.ymag;
-			camera_helper.znear_ = camera.orthographic.znear;
-			camera_helper.zfar_ = camera.orthographic.zfar;
+			camera_helper.xmag_ = static_cast<float>(camera.orthographic.xmag);
+			camera_helper.ymag_ = static_cast<float>(camera.orthographic.ymag);
+			camera_helper.znear_ = static_cast<float>(camera.orthographic.znear);
+			camera_helper.zfar_ = static_cast<float>(camera.orthographic.zfar);
 		}
 
 		helper.AddCamera(std::move(camera_helper));
@@ -247,7 +243,10 @@ namespace MetaInit
 		{
 			Mesh mesh_helper;
 
-			auto prim_trans = [&](tinygltf::Primitive& prim) {
+			auto prim_trans = [&](const tinygltf::Primitive& prim) {
+				//only supoort triangle now
+				if (prim.mode != TINYGLTF_MODE_TRIANGLES)
+					return;
 
 				if (prim.indices >= 0)
 				{
@@ -289,7 +288,7 @@ namespace MetaInit
 				}
 
 				auto vert_extract = [](const uint8_t* buffer, const uint32_t index, const uint32_t byte_stride, float* comps, const uint32_t comp_num) {
-					const float* values = reinterpret_cast<const float*>(buffer + index * stride);
+					const float* values = reinterpret_cast<const float*>(buffer + index * byte_stride);
 					for (auto n = 0; n < comp_num; ++n)
 					{
 						comps[n] = values[n];

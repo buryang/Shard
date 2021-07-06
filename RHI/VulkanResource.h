@@ -1,6 +1,7 @@
 #pragma once
 #include "VulkanRHI.h"
-#include <map>
+#include <unordered_map>
+#include <list>
 
 namespace MetaInit
 {
@@ -22,10 +23,10 @@ namespace MetaInit
 	{
 	public:
 		DescriptorPool() = default;
-		DescriptorPool(VulkanDevice device, uint32_t set_size,
+		DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
 								const VkDescriptorSetLayoutCreateInfo& layout_info);
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPool);
-		void Init(VulkanDevice device, uint32_t set_size,
+		void Init(VulkanDevice::Ptr device, uint32_t set_size,
 					const VkDescriptorSetLayoutCreateInfo& layout);
 		void UnInit();
 		VkDescriptorSet CreateDescriptorSet();
@@ -36,12 +37,13 @@ namespace MetaInit
 	private:
 		friend class DescriptorPoolManager;
 		using List = std::list<VkDescriptorPool>;
-		List avalaible_;
+		List available_;
 		List used_;
 		VkDescriptorPool			curr_{VK_NULL_HANDLE};
-		VulkanDevice				device_;
+		VulkanDevice::Ptr			device_;
 		VkDescriptorSetLayout		layout_;
 		uint32_t					pool_size_;
+
 	};
 
 	class DescriptorPoolManager
@@ -60,7 +62,7 @@ namespace MetaInit
 	{
 	public:
 		void Init();
-		void Bind(VulkanCmdBuffer cmd);
+		void Bind(VulkanCmdBuffer& cmd);
 		void Update();
 		template <typename ...Args>
 		void Write(int index, Args ...args);

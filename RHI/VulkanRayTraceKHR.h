@@ -10,7 +10,7 @@ namespace MetaInit
 	{
 	public:
 		VkAccelerationStructureKHR Get() {
-			return Scene_;
+			return scene_;
 		}
 		void Build();
 		void Update();
@@ -20,8 +20,8 @@ namespace MetaInit
 		void BuildBLAS();
 		void UpdateBLAS();
 	private:
-		VkAccelerationStructureKHR			Scene_ = VK_NULL_HANDLE;
-		Internal::VulkanVMAMemAllocator		mem_allocator_;
+		VkAccelerationStructureKHR			scene_{ VK_NULL_HANDLE };
+		Internal::VulkanVMAMemAllocator*	allocator_{nullptr};
 	};
 
 	class VulkanRayTraceBindTable
@@ -29,7 +29,7 @@ namespace MetaInit
 	public:
 		using Table		= VkStridedDeviceAddressRegionKHR;
 		using TableImpl = VkBuffer;
-		enum class Type
+		enum class Type:uint32_t
 		{
 			RGEN,
 			RMISS,

@@ -31,7 +31,7 @@ namespace MetaInit
 
 
 		template<typename T>
-		static T Get(const Attribute<T>& attr, uint32_t face, uint32_t vert) {
+		const T Get(const Attribute<T>& attr, uint32_t face, uint32_t vert) const {
 			if (!attr.data_.empty())
 			{
 				switch (attr.freq_)
@@ -41,7 +41,7 @@ namespace MetaInit
 				case AttributeFrequency::Uniform:
 					return attr.data_[face];
 				case AttributeFrequency::Vertex:
-					return attr.data_[indices_[face * 3 + vert]];
+					return attr.data_[indices_.data_[face * 3 + vert]];
 				case AttributeFrequency::FaceVarying:
 					return attr.data_[face * 3 + vert];
 				default:
@@ -52,11 +52,11 @@ namespace MetaInit
 		}
 
 		void AddPosition(vec3 pos) { positions_.data_.emplace_back(pos); }
-		vec3 GetPosition(uint32_t face, uint32_t vert)const { return Get(positions_, face, vert); }
+		const vec3 GetPosition(uint32_t face, uint32_t vert)const { return Get(positions_, face, vert); }
 		void AddNormal(vec3 normal) { normals_.data_.emplace_back(normal); }
-		vec3 GetNormal(uint32_t face, uint32_t vert)const { return Get(normals_, face, vert); }
+		const vec3 GetNormal(uint32_t face, uint32_t vert)const { return Get(normals_, face, vert); }
 		void AddTexCoord(vec2 uv) { tex_coords_.data_.emplace_back(uv); }
-		vec2 GetTexCoord(uint32_t face, uint32_t vert)const { return Get(tex_coords_, face, vert); }
+		const vec2 GetTexCoord(uint32_t face, uint32_t vert)const { return Get(tex_coords_, face, vert); }
 		void AddIndice(uint32_t index) { indices_.data_.emplace_back(index); }
 
 		struct Vertex
@@ -108,8 +108,8 @@ namespace MetaInit
 
 		Type	type_;
 		//intrisics
-		vec3	pos_;
-		vec2	center_;
+		vec3	pos_{ 0.0f };
+		vec2	center_{ 0.0f };
 		float	fov_;
 		float	skew_;
 		float	znear_;
@@ -118,20 +118,25 @@ namespace MetaInit
 		float	ymag_;
 
 		//extrinsics
-		mat4	affine_;
+		mat4	affine_{ 1.0f };
 	};
 
 	struct Volume
 	{
 
 	};
-
-	template<typename T>
+	
 	struct Texture
 	{
-		Vector<T>	textures_;
-		uint32_t	width_;
-		uint32_t	height_;
+		enum EleType : uint32_t
+		{
+			NONE,
+			RGB32FLOAT,
+		};
+		EleType			type_;
+		Vector<uint8_t>	data_;
+		uint32_t		width_;
+		uint32_t		height_;
 	};
 
 	//texture sampler interface
@@ -147,13 +152,12 @@ namespace MetaInit
 	{
 		enum class AlphaMode : uint8_t
 		{
-			OPAQUE,
-			MASK,
-			BLEND,
+			AOPAQUE,
+			AMASK,
+			ABLEND,
 		};
-		using TextureType = Texture<float>;
-		using TexturePtr = TextureType*;
-		AlphaMode alpha_mode_ = AlphaMode::OPAQUE;
+		using TexturePtr = Texture*;
+		AlphaMode alpha_mode_ = AlphaMode::AOPAQUE;
 		float alpha_cutoff_ = 1.0f;
 		float metal_factor_ = 1.0f;
 		float roughness_factor_ = 1.0f;

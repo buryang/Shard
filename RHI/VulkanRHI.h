@@ -1,8 +1,5 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#define VK_USE_PLATFORM_WIN32_KHR
-#define GLFW_INCLUDE_VULKAN
-#include "glfw3.h"
 #include <memory>
 
 namespace MetaInit
@@ -21,6 +18,7 @@ namespace MetaInit
 		using Ptr = std::shared_ptr<VulkanDevice>;
 		static Ptr Create(const VkDeviceCreateInfo& device_info);
 		VkDevice Get() { return device_; }
+		VkPhysicalDevice GetPhy() { return phy_devices_; }
 		VkQueue GetQueue(uint32_t family_index, uint32_t index)const;
 		VkQueue GetQueue(VkQueueFlags flags)const;
 		//VkPhysicalDevice operator[](uint32_t index);
@@ -29,8 +27,8 @@ namespace MetaInit
 		VulkanDevice() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanDevice);
 	private:
-		VkDevice									device_ = VK_NULL_HANDLE;
-		VkPhysicalDevice							phy_devices_;
+		VkDevice									device_{ VK_NULL_HANDLE };
+		VkPhysicalDevice							phy_devices_{ VK_NULL_HANDLE };
 		VkDeviceCreateInfo							device_info_;
 		//std::unordered_map<uint32_t, uint32_t>  queue_info_;
 	};
@@ -45,7 +43,7 @@ namespace MetaInit
 	private:
 		VkInstance						instance_ = VK_NULL_HANDLE;
 		Vector<VkExtensionProperties>	extensions_;
-		VulkanDevice						device_;
+		VulkanDevice					device_;
 	};
 
 }

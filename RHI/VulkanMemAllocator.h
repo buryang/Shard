@@ -1,7 +1,7 @@
 #pragma once
 
 #include "VulkanRHI.h"
-#include "vk_mem_alloc.h"
+#include "vma/vk_mem_alloc.h"
 
 namespace MetaInit {
 
@@ -22,7 +22,7 @@ namespace MetaInit {
 
 	class VulkanVMAWrapper {
 	public:
-		VulkanVMAWrapper(VulkanDevice& device, VulkanInstance& instance);
+		VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance& instance);
 		VMAAllocation CreateImage(size_t size,
 							const VkImageCreateInfo& info,
 							VkImageLayout layout,
@@ -41,7 +41,7 @@ namespace MetaInit {
 	private:
 		VulkanVMAWrapper() = default;
 	private:
-		VulkanDevice		device_;
+		VulkanDevice::Ptr	device_;
 		VmaAllocator		alloc_{VK_NULL_HANDLE};
 	};
 }

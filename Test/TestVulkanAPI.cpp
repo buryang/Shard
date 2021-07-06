@@ -20,7 +20,7 @@ TEST(TEST_RHI_MODULE, TEST_VULKAN_PIPLINE)
 }
 
 //#define GLFW_INCLUDE_VULKAN
-#include "glfw3.h"
+#include "glfw/glfw3.h"
 
 TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 {

@@ -32,10 +32,10 @@ namespace MetaInit
 		VkPipeline Get() {
 			return handle_;
 		}
-		~VulkanRenderPipeline() { vkDestroyPipeline(device_.Get(), handle_, nullptr); }
+		~VulkanRenderPipeline() { vkDestroyPipeline(device_->Get(), handle_, nullptr); }
 	private:
 		VkPipeline			handle_{ VK_NULL_HANDLE };
-		VulkanDevice		device_;
+		VulkanDevice::Ptr	device_;
 		PipeType			pipe_type_;
 
 	};
@@ -44,7 +44,7 @@ namespace MetaInit
 	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkGraphicsPipelineCreateInfo& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateGraphicsPipelines();
+		auto ret_val = vkCreateGraphicsPipelines(nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
 		pipe->pipe_type_	= PipeType::GRAPHICS;
 		return pipe;
 	}
@@ -53,7 +53,7 @@ namespace MetaInit
 	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkComputePipelineCreateInfo& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateComputePipelines();
+		auto ret_val = vkCreateComputePipelines(nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
 		pipe->pipe_type_ = PipeType::COMPUTE;
 		return pipe;
 	}
@@ -62,7 +62,7 @@ namespace MetaInit
 	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkRayTracingPipelineCreateInfoKHR& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateRayTracingPipelinesKHR();
+		auto ret_val = vkCreateRayTracingPipelinesKHR(nullptr, nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
 		pipe->pipe_type_ = PipeType::RAYTRACE;
 		return pipe;
 	}

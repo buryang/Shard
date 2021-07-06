@@ -23,7 +23,7 @@ namespace MetaInit {
 		std::array<VkSubpassDescription, max_subpass_count> subpass_descs;
 		std::array<VkSubpassDependency, max_subpass_count> subpass_deps;
 
-		const auto subpass_count = rt_layout.get_subpass_count;
+		const auto subpass_count = pass_info.subpassCount;
 
 		for (auto n = 0; n < subpass_count; ++n)
 		{

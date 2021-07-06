@@ -38,13 +38,13 @@ namespace MetaInit
 	}
 
 
-	DescriptorPool::DescriptorPool(VulkanDevice device, uint32_t set_size,
+	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
 										const VkDescriptorSetLayoutCreateInfo& layout)
 	{
 		Init(device, set_size, layout);
 	}
 
-	void DescriptorPool::Init(VulkanDevice device, uint32_t set_size,
+	void DescriptorPool::Init(VulkanDevice::Ptr device, uint32_t set_size,
 		const VkDescriptorSetLayoutCreateInfo& layout_info)
 	{
 		device_ = device;
@@ -52,7 +52,7 @@ namespace MetaInit
 
 		//todo check device support layout
 		VkDescriptorSetLayoutSupport support;
-		vkGetDescriptorSetLayoutSupport(device_.Get(), &layout_info, &support);
+		vkGetDescriptorSetLayoutSupport(device_->Get(), &layout_info, &support);
 
 		if (!support.supported)
 		{
@@ -76,24 +76,24 @@ namespace MetaInit
 		}
 		
 		pool_size_ = (desc_buffer_count + desc_tex_count) * set_size;
-		auto ret = vkCreateDescriptorSetLayout(device_.Get(), &layout_info, g_host_alloc, &layout_);
+		auto ret = vkCreateDescriptorSetLayout(device_->Get(), &layout_info, g_host_alloc, &layout_);
 		assert(ret == VK_SUCCESS && "create descriptor layout failed");
 	}
 
 	void DescriptorPool::UnInit()
 	{
-		for (auto pool : avalaible_)
+		for (auto pool : available_)
 		{
-			vkDestroyDescriptorPool(device_.Get(), pool, g_host_alloc);
+			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
 		}
-		avalaible_.clear();
+		available_.clear();
 
 		for (auto pool : used_)
 		{
-			vkDestroyDescriptorPool(device_.Get(), pool, g_host_alloc);
+			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
 		}
 		used_.clear();
-		vkDestroyDescriptorSetLayout(device_.Get(), layout_, g_host_alloc);
+		vkDestroyDescriptorSetLayout(device_->Get(), layout_, g_host_alloc);
 	}
 
 	VkDescriptorSet DescriptorPool::CreateDescriptorSet()
@@ -103,12 +103,12 @@ namespace MetaInit
 
 	void DescriptorPool::Reset()
 	{
-		std::copy(used_.begin(), used_.end(), avalaible_.end());
+		std::copy(used_.begin(), used_.end(), available_.end());
 		used_.clear();
 
-		for (auto pool : avalaible_)
+		for (auto& pool : available_)
 		{
-			vkResetDescriptorPool(device_.Get(), pool, 0);
+			vkResetDescriptorPool(device_->Get(), pool, 0);
 		}
 
 		curr_ = VK_NULL_HANDLE;
@@ -117,11 +117,12 @@ namespace MetaInit
 
 	void DescriptorPool::AddNewPool()
 	{
-		VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo();
+		VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+																			);
 		//TODO
 		VkDescriptorPool pool;
-		auto ret = vkCreateDescriptorPool(device_.Get(), &pool_info, g_host_alloc, &pool);
-		assert(VK_NULL_HANDLE == ret);
+		auto ret = vkCreateDescriptorPool(device_->Get(), &pool_info, g_host_alloc, &pool);
+		assert(ret!=VK_SUCCESS);
 		used_.emplace_back(pool);
 		curr_ = pool;
 	}

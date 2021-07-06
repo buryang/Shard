@@ -2,12 +2,12 @@
 
 namespace MetaInit {
 
-	VulkanVMAWrapper::VulkanVMAWrapper(VulkanDevice& device, VulkanInstance& instance):device_(device)
+	VulkanVMAWrapper::VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance& instance):device_(device)
 	{
 		VmaAllocatorCreateInfo alloc_info;
-		alloc_info.device = device.Get();
+		alloc_info.device = device->Get();
 		alloc_info.instance = instance.Get();
-		alloc_info.physicalDevice = device[0];
+		alloc_info.physicalDevice = device->GetPhy();
 		alloc_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		alloc_info.vulkanApiVersion = VK_API_VERSION_1_2;
 		vmaCreateAllocator(&alloc_info, &alloc_);
@@ -19,8 +19,8 @@ namespace MetaInit {
 		VMAAllocation result;
 
 		VmaAllocationCreateInfo vma_info;
-		vma_info.usage = 0;
-		vma_info.flags = nullptr;
+		vma_info.usage = VMA_MEMORY_USAGE_UNKNOWN;
+		vma_info.flags = info.flags; //FIXME
 
 		auto ret = vmaCreateImage(alloc_, &info, &vma_info, &result.image_, &result.allocation_, nullptr);
 		assert(ret == VK_SUCCESS);
@@ -50,26 +50,26 @@ namespace MetaInit {
 
 		result.alloc_ = CreateBuffer(info.size, buffer_info, props);
 		info.buffer = result.alloc_.buffer_;
-		vkCreateAccelerationStructureKHR(device_.Get(), &info, g_host_alloc, &result.acc_);
+		vkCreateAccelerationStructureKHR(device_->Get(), &info, g_host_alloc, &result.acc_);
 		
 		return result;
 	}
 
 	void VulkanVMAWrapper::DestroyImage(VMAAllocation& image)
 	{
-		vkDestroyImage(device_.Get(), image.image_, g_host_alloc);
+		vkDestroyImage(device_->Get(), image.image_, g_host_alloc);
 		vmaFreeMemory(alloc_, image.allocation_);
 	}
 
 	void VulkanVMAWrapper::DestroyBuffer(VMAAllocation& buffer)
 	{
-		vkDestroyBuffer(device_.Get(), buffer.buffer_, g_host_alloc);
+		vkDestroyBuffer(device_->Get(), buffer.buffer_, g_host_alloc);
 		vmaFreeMemory(alloc_, buffer.allocation_);
 	}
 
 	void VulkanVMAWrapper::DestroyAccleration(VMAAccerleraion& acc)
 	{
-		vkDestroyAccelerationStructureKHR(device_.Get(), acc.acc_, g_host_alloc);
+		vkDestroyAccelerationStructureKHR(device_->Get(), acc.acc_, g_host_alloc);
 		DestroyBuffer(acc.alloc_);
 	}
 

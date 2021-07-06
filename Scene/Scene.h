@@ -17,7 +17,7 @@ namespace MetaInit
 		using VolumeList = Vector<Volume>;
 		using CameraList = Vector<Camera>;
 		SceneProxyHelper() = default;
-		SceneProxyHelper& SetCamera();
+		SceneProxyHelper& SetCamera(uint32_t index);
 		SceneProxyHelper& AddCamera(Camera&& camera);
 		Camera GetCamera() const;
 		SceneProxyHelper& AddLight(Light&& light);
@@ -33,10 +33,11 @@ namespace MetaInit
 
 	private:
 		CameraList		cameras_;
-		Camera			curr_camera_;
+		Camera*			curr_camera_{nullptr};
 		MeshList		meshes_;
 		LightList		lights_;
 		MaterialList	materials_;
+		VolumeList		volumes_;
 	};
 
 	class ISceneParser
@@ -56,7 +57,7 @@ namespace MetaInit
 		};
 		void ParseMaterials(SceneProxyHelper& helper);
 		void ParseLights(SceneProxyHelper& helper);
-		void ParseCamera(SceneProxyHelper& helper, const tinygltf::Camera& camera, const NodeCache& node);
+		void ParseCamera(SceneProxyHelper& helper, const tinygltf::Camera& camera, const NodeCache& node=NodeCache());
 		void ParseSampler(SceneProxyHelper& helper);
 		void ParseTextures(SceneProxyHelper& helper);
 		void ParseMeshes(SceneProxyHelper& helper, const tinygltf::Mesh& mesh, const NodeCache& node);

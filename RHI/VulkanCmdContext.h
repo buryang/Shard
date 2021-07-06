@@ -1,6 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "VulkanRHI.h"
+#include <unordered_map>
 
 namespace MetaInit
 {
@@ -58,9 +59,8 @@ namespace MetaInit
 		void BeginPass(VulkanRenderPass& render_pass);
 		void EndPass(VulkanRenderPass& render_pass);
 		void Dispatch();
-		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);
-		void Draw();
-		void TraceRay(const std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
+		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);		
+		void TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
 		template<typename DataHandle>
 		void Copy(DataHandle dst, DataHandle src);
 		void Submit(VkQueue& queue);

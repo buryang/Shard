@@ -73,7 +73,7 @@ namespace MetaInit
 		vkCmdDraw(buffer_, vertex_count, instance_count, first_vertex, first_instance);
 	}
 
-	void VulkanCmdBuffer::TraceRay(const std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
+	void VulkanCmdBuffer::TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
 	{
 		vkCmdTraceRaysKHR(buffer_, ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RGEN)],
 			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RMISS)],
@@ -102,7 +102,7 @@ namespace MetaInit
 		{
 			*vec_iter = buffer_iter->buffer_;
 		}
-		vkCmdExecuteCommands(buffer_, cmd_count, cmd_vec.data());
+		vkCmdExecuteCommands(buffer_, static_cast<uint32_t>(cmd_count), cmd_vec.data());
 	}
 
 	void VulkanCmdBuffer::Reset()
