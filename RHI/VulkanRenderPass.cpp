@@ -44,7 +44,7 @@ namespace MetaInit {
 			subpass_dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
 		}
 
-		VkRenderPassCreateInfo pass_info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+		//VkRenderPassCreateInfo pass_info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 		pass_info.flags = 1;
 		pass_info.subpassCount = subpass_count;
 		pass_info.pSubpasses = subpass_descs.data();
@@ -69,7 +69,7 @@ namespace MetaInit {
 		begin_info.pNext = VK_NULL_HANDLE;
 		begin_info.framebuffer = nullptr;
 		begin_info.pClearValues = nullptr;
-		begin_info.renderArea = nullptr;
+		//begin_info.renderArea = nullptr;
 		begin_info.renderPass = pass_;
 		vkCmdBeginRenderPass(cmd.Get(), &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	}

@@ -1,13 +1,15 @@
 #pragma once
 #include "Scene/Primitive.h"
+#define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14
 #include "tiny_gltf.h"
 
 namespace MetaInit
 {
 
-	class SceneProxyHelper
+	class EXPORT_API SceneProxyHelper
 	{
 	public:
 		using CurveList = Vector<Curve>;
@@ -40,14 +42,14 @@ namespace MetaInit
 		VolumeList		volumes_;
 	};
 
-	class ISceneParser
+	class EXPORT_API ISceneParser
 	{
 	public:
 		virtual void Import(const std::string& file, SceneProxyHelper& helper) = 0;
 		virtual ~ISceneParser() {};
 	};
 
-	class SceneGltfParser:public ISceneParser
+	class EXPORT_API SceneGltfParser:public ISceneParser
 	{
 	public:
 		void Import(const std::string& gltf_file, SceneProxyHelper& helper) override;

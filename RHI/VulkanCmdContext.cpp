@@ -75,11 +75,13 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
 	{
+		/*
 		vkCmdTraceRaysKHR(buffer_, ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RGEN)],
 			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RMISS)],
 			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RHIT)],
 			ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RCALL)],
 			dims.x, dims.y, dims.z);
+		*/
 	}
 	void VulkanCmdBuffer::Submit(VkQueue& queue)
 	{

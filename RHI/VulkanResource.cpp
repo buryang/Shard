@@ -1,9 +1,6 @@
 #include "VulkanResource.h"
 #include "VulkanCmdContext.h"
 
-#include <span>
-
-
 namespace MetaInit
 {
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
@@ -117,6 +114,7 @@ namespace MetaInit
 
 	void DescriptorPool::AddNewPool()
 	{
+		/*
 		VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
 																			);
 		//TODO
@@ -125,6 +123,7 @@ namespace MetaInit
 		assert(ret!=VK_SUCCESS);
 		used_.emplace_back(pool);
 		curr_ = pool;
+		*/
 	}
 
 

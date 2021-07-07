@@ -22,7 +22,7 @@ namespace MetaInit
 
 	Camera SceneProxyHelper::GetCamera() const
 	{
-
+		return Camera();
 	}
 
 	SceneProxyHelper& SceneProxyHelper::AddLight(Light&& light)
@@ -33,17 +33,17 @@ namespace MetaInit
 
 	Light SceneProxyHelper::GetLight() const
 	{
-
+		return Light();
 	}
 
 	SceneProxyHelper& SceneProxyHelper::AddMesh(Mesh&& mesh)
 	{
-
+		return *this;
 	}
 
 	Mesh SceneProxyHelper::GetMesh() const
 	{
-
+		return Mesh();
 	}
 
 	SceneProxyHelper& SceneProxyHelper::AddMaterials(Material&& material)
@@ -53,7 +53,7 @@ namespace MetaInit
 
 	Material SceneProxyHelper::GetMaterial(uint32_t id) const
 	{
-
+		return Material();
 	}
 
 	void SceneGltfParser::Import(const std::string& gltf_file, SceneProxyHelper& helper)
@@ -185,6 +185,11 @@ namespace MetaInit
 			}
 			helper.AddMaterials(std::move(material_helper));
 		}
+	}
+
+	void SceneGltfParser::ParseLights(SceneProxyHelper& helper)
+	{
+
 	}
 
 	void SceneGltfParser::ParseCamera(SceneProxyHelper& helper, const tinygltf::Camera& camera, const NodeCache& node)
@@ -406,7 +411,10 @@ namespace MetaInit
 		{
 			ParseCamera(helper, gltf_model_.cameras[node.camera], node_cache);
 		}
+	}
 
-
+	SceneProxyHelper& SceneProxyHelper::AddTexture(Texture&& texture)
+	{
+		return *this;
 	}
 }

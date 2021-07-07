@@ -58,6 +58,7 @@ namespace MetaInit
 		std::unordered_map<VkDescriptorSetLayout, DescriptorPool> pools_;
 	};
 
+	class VulkanCmdBuffer;
 	class DescriptorSetsWrapper
 	{
 	public:

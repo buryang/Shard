@@ -1,5 +1,8 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#define VK_USE_PLATFORM_WIN32_KHR
+#include "volk/volk.h"
+#include "glfw/glfw3.h"
 #include <memory>
 
 namespace MetaInit

@@ -1,11 +1,4 @@
-﻿#define TINYGLTF_IMPLEMENTATION
-#define STBI_MSC_SECURE_CRT
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#define TINYGLTF_USE_CPP14
-#include "tiny_gltf.h"
-
-#include "gtest/gtest.h"
+﻿#include "gtest/gtest.h"
 #include <string>
 #include "Scene/Scene.h"
 
@@ -48,6 +41,5 @@ TEST(TEST_Scene_MODULE, TEST_Scene_API)
 	Mesh mesh = proxy.GetMesh();
 	ASSERT_TRUE(mesh.face_num_ != 0 && "check mesh face bigger than zero");
 	ASSERT_TRUE(mesh.positions_.data_.size() > 0);
-
 }
 

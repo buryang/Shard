@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef WIN32
+#ifdef _MSC_VER
 #define EXPORT_API __declspec(dllexport)
 #else 
 #define EXPORT_API
@@ -10,9 +10,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#define VK_USE_PLATFORM_WIN32_KHR
-#define GLFW_INCLUDE_VULKAN
-#include "glfw/glfw3.h"
 #include "folly/FBVector.h"
 #include "folly/FBString.h"
 #include "folly/small_vector.h"

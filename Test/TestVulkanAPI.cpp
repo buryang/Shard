@@ -1,11 +1,9 @@
 //#include "RHI/VulkanRHI.h"
 
 #include "gtest/gtest.h"
-#define VOLK_IMPLEMENTATION
-#define VK_NV_cooperative_matrix
 #include "volk/volk.h"
+#include "absl/types/optional.h"
 #include <vector>
-#include <optional>
 
 //using namespace MetaInit;
 
@@ -110,7 +108,7 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 	device_info.pEnabledFeatures = &device_feature;
 
 	//query device queue
-	std::optional<uint32_t> family_indice;
+	absl::optional<uint32_t> family_indice;
 	auto queue_family = [&](const uint32_t queue_flags)
 	{
 		uint32_t family_count = 0;
