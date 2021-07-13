@@ -1,4 +1,5 @@
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
+#include "RHI/VulkanMemAllocator.h"
 #include "GLM/glm.hpp"
 
 #include <string>
@@ -46,6 +47,16 @@ namespace MetaInit
 		}
 
 		return VK_NULL_HANDLE;
+	}
+
+	bool VulkanDevice::IsFormatSupported(VkFormat format)const
+	{
+		VkImageFormatProperties format_prop;
+		/*If format is not a supported image format, or if the combination of format, type, tiling, usage, and
+			flags is not supported for images, then vkGetPhysicalDeviceImageFormatProperties returns VK_ERROR_FORMAT_NOT_SUPPORTED.*/
+		auto ret = vkGetPhysicalDeviceImageFormatProperties(phy_devices_, format, VK_IMAGE_TYPE_2D,
+															VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0, &format_prop);
+		return ret != VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 	
 	/*

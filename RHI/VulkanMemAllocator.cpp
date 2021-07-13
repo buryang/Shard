@@ -1,4 +1,4 @@
-#include "VulkanMemAllocator.h"
+#include "RHI/VulkanMemAllocator.h"
 
 namespace MetaInit {
 
@@ -16,6 +16,11 @@ namespace MetaInit {
 	VMAAllocation VulkanVMAWrapper::CreateImage(size_t size, const VkImageCreateInfo& info,
 										VkImageLayout layout, VkMemoryPropertyFlags props)
 	{
+
+		if (!device_->IsFormatSupported(info.format))
+		{
+			throw std::invalid_argument("image format not supported by device");
+		}
 		VMAAllocation result;
 
 		VmaAllocationCreateInfo vma_info;

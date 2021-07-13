@@ -66,6 +66,7 @@ namespace MetaInit
 		void Submit(VkQueue& queue);
 		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();
+		VkCommandBuffer Get() { return buffer_; }
 	private:
 		friend class VulkanCmdPool;
 		VkCommandBuffer		buffer_{ VK_NULL_HANDLE };

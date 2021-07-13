@@ -16,12 +16,12 @@ namespace MetaInit
 	{
 		switch (image_type)
 		{
-		case	 VK_IMAGE_TYPE_1D:
+		case VK_IMAGE_TYPE_1D:
 			return VK_IMAGE_VIEW_TYPE_1D;
 		case VK_IMAGE_TYPE_2D:
 			return VK_IMAGE_VIEW_TYPE_2D;
 		default:
-			assert(0&&"image type not supported");
+			throw std::invalid_argument("not supported image view type");
 		}
 	}
 

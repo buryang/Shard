@@ -15,15 +15,18 @@ namespace MetaInit
 	VkInstanceCreateInfo MakeInstanceCreateInfo(VkInstanceCreateFlags flags, const VkApplicationInfo& app_info,
 		const Vector<const char*> ext_infos, const Vector<const char*>& layer_infos);
 
-	class VulkanDevice
+	class VulkanVMAWrapper;
+	class MINIT_API VulkanDevice
 	{
 	public:
 		using Ptr = std::shared_ptr<VulkanDevice>;
 		static Ptr Create(const VkDeviceCreateInfo& device_info);
 		VkDevice Get() { return device_; }
 		VkPhysicalDevice GetPhy() { return phy_devices_; }
+		VulkanVMAWrapper& GetVMA() { return vma_wrapper_; }
 		VkQueue GetQueue(uint32_t family_index, uint32_t index)const;
 		VkQueue GetQueue(VkQueueFlags flags)const;
+		bool IsFormatSupported(VkFormat format)const;
 		//VkPhysicalDevice operator[](uint32_t index);
 		void WaitIdle()const;
 	private:
@@ -33,10 +36,11 @@ namespace MetaInit
 		VkDevice									device_{ VK_NULL_HANDLE };
 		VkPhysicalDevice							phy_devices_{ VK_NULL_HANDLE };
 		VkDeviceCreateInfo							device_info_;
+		VulkanVMAWrapper							vma_wrapper_;
 		//std::unordered_map<uint32_t, uint32_t>  queue_info_;
 	};
 
-	class VulkanInstance
+	class MINIT_API VulkanInstance
 	{
 	public:
 		using Ptr = std::unique_ptr<VulkanInstance>;
