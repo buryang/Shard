@@ -1,6 +1,6 @@
-#include "VulkanCmdContext.h"
-#include "VulkanRenderPass.h"
-#include "VulkanRayTraceKHR.h"
+#include "RHI/VulkanCmdContext.h"
+#include "RHI/VulkanRenderPass.h"
+#include "RHI/VulkanRayTraceKHR.h"
 
 namespace MetaInit
 {

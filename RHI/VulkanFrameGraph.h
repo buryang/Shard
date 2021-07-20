@@ -9,18 +9,21 @@ namespace MetaInit
 	class VulkanInstance;
 	class VulkanDevice;
 	class VulkanWindowSystemImpl;
+	class VulkanVMAWrapper;
 
 	class VulkanFrameContextGraph
 	{
 	public:
-		VulkanFrameContextGraph(VulkanInstance& instance,
-								VulkanDevice& device,
-								VulkanCmdPoolManager& cmd_pool);
+		using Ptr = std::shared_ptr<VulkanFrameContextGraph>;
+		VulkanFrameContextGraph(VulkanInstance::Ptr instance,
+								VulkanDevice::Ptr device,
+								VulkanCmdPoolManager::Ptr cmd_pool);
 		DISALLOW_COPY_AND_ASSIGN(VulkanFrameContextGraph);
 		~VulkanFrameContextGraph();
-		VulkanInstance& GetInstance();
-		VulkanDevice& GetDevice();
-		VulkanCmdPoolManager& GetPoolManager();
+		VulkanInstance::Ptr GetInstance() { return instance_; }
+		VulkanDevice::Ptr GetDevice() { return device_; }
+		VulkanCmdPoolManager::Ptr GetPoolManager() { return cmd_pool_; }
+		VulkanVMAWrapper::Ptr GetMemeAllocator() { return vma_alloc_; }
 		void Begin();
 		void Draw();
 		void End();
@@ -28,9 +31,10 @@ namespace MetaInit
 	private:
 		void CreateSwapChain();
 	private:
-		VulkanInstance&				instance_;
-		VulkanDevice&				device_;
-		VulkanCmdPoolManager&		cmd_pool_;
-		VulkanWindowSystemImpl&		wsi_impl_;
+		VulkanInstance::Ptr				instance_;
+		VulkanDevice::Ptr				device_;
+		VulkanCmdPoolManager::Ptr		cmd_pool_;
+		VulkanWindowSystemImpl::Ptr		wsi_impl_;
+		VulkanVMAWrapper::Ptr			vma_alloc_;
 	};
 }

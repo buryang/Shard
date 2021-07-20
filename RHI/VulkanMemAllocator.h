@@ -17,11 +17,15 @@ namespace MetaInit {
 	struct VMAAccerleraion
 	{
 		VMAAllocation				alloc_;
-		VkAccelerationStructureKHR	acc_{VK_NULL_HANDLE};
+		VkAccelerationStructureKHR	acc_{ VK_NULL_HANDLE };
 	};
+
+	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags );
+	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags);
 
 	class VulkanVMAWrapper {
 	public:
+		using Ptr = std::shared_ptr<VulkanVMAWrapper>;
 		VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance& instance);
 		VMAAllocation CreateImage(size_t size,
 							const VkImageCreateInfo& info,

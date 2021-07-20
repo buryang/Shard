@@ -20,7 +20,7 @@ namespace MetaInit
 		~VulkanRenderPass();
 	private:
 		VulkanDevice::Ptr		device_;
-		VkRenderPass				pass_ = VK_NULL_HANDLE;
+		VkRenderPass			pass_ = VK_NULL_HANDLE;
 		VkRenderPassBeginInfo	info_;
 	};
 }

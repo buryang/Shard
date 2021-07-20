@@ -7,7 +7,7 @@ namespace MetaInit
 {
 	/*functions to make create informations for resource related structure*/
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
-	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImage image, const VkImageCreateInfo& imageInfo);
+	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo);
 	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size, 
 											const SmallVector<uint32_t>& family_indices);
 	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,

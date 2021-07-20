@@ -9,6 +9,10 @@ namespace MetaInit
 		image_info.pNext = VK_NULL_HANDLE;
 		image_info.flags = flags;
 		image_info.format = format;
+		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		//not support cubemap now
+		image_info.arrayLayers = 1;
+		image_info.mipLevels = 1;
 		return image_info;
 	}
 

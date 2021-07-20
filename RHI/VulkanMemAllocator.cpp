@@ -2,9 +2,39 @@
 
 namespace MetaInit {
 
-	VulkanVMAWrapper::VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance& instance):device_(device)
+	static constexpr uint32_t GetVulkanApiVersion()
 	{
-		VmaAllocatorCreateInfo alloc_info;
+#if VMA_VULKAN_VERSION == 1002000
+		return VK_API_VERSION_1_2;
+#elif VMA_VULKAN_VERSION == 1001000
+		return VK_API_VERSION_1_1;
+#elif VMA_VULKAN_VERSION == 1000000
+		return VK_API_VERSION_1_0;
+#else
+#error Invalid VMA_VULKAN_VERSION.
+		return UINT32_MAX;
+#endif
+	}
+
+	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags)
+	{
+		VmaAllocatorCreateInfo alloc_info{};
+		alloc_info.flags = flags;
+		alloc_info.vulkanApiVersion = GetVulkanApiVersion();
+		return alloc_info;
+	}
+
+	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags)
+	{
+		VmaAllocationCreateInfo alloc_info{};
+		alloc_info.flags = flags;
+		//alloc_info.
+		return alloc_info;
+	}
+
+	VulkanVMAWrapper::VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance::Ptr instance):device_(device)
+	{
+		auto alloc_info = MakeVmaAllocatorCreateInfo(VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
 		alloc_info.device = device->Get();
 		alloc_info.instance = instance.Get();
 		alloc_info.physicalDevice = device->GetPhy();
@@ -23,9 +53,9 @@ namespace MetaInit {
 		}
 		VMAAllocation result;
 
-		VmaAllocationCreateInfo vma_info;
+		auto vma_info = MakeVmaAllocationCreateInfo();
 		vma_info.usage = VMA_MEMORY_USAGE_UNKNOWN;
-		vma_info.flags = info.flags; //FIXME
+		//vma_info.flags = info.flags; //FIXME
 
 		auto ret = vmaCreateImage(alloc_, &info, &vma_info, &result.image_, &result.allocation_, nullptr);
 		assert(ret == VK_SUCCESS);
@@ -36,7 +66,7 @@ namespace MetaInit {
 	{
 		VMAAllocation result;
 		
-		VmaAllocationCreateInfo vma_info;
+		auto vma_info = MakeVmaAllocationCreateInfo();
 		vma_info.requiredFlags = 0;
 
 		auto ret = vmaCreateBuffer(alloc_, &info, &vma_info, &result.buffer_, &result.allocation_, nullptr);
