@@ -1,9 +1,9 @@
 #pragma once
 
 #ifdef _MSC_VER
-#define EXPORT_API __declspec(dllexport)
+#define MINIT_API __declspec(dllexport)
 #else 
-#define EXPORT_API
+#define MINIT_API
 #endif 
 
 #define GLM_FORCE_CTOR_INIT

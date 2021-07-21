@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "folly/DiscriminatedPtr.h"
 
 namespace MetaInit
 {
@@ -85,19 +86,33 @@ namespace MetaInit
 		Mesh ToMesh() const;
 	};
 
-	struct Light
+	
+	enum class LightType:uint8_t
 	{
-		enum class Type:uint8_t
-		{
-			POINT,
-			SPOT,
-			DIRECTIONAL,
-			AREA,
-		};
-		vec3	pos_;
-		vec3	dir_;
-		vec3	intensity_;
+		POINT,
+		SPOT,
+		DIRECTIONAL,
+		AREA,
+		DISTANT,
 	};
+
+
+	struct PointLight
+	{
+		LightType Type() const { return LightType::POINT; }
+	};
+
+	struct SpotLight
+	{
+		LightType Type() const { return LightType::SPOT; }
+	};
+
+	struct DistantLight
+	{
+		LightType Type() const { return LightType::DISTANT; }
+	};
+
+	using LightPtr = folly::DiscriminatedPtr<PointLight, SpotLight, DistantLight>;
 
 	struct Camera
 	{
@@ -120,32 +135,77 @@ namespace MetaInit
 		//extrinsics
 		mat4	affine_{ 1.0f };
 	};
-
+	
+	/*
 	struct Volume
 	{
 
 	};
+	*/
 	
 	struct Texture
 	{
-		enum EleType : uint32_t
+		using Ptr = std::shared_ptr<Texture>;
+		enum class SlotType : uint32_t
 		{
-			NONE,
-			RGB32FLOAT,
+			BASECOLOR,
+			SPECULAR,
+			EMISSIVE,
+			NORMAL,
+			OCCLUSION,
+			COUNT,
 		};
-		EleType			type_;
-		Vector<uint8_t>	data_;
-		uint32_t		width_;
-		uint32_t		height_;
+	};
+
+	enum class EImageType : uint32_t
+	{
+		TEXTURE_1D,
+		TEXTURE_2D,
+		TEXTURE_3D,
+		COUNT,
+	};
+
+	struct Image
+	{
+		Vector<uint8_t> raw_;
+		uvec3			size_;
+		uint32_t		mip_levels_{ 1 };
+		uint32_t		array_layers_{ 1 };
+		EImageType		type_{ EImageType::TEXTURE_2D };
+		Image(Image&& image);
+	};
+
+
+	/*sampler filter type*/
+	enum class EFilterType : uint32_t
+	{
+		NEAREST,
+		LINEAR,
+	};
+
+	enum class EAddressMode : uint8_t
+	{
+		WARP,
+		MIRROR,
+		CLAMP,
+		BORDER,
+		MIRROR_ONCE,
+	};
+
+	enum class EResourceType : uint32_t
+	{
+		UNKOWN,
+		//todo add other format 
+		COUNT,
 	};
 
 	//texture sampler interface
 	struct Sampler
 	{
-		uint32_t mag_filter_;
-		uint32_t min_filter_;
-		uint32_t warpS_;
-		uint32_t warpT_;
+		EFilterType		mag_filter_;
+		EFilterType		min_filter_;
+		EAddressMode	warpS_;
+		EAddressMode	warpT_;
 	};
 
 	struct Material
@@ -156,8 +216,9 @@ namespace MetaInit
 			AMASK,
 			ABLEND,
 		};
-		using TexturePtr = Texture*;
+		using TexturePtr = Texture::Ptr;
 		AlphaMode alpha_mode_ = AlphaMode::AOPAQUE;
+		bool double_sided_ = false;
 		float alpha_cutoff_ = 1.0f;
 		float metal_factor_ = 1.0f;
 		float roughness_factor_ = 1.0f;
@@ -165,11 +226,11 @@ namespace MetaInit
 		vec4 emissive_factor_{ 1.0f };
 
 		//texture data structure
-		TexturePtr base_color_texture_ = nullptr;
-		TexturePtr metal_roughness_texture_ = nullptr;
-		TexturePtr normal_texture_ = nullptr;
-		TexturePtr occlusion_texture_ = nullptr;
-		TexturePtr emissive_texture_ = nullptr;
+		TexturePtr base_color_texture_;
+		TexturePtr metal_roughness_texture_ ;
+		TexturePtr normal_texture_;
+		TexturePtr occlusion_texture_;
+		TexturePtr emissive_texture_;
 	};
 
 }

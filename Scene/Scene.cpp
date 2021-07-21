@@ -25,15 +25,15 @@ namespace MetaInit
 		return Camera();
 	}
 
-	SceneProxyHelper& SceneProxyHelper::AddLight(Light&& light)
+	SceneProxyHelper& SceneProxyHelper::AddLight(LightPtr light)
 	{
 
 		return *this;
 	}
 
-	Light SceneProxyHelper::GetLight() const
+	LightPtr SceneProxyHelper::GetLight() const
 	{
-		return Light();
+		return LightPtr();
 	}
 
 	SceneProxyHelper& SceneProxyHelper::AddMesh(Mesh&& mesh)
@@ -60,7 +60,7 @@ namespace MetaInit
 	{
 		std::string err, warn;
 		bool load_stat = false;
-		if (gltf_file.find("glb") != String::npos)
+		if (gltf_file.find("glb") != std::string::npos)
 		{
 			load_stat = gltf_loader_.LoadBinaryFromFile(&gltf_model_, &err, &warn, gltf_file);
 		}
@@ -73,6 +73,9 @@ namespace MetaInit
 		{
 			throw std::runtime_error("load gltf file failed");
 		}
+
+		auto dir_end = gltf_file.find_last_of('/\\');
+		gltf_dir_ = gltf_file.substr(0, dir_end);
 
 		//load light
 		if (!gltf_model_.lights.empty())
@@ -217,27 +220,6 @@ namespace MetaInit
 		helper.AddCamera(std::move(camera_helper));
 	}
 
-	void SceneGltfParser::ParseTextures(SceneProxyHelper& helper)
-	{
-		//image now only save url
-		auto& image_list = gltf_model_.images;
-		for (auto& tex : gltf_model_.textures)
-		{
-			auto& image = image_list[tex.source];
-			if (tex.sampler != -1)
-			{
-
-			}
-			else
-			{
-
-			}
-
-			Texture tmp_texture;
-			helper.AddTexture(std::move(tmp_texture));
-		}
-	}
-
 	void SceneGltfParser::ParseMeshes(SceneProxyHelper& helper, const tinygltf::Mesh& mesh, const NodeCache& node)
 	{
 		//todo whether record the position min and max for BoundingBox AABB
@@ -306,7 +288,7 @@ namespace MetaInit
 					const auto& attrib_acc = accessors[attrib.second];
 					const auto& attrib_view = buffer_views[attrib_acc.bufferView];
 					const auto& byte_stride = attrib_acc.ByteStride(attrib_view);
-					assert(attrib_acc.type == TINYGLTF_COMPONENT_TYPE_FLOAT && "default vertex data be type float");
+					assert(attrib_acc.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT && "default vertex data be type float");
 					const auto* attrib_data = &buffers[attrib_view.buffer].data[attrib_acc.byteOffset + attrib_acc.byteOffset];
 					const auto attrib_comp_count = tinygltf::GetNumComponentsInType(attrib_acc.type);
 

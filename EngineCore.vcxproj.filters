@@ -60,7 +60,7 @@
     <ClCompile Include="RHI\VulkanWindowSystem.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\Primitive.cpp">
+    <ClCompile Include="Scene\Light.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Material.cpp">
@@ -68,6 +68,9 @@
     </ClCompile>
     <ClCompile Include="Scene\Mesh.cpp">
       <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanPrimitive.cpp">
+      <Filter>RHI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -124,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="Scene\BaseScreenSpacePass.h">
       <Filter>Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanPrimitive.h">
+      <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
