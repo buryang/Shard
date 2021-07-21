@@ -13,7 +13,43 @@ namespace MetaInit {
 	VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
 		Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps)
 	{
-		return VkRenderPassCreateInfo();
+		VkRenderPassCreateInfo pass_info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+		pass_info.flags = flags;
+		pass_info.pNext = VK_NULL_HANDLE;
+		if (!attach_descs.empty())
+		{
+			pass_info.attachmentCount = attach_descs.size();
+			pass_info.pAttachments = attach_descs.data();
+		}
+		else
+		{
+			pass_info.attachmentCount = 0;
+			pass_info.pAttachments = VK_NULL_HANDLE;
+		}
+
+		if (!subpass_descs.empty())
+		{
+			pass_info.subpassCount = subpass_descs.size();
+			pass_info.pSubpasses = subpass_descs.data();
+		}
+		else
+		{
+			pass_info.subpassCount = 0;
+			pass_info.pSubpasses = VK_NULL_HANDLE;
+		}
+
+		if (!subpass_deps.empty())
+		{
+			pass_info.dependencyCount = subpass_deps.size();
+			pass_info.pDependencies = subpass_deps.data();
+		}
+		else
+		{
+			pass_info.dependencyCount = 0;
+			pass_info.pDependencies = VK_NULL_HANDLE;
+		}
+		return pass_info;
+
 	}
 
 	static VkRenderPass create_render_pass(VkDevice device, VkRenderPassCreateInfo pass_info)

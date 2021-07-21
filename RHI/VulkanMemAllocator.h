@@ -26,7 +26,7 @@ namespace MetaInit {
 	class VulkanVMAWrapper {
 	public:
 		using Ptr = std::shared_ptr<VulkanVMAWrapper>;
-		VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance& instance);
+		VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance::Ptr instance);
 		VMAAllocation CreateImage(size_t size,
 							const VkImageCreateInfo& info,
 							VkImageLayout layout,
@@ -45,7 +45,8 @@ namespace MetaInit {
 	private:
 		VulkanVMAWrapper() = default;
 	private:
+		VmaAllocator		handle_{ VK_NULL_HANDLE };
 		VulkanDevice::Ptr	device_;
-		VmaAllocator		alloc_{VK_NULL_HANDLE};
+	};
 	};
 }

@@ -2,6 +2,7 @@
 #include "VulkanRHI.h"
 #include <unordered_map>
 #include <list>
+#include <mutex>
 
 namespace MetaInit
 {
@@ -12,7 +13,9 @@ namespace MetaInit
 											const SmallVector<uint32_t>& family_indices);
 	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
 													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
-	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags);
+	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
+											VkSamplerAddressMode address_modeu, VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew);
+	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout layout);
 	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
 																		const SmallVector<VkDescriptorSetLayoutBinding>& bindings);
 	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets, 
@@ -22,18 +25,20 @@ namespace MetaInit
 	class DescriptorPool
 	{
 	public:
+		using Ptr = std::shared_ptr<DescriptorPool>;
 		DescriptorPool() = default;
-		DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
+		explicit DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
 								const VkDescriptorSetLayoutCreateInfo& layout_info);
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPool);
 		void Init(VulkanDevice::Ptr device, uint32_t set_size,
 					const VkDescriptorSetLayoutCreateInfo& layout);
 		void UnInit();
 		VkDescriptorSet CreateDescriptorSet();
+		Vector<VkDescriptorSet> CreateDescriptorSets(uint32_t batch_size);
 		void Reset();
 		~DescriptorPool() { UnInit(); }
 	private:
-		void AddNewPool();
+		void UpdateCurrPool();
 	private:
 		friend class DescriptorPoolManager;
 		using List = std::list<VkDescriptorPool>;
@@ -43,7 +48,7 @@ namespace MetaInit
 		VulkanDevice::Ptr			device_;
 		VkDescriptorSetLayout		layout_;
 		uint32_t					pool_size_;
-
+		std::mutex					pool_mutex_;
 	};
 
 	class DescriptorPoolManager
@@ -51,11 +56,9 @@ namespace MetaInit
 	public:
 		DescriptorPoolManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPoolManager);
-		void AddPool(VkDescriptorSetLayout layout, DescriptorPool&& pool);
-		DescriptorPool& GetPool(VkDescriptorSetLayout layout);
-		DescriptorPool& operator[](VkDescriptorSetLayout layout);
+		DescriptorPool::Ptr GetPool(VkDescriptorSetLayout layout);
 	private:
-		std::unordered_map<VkDescriptorSetLayout, DescriptorPool> pools_;
+		std::unordered_map<VkDescriptorSetLayout, DescriptorPool::Ptr> pools_;
 	};
 
 	class VulkanCmdBuffer;
@@ -74,7 +77,7 @@ namespace MetaInit
 		DescriptorSetsWrapper& operator=(const DescriptorSetsWrapper&) = delete;
 		~DescriptorSetsWrapper();
 	private:
-		VulkanDevice					device_;
+		VulkanDevice::Ptr				device_;
 		DescriptorPoolManager			pool_repo_;
 		Vector<VkDescriptorSet>			sets_;
 		Vector<VkDescriptorSetLayout>	layouts_;

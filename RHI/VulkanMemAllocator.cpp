@@ -28,6 +28,7 @@ namespace MetaInit {
 	{
 		VmaAllocationCreateInfo alloc_info{};
 		alloc_info.flags = flags;
+		alloc_info.pUserData = VK_NULL_HANDLE;
 		//alloc_info.
 		return alloc_info;
 	}
@@ -36,28 +37,23 @@ namespace MetaInit {
 	{
 		auto alloc_info = MakeVmaAllocatorCreateInfo(VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
 		alloc_info.device = device->Get();
-		alloc_info.instance = instance.Get();
+		alloc_info.instance = instance->Get();
 		alloc_info.physicalDevice = device->GetPhy();
 		alloc_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		alloc_info.vulkanApiVersion = VK_API_VERSION_1_2;
-		vmaCreateAllocator(&alloc_info, &alloc_);
+		vmaCreateAllocator(&alloc_info, &handle_);
 	}
 	
 	VMAAllocation VulkanVMAWrapper::CreateImage(size_t size, const VkImageCreateInfo& info,
 										VkImageLayout layout, VkMemoryPropertyFlags props)
 	{
-
-		if (!device_->IsFormatSupported(info.format))
-		{
-			throw std::invalid_argument("image format not supported by device");
-		}
 		VMAAllocation result;
 
 		auto vma_info = MakeVmaAllocationCreateInfo();
 		vma_info.usage = VMA_MEMORY_USAGE_UNKNOWN;
 		//vma_info.flags = info.flags; //FIXME
 
-		auto ret = vmaCreateImage(alloc_, &info, &vma_info, &result.image_, &result.allocation_, nullptr);
+		auto ret = vmaCreateImage(handle_, &info, nullptr, &result.image_, &result.allocation_, nullptr);
 		assert(ret == VK_SUCCESS);
 		return result;
 	}
@@ -69,7 +65,7 @@ namespace MetaInit {
 		auto vma_info = MakeVmaAllocationCreateInfo();
 		vma_info.requiredFlags = 0;
 
-		auto ret = vmaCreateBuffer(alloc_, &info, &vma_info, &result.buffer_, &result.allocation_, nullptr);
+		auto ret = vmaCreateBuffer(handle_, &info, &vma_info, &result.buffer_, &result.allocation_, nullptr);
 		assert(ret == VK_SUCCESS);
 		return result;
 	}

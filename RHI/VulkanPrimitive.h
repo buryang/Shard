@@ -82,7 +82,7 @@ namespace MetaInit
 			explicit VulkanBuffer(RenderGraph::Ptr graph, const VkBufferCreateInfo& create_info);
 			~VulkanBuffer();
 			VkBuffer Get();
-			void* Map();
+			void* Map()const;
 			VulkanBuffer& Unmap();
 			VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);
 			VulkanBuffer& Flush()const;

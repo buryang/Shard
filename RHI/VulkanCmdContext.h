@@ -2,6 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "VulkanRHI.h"
 #include <unordered_map>
+#include <mutex>
 
 namespace MetaInit
 {
@@ -13,15 +14,22 @@ namespace MetaInit
 	class VulkanCmdPool
 	{
 	public:
-		VulkanCmdPool() = default;
+		using Ptr = std::shared_ptr<VulkanCmdPool>;
+		explicit VulkanCmdPool(VulkanDevice::Ptr device, VkCommandPoolCreateFlags flags, uint32_t family_index);
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdPool);
+		VkCommandPool Get() { return pool_; }
+		VulkanDevice::Ptr GetDevice() { return device_; }
 		void Submit(VkQueue queue);
 		void SubmitAsync();
+		void Reset();
 		virtual ~VulkanCmdPool();
+	private:
+		void CreateBuffers();
 	private:
 		VulkanDevice::Ptr			device_;
 		VkCommandPool				pool_{ VK_NULL_HANDLE };
 		Vector<VkCommandBuffer>		buffers_;
+		std::mutex					mutex_;
 	};
 
 	class VulkanRenderPass;
@@ -29,20 +37,20 @@ namespace MetaInit
 	{
 	public:
 		using Ptr = std::unique_ptr<VulkanCmdBuffer>;
-		static Ptr Create(const VkCommandBufferAllocateInfo& cmd_info, VulkanCmdPool& cmd_pool);
+		static Ptr Create(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool);
 		~VulkanCmdBuffer();
-		VkCommandBuffer Get() {
-			return buffer_;
+		VkCommandBuffer Get()const{
+			return handle_;
 		}
 		/*cmd buffer type*/
-		enum class Type :uint8_t
+		enum class EType :uint8_t
 		{
 			PRIMARY,
 			SECONDARY,
 			COUNT
 		};
 		/*cmd buffer state*/
-		enum class State:uint32_t
+		enum class EState:uint32_t
 		{
 			INITIAL,
 			RECORDING,
@@ -66,12 +74,17 @@ namespace MetaInit
 		void Submit(VkQueue& queue);
 		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();
-		VkCommandBuffer Get() { return buffer_; }
+		VkCommandBuffer Get() { return handle_; }
+	private:
+		DISALLOW_COPY_AND_ASSIGN(VulkanCmdBuffer);
+		explicit VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool);
 	private:
 		friend class VulkanCmdPool;
-		VkCommandBuffer		buffer_{ VK_NULL_HANDLE };
-		State				state_{ State::INITIAL };
-		Type				type_{ Type::PRIMARY };
+		VkCommandBuffer		handle_{ VK_NULL_HANDLE };
+		VkFence				fence_{ VK_NULL_HANDLE };
+		VulkanCmdPool::Ptr  pool_;
+		EState				state_{ EState::INITIAL };
+		EType				type_{ EType::PRIMARY };
 	};
 
 

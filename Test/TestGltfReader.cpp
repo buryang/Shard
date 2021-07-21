@@ -35,7 +35,6 @@ TEST(TEST_Scene_MODULE, TEST_Scene_API)
 
 	SceneGltfParser parser;
 	SceneProxyHelper proxy;
-
 	parser.Import("D:/Data/gltf/Sponza/glTF/Sponza.gltf", proxy);
 
 	Mesh mesh = proxy.GetMesh();

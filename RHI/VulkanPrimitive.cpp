@@ -391,12 +391,12 @@ namespace MetaInit
 			return handle_;
 		}
 
-		void* VulkanBuffer::Map()
+		void* VulkanBuffer::Map()const
 		{
 			if (!mapped_)
 			{
 				void* ptr = nullptr;
-				vmaMapMemory(, , &ptr);
+				vmaMapMemory(graph_->GetMemeAllocator().Get(), allocation_, &ptr);
 				mapped_ = true;
 				return ptr;
 			}
@@ -405,7 +405,7 @@ namespace MetaInit
 
 		VulkanBuffer& VulkanBuffer::Unmap()
 		{
-			vmaUnmapMemory();
+			vmaUnmapMemory(graph_->GetMemeAllocator().Get(), allocation_);
 			return *this;
 		}
 

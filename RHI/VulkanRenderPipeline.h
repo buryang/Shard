@@ -34,9 +34,12 @@ namespace MetaInit
 		}
 		~VulkanRenderPipeline() { vkDestroyPipeline(device_->Get(), handle_, nullptr); }
 	private:
-		VkPipeline			handle_{ VK_NULL_HANDLE };
-		VulkanDevice::Ptr	device_;
-		PipeType			pipe_type_;
+		VkPipeline						handle_{ VK_NULL_HANDLE };
+		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
+		Vector<VkDescriptorSetLayout>	desc_layout_;
+		Vector< VkPushConstantRange>	const_ranges_;
+		VulkanDevice::Ptr				device_;
+		PipeType						pipe_type_;
 
 	};
 
