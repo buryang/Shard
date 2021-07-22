@@ -13,7 +13,8 @@ namespace MetaInit
 	class VulkanWindowSystemImpl
 	{
 	public:
-		VulkanWindowSystemImpl(VulkanDevice device, const VkSwapchainCreateInfoKHR& swap_info);
+		using Ptr = std::shared_ptr<VulkanWindowSystemImpl>;
+		VulkanWindowSystemImpl(VulkanDevice::Ptr device, const VkSwapchainCreateInfoKHR& swap_info);
 		VulkanWindowSystemImpl(VulkanWindowSystemImpl&& wsi);
 		~VulkanWindowSystemImpl();
 		void UpdateSwapChain(const VkSwapchainCreateInfoKHR& swap_info);

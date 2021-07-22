@@ -1,5 +1,6 @@
 #pragma once
 #include "VulkanRHI.h"
+#include "VulkanResource.h"
 #include <unordered_map>
 #include <list>
 #include <mutex>
@@ -54,6 +55,7 @@ namespace MetaInit
 	class DescriptorPoolManager
 	{
 	public:
+		using Ptr = std::shared_ptr<DescriptorPoolManager>;
 		DescriptorPoolManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPoolManager);
 		DescriptorPool::Ptr GetPool(VkDescriptorSetLayout layout);
@@ -65,21 +67,57 @@ namespace MetaInit
 	class DescriptorSetsWrapper
 	{
 	public:
+		struct PseudoDescriptor
+		{
+			PseudoDescriptor(DescriptorSetsWrapper* wrapper, const std::string& desc_name) :wrapper_(wrapper) {}
+			template <typename ResourceHandle>
+			void operator=(ResourceHandle resource)
+			{
+				throw std::runtime_error("not implement a general func");
+			}
+			DescriptorSetsWrapper* wrapper_;
+			std::string desc_name;
+		};
+		PseudoDescriptor operator[](std::string& desc_name);
 		void Init();
-		void Bind(VulkanCmdBuffer& cmd);
-		void Update();
 		template <typename ...Args>
 		void Write(int index, Args ...args);
 		void Reset();
 		void UnInit();
+		VkDescriptorSet Get()const { return handle_; }
 		DescriptorSetsWrapper() = default;
 		DescriptorSetsWrapper(const DescriptorSetsWrapper&) = delete;
 		DescriptorSetsWrapper& operator=(const DescriptorSetsWrapper&) = delete;
-		~DescriptorSetsWrapper();
+		~DescriptorSetsWrapper() = default;
+	private:
+		//configure descriptor 
+		void UpdateImage(const Primitive::VulkanImage& image);
+		void UpdateSampler(const Primitive::VulkanSampler& sampler);
+		void UpdateBuffer(const Primitive::VulkanBuffer& buffer);
 	private:
 		VulkanDevice::Ptr				device_;
 		DescriptorPoolManager			pool_repo_;
-		Vector<VkDescriptorSet>			sets_;
-		Vector<VkDescriptorSetLayout>	layouts_;
+		VkDescriptorSet					handle_{ VK_NULL_HANDLE };
+		VkDescriptorSetLayout			layouts_{ VK_NULL_HANDLE };
+		using DescLut = std::unordered_map<std::string, uint32_t>;
+		DescLut							desc_lut_;
 	};
+	
+	template<>
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanImage& image)
+	{
+		wrapper_->UpdateImage();
+	}
+
+	template<>
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanSampler& sampler)
+	{
+		wrapper_->UpdateSampler();
+	}
+
+	template<>
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanBuffer& buffer)
+	{
+		wrapper_->UpdateBuffer();
+	}
 }

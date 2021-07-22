@@ -7,7 +7,9 @@ namespace MetaInit
 
 	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count)
 	{
-		VkCommandBufferAllocateInfo alloc_info{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+		VkCommandBufferAllocateInfo alloc_info;
+		memset(&alloc_info, sizeof(VkCommandBufferAllocateInfo), 1);
+		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		alloc_info.pNext = VK_NULL_HANDLE;
 		alloc_info.commandPool = pool;
 		alloc_info.level = level;
@@ -17,7 +19,9 @@ namespace MetaInit
 
 	VkCommandBufferBeginInfo MakeCommandBufferBeginInfo(VkCommandBufferUsageFlags flags)
 	{
-		VkCommandBufferBeginInfo begin_info{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		VkCommandBufferBeginInfo begin_info;
+		memset(&begin_info, sizeof(VkCommandBufferBeginInfo), 1);
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.pNext = VK_NULL_HANDLE;
 		begin_info.flags = flags;
 		return begin_info;
@@ -25,7 +29,9 @@ namespace MetaInit
 
 	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index)
 	{
-		VkCommandPoolCreateInfo pool_info{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+		VkCommandPoolCreateInfo pool_info;
+		memset(&pool_info, sizeof(VkCommandPoolCreateInfo), 1);
+		pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		pool_info.flags = flags;
 		pool_info.pNext = VK_NULL_HANDLE;
 		pool_info.queueFamilyIndex = family_index;

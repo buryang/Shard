@@ -6,6 +6,7 @@
 namespace MetaInit
 {
 	class VulkanCmdPoolManager;
+	class DescriptorPoolManager;
 	class VulkanInstance;
 	class VulkanDevice;
 	class VulkanWindowSystemImpl;
@@ -36,5 +37,6 @@ namespace MetaInit
 		VulkanCmdPoolManager::Ptr		cmd_pool_;
 		VulkanWindowSystemImpl::Ptr		wsi_impl_;
 		VulkanVMAWrapper::Ptr			vma_alloc_;
+		DescriptorPoolManager::Ptr		desc_manager_;
 	};
 }

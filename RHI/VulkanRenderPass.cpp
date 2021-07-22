@@ -13,7 +13,9 @@ namespace MetaInit {
 	VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
 		Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps)
 	{
-		VkRenderPassCreateInfo pass_info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+		VkRenderPassCreateInfo pass_info;
+		memset(&pass_info, sizeof(VkRenderPassCreateInfo), 1);
+		pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		pass_info.flags = flags;
 		pass_info.pNext = VK_NULL_HANDLE;
 		if (!attach_descs.empty())

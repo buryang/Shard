@@ -11,6 +11,7 @@ namespace MetaInit
 	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index);
 	
 	class VulkanRayTraceBindTable;
+	class VulkanCmdBuffer;
 	class VulkanCmdPool
 	{
 	public:
@@ -28,7 +29,7 @@ namespace MetaInit
 	private:
 		VulkanDevice::Ptr			device_;
 		VkCommandPool				pool_{ VK_NULL_HANDLE };
-		Vector<VkCommandBuffer>		buffers_;
+		Vector<VulkanCmdBuffer>		buffers_;
 		std::mutex					mutex_;
 	};
 

@@ -264,9 +264,45 @@ namespace MetaInit
 		if (pools_.find(layout) == pools_.end())
 		{
 			DescriptorPool::Ptr pool_ptr(new DescriptorPool);
-			pools_.insert(std::make_pair(layout, pool));
+			pools_.insert(std::make_pair(layout, pool_ptr));
 		}
 		return pools_[layout];
 	}
 
+	DescriptorSetsWrapper::PseudoDescriptor DescriptorSetsWrapper::operator[](std::string& desc_name)
+	{
+		return PseudoDescriptor(this, desc_name);
+	}
+
+	void DescriptorSetsWrapper::UpdateImage(const Primitive::VulkanImage& image)
+	{
+		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		write_set.pNext = VK_NULL_HANDLE;
+		write_set.dstBinding = desc_lut_["0"];
+		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+		VkDescriptorImageInfo image_info = {};
+		write_set.pImageInfo = &image_info;
+		vkUpdateDescriptorSets(device_->Get(), 1, &write_set, 0, VK_NULL_HANDLE);
+	}
+
+	void DescriptorSetsWrapper::UpdateSampler(const Primitive::VulkanSampler& sampler)
+	{
+		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		write_set.pNext = VK_NULL_HANDLE;
+		write_set.dstBinding = desc_lut_["1"];
+		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+		//todo
+	}
+
+	void DescriptorSetsWrapper::UpdateBuffer(const Primitive::VulkanBuffer& buffer)
+	{
+		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		write_set.pNext = VK_NULL_HANDLE;
+		write_set.dstBinding = desc_lut_["2"];
+		write_set.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+		//todo
+	}
 }

@@ -19,6 +19,7 @@ namespace MetaInit {
 	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags)
 	{
 		VmaAllocatorCreateInfo alloc_info{};
+		memset(&alloc_info, sizeof(VmaAllocatorCreateInfo), 1);
 		alloc_info.flags = flags;
 		alloc_info.vulkanApiVersion = GetVulkanApiVersion();
 		return alloc_info;
@@ -27,6 +28,7 @@ namespace MetaInit {
 	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags)
 	{
 		VmaAllocationCreateInfo alloc_info{};
+		memset(&alloc_info, sizeof(VmaAllocationCreateInfo), 1);
 		alloc_info.flags = flags;
 		alloc_info.pUserData = VK_NULL_HANDLE;
 		//alloc_info.
