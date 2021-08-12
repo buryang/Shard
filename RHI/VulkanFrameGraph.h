@@ -1,10 +1,15 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
+#include "RHI/VulkanRenderPass.h"
 #include <set>
+#include <memory>
 
 namespace MetaInit
 {
+
+	VkSemaphoreCreateInfo MakeSemphoreCreateInfo(VkSemaphoreCreateFlags flags);
+
 	class VulkanCmdPoolManager;
 	class DescriptorPoolManager;
 	class VulkanInstance;
@@ -12,7 +17,7 @@ namespace MetaInit
 	class VulkanWindowSystemImpl;
 	class VulkanVMAWrapper;
 
-	class VulkanFrameContextGraph
+	class VulkanFrameContextGraph: public std::enable_shared_from_this<VulkanFrameContextGraph>
 	{
 	public:
 		using Ptr = std::shared_ptr<VulkanFrameContextGraph>;
@@ -25,18 +30,25 @@ namespace MetaInit
 		VulkanDevice::Ptr GetDevice() { return device_; }
 		VulkanCmdPoolManager::Ptr GetPoolManager() { return cmd_pool_; }
 		VulkanVMAWrapper::Ptr GetMemeAllocator() { return vma_alloc_; }
-		void Begin();
-		void Draw();
-		void End();
-		void UpdataWSI();
+		void BeginBuild();
+		void BuildSubTask();
+		void EndBuild();
+		void Execute();
+		Ptr Get() { return shared_from_this(); }
 	private:
-		void CreateSwapChain();
+		void InitRenderResource();
 	private:
 		VulkanInstance::Ptr				instance_;
 		VulkanDevice::Ptr				device_;
 		VulkanCmdPoolManager::Ptr		cmd_pool_;
+		VulkanCmdBuffer::Ptr			cmd_buffer_;
 		VulkanWindowSystemImpl::Ptr		wsi_impl_;
 		VulkanVMAWrapper::Ptr			vma_alloc_;
 		DescriptorPoolManager::Ptr		desc_manager_;
+		//VulkanRenderPass				render_pass_;
+		VkSemaphore						image_available_;
+		//ready for render
+		VkSemaphore						present_signal_;
+		VulkanRenderPass				render_pass_;
 	};
 }

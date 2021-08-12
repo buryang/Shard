@@ -1,5 +1,6 @@
-#include "VulkanResource.h"
-#include "VulkanCmdContext.h"
+#include "RHI/VulkanResource.h"
+#include "RHI/VulkanCmdContext.h"
+#include "RHI/VulkanRenderPass.h"
 
 namespace MetaInit
 {
@@ -29,7 +30,7 @@ namespace MetaInit
 		}
 	}
 
-	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo)
+	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& image_info)
 	{
 		VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		view_info.flags = flags;
@@ -271,38 +272,133 @@ namespace MetaInit
 
 	DescriptorSetsWrapper::PseudoDescriptor DescriptorSetsWrapper::operator[](std::string& desc_name)
 	{
-		return PseudoDescriptor(this, desc_name);
+		return PseudoDescriptor(this, desc_lut_[desc_name]);
 	}
 
-	void DescriptorSetsWrapper::UpdateImage(const Primitive::VulkanImage& image)
+	void DescriptorSetsWrapper::BeginUpdates()
+	{
+		write_cache_.clear();
+	}
+
+	void DescriptorSetsWrapper::EndUpdates()
+	{
+		if (!write_cache_.empty())
+		{
+			vkUpdateDescriptorSets(device_->Get(), write_cache_.size(), write_cache_.data(), 0, VK_NULL_HANDLE);
+		}
+	}
+
+	static inline VkDescriptorType set_descriptor_type(bool read_only, bool is_buffer, bool is_texel)
+	{
+		if (is_buffer) {
+			if (is_texel)
+			{
+				return read_only ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+			}
+			else
+			{
+				return read_only ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			}
+		}
+		else
+		{
+			return read_only ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		}
+	}
+
+	void DescriptorSetsWrapper::UpdateImage(const Primitive::VulkanImage& image, uint32_t binding)
 	{
 		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstBinding = desc_lut_["0"];
-		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		write_set.dstSet = handle_;
+		write_set.dstBinding = binding;
+		write_set.descriptorCount = 1;
+		write_set.descriptorType = set_descriptor_type(read_only_, false, false);
 
-		VkDescriptorImageInfo image_info = {};
+		VkDescriptorImageInfo image_info{};
+		image_info.imageLayout = read_only_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+		image_info.imageView = 0;
+		image_info.sampler = nullptr;
 		write_set.pImageInfo = &image_info;
-		vkUpdateDescriptorSets(device_->Get(), 1, &write_set, 0, VK_NULL_HANDLE);
+		write_cache_.emplace_back(write_cache_);
 	}
 
-	void DescriptorSetsWrapper::UpdateSampler(const Primitive::VulkanSampler& sampler)
+	void DescriptorSetsWrapper::UpdateSampler(const Primitive::VulkanSampler& sampler, uint32_t binding)
 	{
 		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstBinding = desc_lut_["1"];
+		write_set.dstSet = handle_;
+		write_set.dstBinding = binding;
+		write_set.descriptorCount = 1;
 		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-
+		VkDescriptorImageInfo image_info;
+		
+		write_cache_.emplace_back(write_set);
 		//todo
 	}
 
-	void DescriptorSetsWrapper::UpdateBuffer(const Primitive::VulkanBuffer& buffer)
+	void DescriptorSetsWrapper::UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset)
 	{
 		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstBinding = desc_lut_["2"];
-		write_set.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
+		write_set.dstSet = handle_;
+		write_set.dstBinding = binding;
+		write_set.descriptorCount = 1;
+		write_set.descriptorType = set_descriptor_type(read_only_, true, false);
+		VkDescriptorBufferInfo buffer_info{};
+		buffer_info.buffer = buffer.Get();
+		buffer_info.offset = offset;
+		buffer_info.range = buffer.GetSize();
+		write_set.pBufferInfo = &buffer_info;
+		write_cache_.emplace_back(write_set);
 		//todo
+	}
+
+	void DescriptorSetsWrapper::UpdateBufferView(const Primitive::VulkanBufferView& buffer_view, uint32_t binding)
+	{
+		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		write_set.pNext = VK_NULL_HANDLE;
+		write_set.dstSet = handle_;
+		write_set.dstBinding = binding;
+		write_set.descriptorCount = 1;
+		write_set.descriptorType = set_descriptor_type(read_only_, true, true);
+		write_cache_.emplace_back(write_set);
+	}
+
+	void DescriptorSetsWrapper::UpdateInAttachment(const VulkanAttachment& attach, uint32_t binding)
+	{
+		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		write_set.pNext = VK_NULL_HANDLE;
+		write_set.dstSet = handle_;
+		write_set.dstBinding = binding;
+		write_set.descriptorCount = 1;
+		write_set.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		VkDescriptorImageInfo image_info{};
+		image_info.sampler = VK_NULL_HANDLE;
+		//image_info.imageView = attach.
+		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		write_set.pImageInfo = &image_info;
+		write_cache_.emplace_back(write_set);
+	}
+
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanImage& image)
+	{
+		wrapper_->UpdateImage(image, desc_binding_);
+	}
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanSampler& sampler)
+	{
+		wrapper_->UpdateSampler(sampler, desc_binding_);
+	}
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanBuffer& buffer)
+	{
+		wrapper_->UpdateBuffer(buffer, desc_binding_, 0);
+	}
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanBufferView& buffer_view)
+	{
+		wrapper_->UpdateBufferView(buffer_view, desc_binding_);
+	}
+	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const VulkanAttachment& attach)
+	{
+		wrapper_->UpdateInAttachment(attach, desc_binding_);
 	}
 }

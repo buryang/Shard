@@ -1,5 +1,7 @@
 #pragma once
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
+#include "GLFW/glfw3.h"
+#include <atomic>
 
 namespace MetaInit
 {
@@ -8,22 +10,35 @@ namespace MetaInit
 													const SmallVector<uint32_t>& family_indices,
 													VkSwapchainKHR old_chain = VK_NULL_HANDLE);
 	VkWin32SurfaceCreateInfoKHR MakeSurfaceCreateInfo(VkWin32SurfaceCreateFlagsKHR flags, HINSTANCE hinstance, HWND hwnd);
+	VkFramebufferCreateInfo MakeFramebufferCreateInfo(VkFramebufferCreateFlags flags, VkRenderPass pass, Span<VkImageView>& attachs, 
+													  uint32_t width, uint32_t height, uint32_t layers);
 
 	class VulkanDevice;
 	class VulkanWindowSystemImpl
 	{
 	public:
 		using Ptr = std::shared_ptr<VulkanWindowSystemImpl>;
-		VulkanWindowSystemImpl(VulkanDevice::Ptr device, const VkSwapchainCreateInfoKHR& swap_info);
+		VulkanWindowSystemImpl(VulkanDevice::Ptr device, const VkWin32SurfaceCreateInfoKHR surface_info, const VkSwapchainCreateInfoKHR& swap_info);
 		VulkanWindowSystemImpl(VulkanWindowSystemImpl&& wsi);
 		~VulkanWindowSystemImpl();
 		void UpdateSwapChain(const VkSwapchainCreateInfoKHR& swap_info);
-		VkSurfaceKHR Get() { return surface_; };
+		VkFramebuffer GetFrameBufferAsync(VkSemaphore& semaphore, uint32_t& fbo_index);
+		void SubmitFrameBufferAsync(const VkSemaphore semaphore, const uint32_t fbo_index);
+	private:
+		void InitFBOs();
 	private:
 		VkSurfaceKHR					surface_{ VK_NULL_HANDLE };
-		VkSurfaceCapabilitiesKHR		capabilities_;
-		VkSurfaceFormatKHR				surface_format_;
+		//VkSurfaceCapabilitiesKHR		capabilities_;
+		//VkSurfaceFormatKHR			surface_format_;
+		//VkSurfaceCapabilitiesKHR		surface_capabilites_;
 		VkSwapchainKHR					swap_chain_{ VK_NULL_HANDLE };
+		VkFormat						swap_format_;
+		VkExtent2D						swap_extent_;
+		Vector<VkImage>					swap_images_;
+		Vector<VkImageView>				swap_image_views_;
+		//Vector<VkFramebuffer>			fbos_;
+		Vector<VkSemaphore>				semaphore_acquires_;
 		VkHdrMetadataEXT				hdr_meta_;
+		VulkanDevice::Ptr				device_;
 	};
 }

@@ -81,36 +81,36 @@ namespace MetaInit
 		}
 	}
 
+	void VulkanCmdBuffer::SetState(EState state)
+	{
+		state_ = state;
+	}
+
+	VulkanCmdBuffer::EState VulkanCmdBuffer::State() const
+	{
+		return state_;
+	}
+
 	void VulkanCmdBuffer::Begin()
 	{
 		VkCommandBufferBeginInfo begin_info{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 		begin_info.pNext = VK_NULL_HANDLE;
+		//In general approaches that pre-record command buffers for parts of the scene are counter-productive
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
 		vkBeginCommandBuffer(handle_, &begin_info);
 		state_ = EState::RECORDING;
 	}
 
-	void VulkanCmdBuffer::End()
+	void VulkanCmdBuffer::ExecuteEnd()
 	{
 		vkEndCommandBuffer(handle_);
 		state_ = EState::EXECUTABLE;
 	}
 
-	void VulkanCmdBuffer::BeginPass(VulkanRenderPass& render_pass)
+	void VulkanCmdBuffer::Dispatch(vec3 group_size)
 	{
-		render_pass.Begin(*this);
-	}
-
-	void VulkanCmdBuffer::EndPass(VulkanRenderPass& render_pass)
-	{
-		render_pass.End(*this);
-	}
-
-	void VulkanCmdBuffer::Dispatch()
-	{
-		//FIXME
-		vkCmdDispatch(handle_, 0, 0, 0);
+		vkCmdDispatch(handle_, group_size.x, group_size.y, group_size.z);
 	}
 
 	void VulkanCmdBuffer::Draw( uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count)
@@ -128,16 +128,15 @@ namespace MetaInit
 			dims.x, dims.y, dims.z);
 		*/
 	}
-	void VulkanCmdBuffer::Submit(VkQueue& queue)
+
+	void VulkanCmdBuffer::Resolve(Primitive::VulkanImage& dst, const Primitive::VulkanImage& src)
 	{
-		//FIXME
-		VkSubmitInfo submit_info{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-		submit_info.pNext				= VK_NULL_HANDLE;
-		submit_info.commandBufferCount	= 1;
-		submit_info.pCommandBuffers		= &handle_;
-		auto ret = vkQueueSubmit(queue, 1, &submit_info, fence_);
-		assert(ret == VK_SUCCESS && "submit command buffer failed");
-		state_ = EState::PENDING;
+		VkImageSubresourceRange src_range, dst_range;
+		//todo 
+		VkImageResolve resolve_info{};
+		//resolve_info.srcSubresource = src_range;
+		//resolve_info.dstSubresource = dst_range;
+		vkCmdResolveImage(handle_, src.Get(), nullptr, dst.Get(), nullptr, 1, &resolve_info);
 	}
 
 	void VulkanCmdBuffer::Execute(Vector<VulkanCmdBuffer>& cmd_buffers)
@@ -164,8 +163,35 @@ namespace MetaInit
 		vkResetCommandBuffer(handle_, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	}
 
+	//barriers need to be batched as aggressively as possible
+	//https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples
+	void VulkanCmdBuffer::Barrier(const VulkanBarrierInfo& barrier_info)
+	{
+		vkCmdPipelineBarrier(handle_, barrier_info.src_stage_flags_, barrier_info.dst_stage_flags_, barrier_info.depend_flags_,
+			barrier_info.mem_barrier_.size(), barrier_info.mem_barrier_.size() > 0 ? barrier_info.mem_barrier_.data() : nullptr,
+			barrier_info.buffer_barrier_.size(), barrier_info.buffer_barrier_.size() > 0 ? barrier_info.buffer_barrier_.data() : nullptr,
+			barrier_info.image_barrier_.size(), barrier_info.image_barrier_.size() > 0 ? barrier_info.image_barrier_.data() : nullptr);
+	}
+
 	VulkanCmdBuffer::VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool):handle_(cmd_buffer), pool_(cmd_pool)
 	{
 		state_ = EState::INITIAL;
 	}
+
+	VulkanCmdPoolManager::VulkanCmdPoolManager(VulkanDevice::Ptr device, const uint32_t pool_size)
+	{
+		pools_.reserve(pool_size);
+		for (auto n = 0; n < pool_size; ++n)
+		{
+			VulkanCmdPool::Ptr cmd_pool(new VulkanCmdPool(device, 0, 0));
+			pools_.emplace_back(cmd_pool);
+		}
+
+	}
+
+	VulkanCmdPool VulkanCmdPoolManager::GetIdlePool()
+	{
+		return VulkanCmdPool();
+	}
+
 }

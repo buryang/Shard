@@ -1,6 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
+#include "RHI/VulkanPrimitive.h"
 #include <unordered_map>
 #include <mutex>
 
@@ -20,8 +21,6 @@ namespace MetaInit
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdPool);
 		VkCommandPool Get() { return pool_; }
 		VulkanDevice::Ptr GetDevice() { return device_; }
-		void Submit(VkQueue queue);
-		void SubmitAsync();
 		void Reset();
 		virtual ~VulkanCmdPool();
 	private:
@@ -32,6 +31,16 @@ namespace MetaInit
 		Vector<VulkanCmdBuffer>		buffers_;
 		std::mutex					mutex_;
 	};
+
+	typedef struct VulkanBarrierInfo
+	{
+		VkPipelineStageFlags			src_stage_flags_;
+		VkPipelineStageFlags			dst_stage_flags_;
+		VkDependencyFlags				depend_flags_;
+		Vector<VkMemoryBarrier>			mem_barrier_;
+		Vector<VkBufferMemoryBarrier>	buffer_barrier_;
+		Vector<VkImageMemoryBarrier>	image_barrier_;
+	}VulkanBarrierInfo;
 
 	class VulkanRenderPass;
 	class VulkanCmdBuffer
@@ -60,33 +69,44 @@ namespace MetaInit
 			INVALID,
 			COUNT
 		};
-		void SetViewPoint();
-		void SetSwapChain();
-		void SetLight();
+		void SetViewPoint(mat4 view_matrix);
+		void SetLight(vec3 energy, vec3 position, vec3 direction);
+		void SetState(EState state);
+		EState State()const;
 		void Begin();
 		void End();
-		void BeginPass(VulkanRenderPass& render_pass);
-		void EndPass(VulkanRenderPass& render_pass);
-		void Dispatch();
+		//compute pipeline must be bound to a command buffer before any dispatch commands are recorded
+		void Dispatch(vec3 group_size);
 		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);		
 		void TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
-		template<typename DataHandle>
-		void Copy(DataHandle dst, DataHandle src);
-		void Submit(VkQueue& queue);
+		void Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, const Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size);
+		void Copy(Primitive::VulkanImage& dst, const Primitive::VulkanBuffer& src);
+		void Resolve(Primitive::VulkanImage& dst, const Primitive::VulkanImage& src);
 		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();
+		void Barrier(const VulkanBarrierInfo& barrier_info);
 		VkCommandBuffer Get() { return handle_; }
 	private:
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdBuffer);
 		explicit VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool);
 	private:
 		friend class VulkanCmdPool;
+		friend class VulkanQueue;
 		VkCommandBuffer		handle_{ VK_NULL_HANDLE };
 		VkFence				fence_{ VK_NULL_HANDLE };
+		VkFlags				flags_ = 0;
 		VulkanCmdPool::Ptr  pool_;
 		EState				state_{ EState::INITIAL };
 		EType				type_{ EType::PRIMARY };
 	};
 
+	class VulkanCmdPoolManager
+	{
+	public:
+		VulkanCmdPoolManager(VulkanDevice::Ptr device, const uint32_t pool_size);
+		VulkanCmdPool GetIdlePool();
+	private:
+		Vector<VulkanCmdPool::Ptr>	pools_;
+	};
 
 }

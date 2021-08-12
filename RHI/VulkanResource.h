@@ -1,6 +1,6 @@
 #pragma once
-#include "VulkanRHI.h"
-#include "VulkanResource.h"
+#include "RHI/VulkanRHI.h"
+#include "RHI/VulkanPrimitive.h"
 #include <unordered_map>
 #include <list>
 #include <mutex>
@@ -64,24 +64,27 @@ namespace MetaInit
 	};
 
 	class VulkanCmdBuffer;
+	class VulkanAttachment;
 	class DescriptorSetsWrapper
 	{
 	public:
 		struct PseudoDescriptor
 		{
-			PseudoDescriptor(DescriptorSetsWrapper* wrapper, const std::string& desc_name) :wrapper_(wrapper) {}
-			template <typename ResourceHandle>
-			void operator=(ResourceHandle resource)
-			{
-				throw std::runtime_error("not implement a general func");
-			}
-			DescriptorSetsWrapper* wrapper_;
-			std::string desc_name;
+			PseudoDescriptor(DescriptorSetsWrapper* wrapper, uint32_t binding) :wrapper_(wrapper), desc_binding_(binding) {}
+			void operator=(const Primitive::VulkanImage& image);
+			void operator=(const Primitive::VulkanSampler& sampler);
+			void operator=(const Primitive::VulkanBuffer& buffer);
+			void operator=(const Primitive::VulkanBufferView& buffer_view);
+			void operator=(const VulkanAttachment& attach);
+			DescriptorSetsWrapper* wrapper_ = nullptr;
+			uint32_t desc_binding_ = 0;
 		};
 		PseudoDescriptor operator[](std::string& desc_name);
 		void Init();
 		template <typename ...Args>
 		void Write(int index, Args ...args);
+		void BeginUpdates();
+		void EndUpdates();
 		void Reset();
 		void UnInit();
 		VkDescriptorSet Get()const { return handle_; }
@@ -91,9 +94,11 @@ namespace MetaInit
 		~DescriptorSetsWrapper() = default;
 	private:
 		//configure descriptor 
-		void UpdateImage(const Primitive::VulkanImage& image);
-		void UpdateSampler(const Primitive::VulkanSampler& sampler);
-		void UpdateBuffer(const Primitive::VulkanBuffer& buffer);
+		void UpdateImage(const Primitive::VulkanImage& image, uint32_t binding);
+		void UpdateSampler(const Primitive::VulkanSampler& sampler, uint32_t binding);
+		void UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset);
+		void UpdateBufferView(const Primitive::VulkanBufferView& buffer_view, uint32_t binding);
+		void UpdateInAttachment(const VulkanAttachment& attach, uint32_t binding);
 	private:
 		VulkanDevice::Ptr				device_;
 		DescriptorPoolManager			pool_repo_;
@@ -101,23 +106,8 @@ namespace MetaInit
 		VkDescriptorSetLayout			layouts_{ VK_NULL_HANDLE };
 		using DescLut = std::unordered_map<std::string, uint32_t>;
 		DescLut							desc_lut_;
+		Vector<VkWriteDescriptorSet>	write_cache_;
+		bool							read_only_ = false;
 	};
 	
-	template<>
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanImage& image)
-	{
-		wrapper_->UpdateImage();
-	}
-
-	template<>
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanSampler& sampler)
-	{
-		wrapper_->UpdateSampler();
-	}
-
-	template<>
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(Primitive::VulkanBuffer& buffer)
-	{
-		wrapper_->UpdateBuffer();
-	}
 }

@@ -10,14 +10,15 @@ namespace MetaInit
 	VkComputePipelineCreateInfo MakeComputePipelineCreateInfo(VkPipelineCreateFlags flags, VkPipelineLayout layout);
 	VkGraphicsPipelineCreateInfo MakeGraphicsPipelineCreateInfo(VkPipelineCreateFlags flags, VkPipelineLayout layout, VkRenderPass render_pass);
 	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(VkPipelineCacheCreateFlags flags, const Vector<uint8_t>& initial_data);
-	
+	VkPipelineShaderStageCreateInfo MakePipelineShaderStageCreateInfo(VkPipelineShaderStageCreateFlags flags, VkShaderStageFlagBits stage);
+
 	class VulkanCmdBuffer;
 	class DescriptorSetsWrapper;
 	class VulkanRenderPipeline
 	{
 	public:
 		//todo: support task and mesh shader
-		enum class PipeType:uint8_t
+		enum class EPipeType:uint8_t
 		{
 			COMPUTE,
 			GRAPHICS,
@@ -26,7 +27,7 @@ namespace MetaInit
 		};
 		using Ptr = std::unique_ptr<VulkanRenderPipeline>;
 		template<typename Parameters, typename ...Args>
-		static Ptr Create(const Parameters& param, Args... args) {
+		static Ptr Create(VulkanDevice::Ptr device, const Parameters& param, Args... args) {
 			throw std::runtime_error("not implement create function"); 
 		}
 		void Bind(VulkanCmdBuffer& cmd_buffer);
@@ -42,21 +43,23 @@ namespace MetaInit
 		using DescLut = std::unordered_map<std::string, VkDescriptorSetLayout>;
 		VkPipeline						handle_{ VK_NULL_HANDLE };
 		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
+		VkPipelineCache					pipe_cache_{ VK_NULL_HANDLE };
 		DescRepo						desc_sets_;
 		DescLut							desc_lut_;
 		Vector<VkPushConstantRange>		const_ranges_;
 		VulkanDevice::Ptr				device_;
-		PipeType						pipe_type_;
+		EPipeType						pipe_type_;
 	};
 
 	template<>
-	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkGraphicsPipelineCreateInfo& params)
+	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(VulkanDevice::Ptr device, const VkGraphicsPipelineCreateInfo& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateGraphicsPipelines(nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
+		auto ret_val = vkCreateGraphicsPipelines(device->Get(), device->GetPipelineCache(), 1, &params, g_host_alloc, &pipe->handle_);
 		assert(ret_val == VK_SUCCESS && "create graphics pipeline failed");
-		pipe->pipe_type_ = PipeType::GRAPHICS;
+		pipe->pipe_type_ = EPipeType::GRAPHICS;
 		pipe->layout_ = params.layout;
+		pipe->device_ = device;
 		{
 			pipe->desc_sets_.clear();
 			//for( auto n = 0; n < )
@@ -66,20 +69,22 @@ namespace MetaInit
 	}
 
 	template<>
-	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkComputePipelineCreateInfo& params)
+	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(VulkanDevice::Ptr device, const VkComputePipelineCreateInfo& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateComputePipelines(nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
-		pipe->pipe_type_ = PipeType::COMPUTE;
+		auto ret_val = vkCreateComputePipelines(device->Get(), device->GetPipelineCache(), 1, &params, g_host_alloc, &pipe->handle_);
+		pipe->pipe_type_ = EPipeType::COMPUTE;
+		pipe->device_ = device;
 		return pipe;
 	}
 
 	template<>
-	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(const VkRayTracingPipelineCreateInfoKHR& params)
+	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(VulkanDevice::Ptr device, const VkRayTracingPipelineCreateInfoKHR& params)
 	{
 		VulkanRenderPipeline::Ptr pipe(new VulkanRenderPipeline);
-		auto ret_val = vkCreateRayTracingPipelinesKHR(nullptr, nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
-		pipe->pipe_type_ = PipeType::RAYTRACE;
+		auto ret_val = vkCreateRayTracingPipelinesKHR(device->Get(), nullptr, nullptr, 1, &params, g_host_alloc, &pipe->handle_);
+		pipe->pipe_type_ = EPipeType::RAYTRACE;
+		pipe->device_ = device;
 		return pipe;
 	}
 

@@ -81,7 +81,8 @@ namespace MetaInit
 			using Ptr = std::shared_ptr<VulkanBuffer>;
 			explicit VulkanBuffer(RenderGraph::Ptr graph, const VkBufferCreateInfo& create_info);
 			~VulkanBuffer();
-			VkBuffer Get();
+			VkBuffer Get()const;
+			VkDeviceSize GetSize()const;
 			void* Map()const;
 			VulkanBuffer& Unmap();
 			VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);

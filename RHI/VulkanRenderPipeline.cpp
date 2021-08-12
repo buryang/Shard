@@ -69,9 +69,9 @@ namespace MetaInit
 
 	namespace
 	{
-		inline VkPipelineBindPoint TransPipeTypeToBindPoint(VulkanRenderPipeline::PipeType type)
+		inline VkPipelineBindPoint TransPipeTypeToBindPoint(VulkanRenderPipeline::EPipeType type)
 		{
-			using SrcType = VulkanRenderPipeline::PipeType;
+			using SrcType = VulkanRenderPipeline::EPipeType;
 			switch (type)
 			{
 			case SrcType::COMPUTE:

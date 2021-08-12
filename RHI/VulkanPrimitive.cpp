@@ -386,9 +386,14 @@ namespace MetaInit
 			assert(ret == VK_SUCCESS);
 		}
 
-		VkBuffer VulkanBuffer::Get()
+		VkBuffer VulkanBuffer::Get()const
 		{
 			return handle_;
+		}
+
+		VkDeviceSize VulkanBuffer::GetSize()const
+		{
+			return prop_info_.size;
 		}
 
 		void* VulkanBuffer::Map()const

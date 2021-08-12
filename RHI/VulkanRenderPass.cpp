@@ -96,24 +96,52 @@ namespace MetaInit {
 		return render_pass;
 	}
 
+	VulkanRenderPass::Ptr VulkanRenderPass::Create(VulkanDevice::Ptr device, VkFramebuffer frame_buffer, const VkRenderPassCreateInfo& pass_info)
+	{
+		auto pass_ptr = std::make_unique<VulkanRenderPass>();
+		//todo initial work
+		
+		return pass_ptr;
+	}
+
 	VulkanRenderPass::~VulkanRenderPass()
 	{
-		vkDestroyRenderPass(device_->Get(), pass_, g_host_alloc);
+		vkDestroyRenderPass(device_->Get(), handle_, g_host_alloc);
 	}
 
 	void VulkanRenderPass::Begin(VulkanCmdBuffer& cmd)
 	{
 		VkRenderPassBeginInfo begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
 		begin_info.pNext = VK_NULL_HANDLE;
-		begin_info.framebuffer = nullptr;
+		begin_info.framebuffer = fbo_.Get();
 		begin_info.pClearValues = nullptr;
 		//begin_info.renderArea = nullptr;
-		begin_info.renderPass = pass_;
+		begin_info.renderPass = handle_;
 		vkCmdBeginRenderPass(cmd.Get(), &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
 	void VulkanRenderPass::End(VulkanCmdBuffer& cmd)
 	{
 		vkCmdEndRenderPass(cmd.Get());
+	}
+
+	void VulkanRenderPass::AddSubPass(VulkanSubRenderPass&& sub_pass)
+	{
+		sub_passes_.emplace_back(sub_pass);
+
+		//todo add subpass
+	}
+
+	VulkanRenderPass::~VulkanRenderPass()
+	{
+		if (VK_NULL_HANDLE != handle_)
+		{
+			vkDestroyRenderPass(device_->Get(), handle_, g_host_alloc);
+		}
+
+		if (VK_NULL_HANDLE != fbo_)
+		{
+			vkDestroyFramebuffer(device_->Get(), fbo_, g_host_alloc);
+		}
 	}
 }

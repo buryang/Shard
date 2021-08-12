@@ -70,7 +70,6 @@ namespace MetaInit
 		Vector<HitEntry>		hit_entries_;
 		Vector<MissEntry>		miss_entries_;
 
-
 	};
 
 
