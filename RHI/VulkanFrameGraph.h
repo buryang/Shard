@@ -1,21 +1,23 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/VulkanRHI.h"
+#include "RHI/VulkanResource.h"
 #include "RHI/VulkanRenderPass.h"
+#include "RHI/VulkanCmdContext.h"
+#include "RHI/VulkanMemAllocator.h"
+#include "RHI/VulkanWindowSystem.h"
 #include <set>
 #include <memory>
 
 namespace MetaInit
 {
 
-	VkSemaphoreCreateInfo MakeSemphoreCreateInfo(VkSemaphoreCreateFlags flags);
+	VkSemaphoreCreateInfo MakeSemphoreCreateInfo(VkSemaphoreCreateFlags flags = 0x0);
 
-	class VulkanCmdPoolManager;
-	class DescriptorPoolManager;
 	class VulkanInstance;
 	class VulkanDevice;
 	class VulkanWindowSystemImpl;
-	class VulkanVMAWrapper;
+	class VulkanRenderPass;
 
 	class VulkanFrameContextGraph: public std::enable_shared_from_this<VulkanFrameContextGraph>
 	{
@@ -42,13 +44,13 @@ namespace MetaInit
 		VulkanDevice::Ptr				device_;
 		VulkanCmdPoolManager::Ptr		cmd_pool_;
 		VulkanCmdBuffer::Ptr			cmd_buffer_;
-		VulkanWindowSystemImpl::Ptr		wsi_impl_;
-		VulkanVMAWrapper::Ptr			vma_alloc_;
+		VulkanWindowSystemImpl&			wsi_impl_;
+		VulkanVMAWrapper&				vma_alloc_;
 		DescriptorPoolManager::Ptr		desc_manager_;
 		//VulkanRenderPass				render_pass_;
-		VkSemaphore						image_available_;
+		VkSemaphore						image_available_{ VK_NULL_HANDLE };
 		//ready for render
-		VkSemaphore						present_signal_;
+		VkSemaphore						present_signal_{ VK_NULL_HANDLE };
 		VulkanRenderPass				render_pass_;
 	};
 }

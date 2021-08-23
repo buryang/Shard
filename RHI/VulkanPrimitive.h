@@ -11,6 +11,26 @@ namespace MetaInit
 	using RenderGraph = VulkanFrameContextGraph;
 	namespace Primitive
 	{
+		/*primitive resource state*/
+		enum class EResourceState : uint32_t
+		{
+			UNDEFINED,
+			PREINITIALIZED,
+			COMMON,
+			VERTEX_BUFFER,
+			INDEX_BUFFER,
+			UNORDERED_ACCESS,
+			DEPTH_STENCIL,
+			SHADER_RESOURCE,
+			PRESENT,
+			COPY_DST,
+			COPY_SRC,
+			RESOLVE_SRC,
+			RESOLVE_DST,
+			INDIRECT_ARGS,
+			RENDER_TARGET,
+		};
+
 		class VulkanBuffer;
 		class VulkanImage
 		{
@@ -23,9 +43,13 @@ namespace MetaInit
 			VkImage Get();
 			VkFormat GetFormat()const;
 			uint32_t GetSampleCount()const;
+			EResourceState GetState()const;
+			uint32_t GetLevels()const;
+			uint32_t GetLayers()const;
+			VulkanImage& SetState(EResourceState new_state);
 			VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
 			void To(VulkanImage& image);
-			VulkanImage& From(VulkanImage& image);
+			VulkanImage& From(VulkanImage& image); 
 		private:
 			void GenerateMipMap(VulkanCmdBuffer& cmd_buffer);
 			void UploadData(VulkanCmdBuffer& cmd_buffer);
@@ -42,6 +66,9 @@ namespace MetaInit
 			VkImageCreateInfo		prop_info_;
 			RenderGraph::Ptr		graph_;
 			VmaAllocation			vma_data_;
+			EResourceState			state_;
+			uint32_t				levels_;
+			uint32_t				layers_;
 		};
 
 		class VulkanImageView
@@ -83,11 +110,14 @@ namespace MetaInit
 			~VulkanBuffer();
 			VkBuffer Get()const;
 			VkDeviceSize GetSize()const;
+			EResourceState GetState()const;
+			VulkanBuffer& SetState(EResourceState new_state);
 			void* Map()const;
 			VulkanBuffer& Unmap();
 			VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);
 			VulkanBuffer& Flush()const;
 			VulkanBuffer& Clear(uint32_t data);
+			bool IsStage()const;
 		private:
 			friend class VulkanBufferView;
 			friend class VulkanImage;
@@ -96,6 +126,7 @@ namespace MetaInit
 			VkBufferCreateInfo		prop_info_;
 			RenderGraph::Ptr		graph_;
 			VmaAllocation			vma_data_;
+			EResourceState			state_;
 		};
 
 		class VulkanBufferView

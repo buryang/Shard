@@ -11,7 +11,7 @@ namespace MetaInit
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
 	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo);
 	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size, 
-											const SmallVector<uint32_t>& family_indices);
+											const SmallVector<uint32_t>& family_indices=SmallVector<uint32_t>());
 	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
 													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
 	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
@@ -99,6 +99,7 @@ namespace MetaInit
 		void UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset);
 		void UpdateBufferView(const Primitive::VulkanBufferView& buffer_view, uint32_t binding);
 		void UpdateInAttachment(const VulkanAttachment& attach, uint32_t binding);
+		void UpdateAccelerationStructure(void*, uint32_t binding);
 	private:
 		VulkanDevice::Ptr				device_;
 		DescriptorPoolManager			pool_repo_;

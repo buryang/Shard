@@ -5,6 +5,91 @@
 namespace MetaInit
 {
 
+	/*copy from falcor*/
+	static inline VkPipelineStageFlags ResourceStateToStageFlags(Primitive::EResourceState state, bool is_src)
+	{
+		switch (state)
+		{
+		case Primitive::EResourceState::UNDEFINED:
+		case Primitive::EResourceState::PREINITIALIZED:
+		case Primitive::EResourceState::COMMON:
+			return is_src ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+		case Primitive::EResourceState::COPY_SRC:
+		case Primitive::EResourceState::COPY_DST:
+		case Primitive::EResourceState::RESOLVE_SRC:
+		case Primitive::EResourceState::RESOLVE_DST:
+			return VK_PIPELINE_STAGE_TRANSFER_BIT;
+		case Primitive::EResourceState::RENDER_TARGET:
+			return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		default:
+			throw std::invalid_argument("image state not supported now");
+		}
+	}
+
+	static inline VkImageLayout ResourceStateToImageLayout(Primitive::EResourceState state)
+	{
+		switch (state)
+		{
+		case Primitive::EResourceState::UNDEFINED:
+			return VK_IMAGE_LAYOUT_UNDEFINED;
+		case Primitive::EResourceState::PREINITIALIZED:
+			return VK_IMAGE_LAYOUT_PREINITIALIZED;
+		case Primitive::EResourceState::COMMON:
+		case Primitive::EResourceState::UNORDERED_ACCESS:
+			return VK_IMAGE_LAYOUT_GENERAL;
+		case Primitive::EResourceState::RENDER_TARGET:
+			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		case Primitive::EResourceState::DEPTH_STENCIL:
+			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		case Primitive::EResourceState::RESOLVE_SRC:
+		case Primitive::EResourceState::COPY_SRC:
+			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		case Primitive::EResourceState::RESOLVE_DST:
+		case Primitive::EResourceState::COPY_DST:
+			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		case Primitive::EResourceState::SHADER_RESOURCE:
+			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case Primitive::EResourceState::PRESENT:
+			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		default:
+			throw std::invalid_argument("resource state not supported by image layout transform");
+		}
+	}
+
+	static inline VkAccessFlags ResourceStateToAccessFlags(Primitive::EResourceState state)
+	{
+		switch (state)
+		{
+		case Primitive::EResourceState::UNDEFINED:
+		case Primitive::EResourceState::COMMON:
+		case Primitive::EResourceState::PREINITIALIZED:
+		case Primitive::EResourceState::PRESENT:
+			return static_cast<VkAccessFlags>(0);
+		case Primitive::EResourceState::VERTEX_BUFFER:
+			return VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		case Primitive::EResourceState::INDEX_BUFFER:
+			return VK_ACCESS_INDEX_READ_BIT;
+		case Primitive::EResourceState::SHADER_RESOURCE:
+			return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+		case Primitive::EResourceState::RESOLVE_SRC:
+		case Primitive::EResourceState::COPY_SRC:
+			return VK_ACCESS_TRANSFER_READ_BIT;
+		case Primitive::EResourceState::RESOLVE_DST:
+		case Primitive::EResourceState::COPY_DST:
+			return VK_ACCESS_TRANSFER_WRITE_BIT;
+		case Primitive::EResourceState::INDIRECT_ARGS:
+			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+		case Primitive::EResourceState::UNORDERED_ACCESS:
+			return VK_ACCESS_SHADER_WRITE_BIT;
+		case Primitive::EResourceState::RENDER_TARGET:
+			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		case Primitive::EResourceState::DEPTH_STENCIL:
+			return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		default:
+			throw std::invalid_argument("resource state not supported by access flags transform");
+		}
+	}
+
 	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count)
 	{
 		VkCommandBufferAllocateInfo alloc_info;
@@ -113,6 +198,12 @@ namespace MetaInit
 		vkCmdDispatch(handle_, group_size.x, group_size.y, group_size.z);
 	}
 
+	void VulkanCmdBuffer::DispatchIndirect(Primitive::VulkanBuffer& buffer, const VkDeviceSize offset)
+	{
+		Barrier(buffer, Primitive::ResourceState::INDIRECT_ARGS);
+		vkCmdDispatchIndirect(handle_, buffer.Get(), offset);
+	}
+
 	void VulkanCmdBuffer::Draw( uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count)
 	{
 		vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
@@ -129,7 +220,28 @@ namespace MetaInit
 		*/
 	}
 
-	void VulkanCmdBuffer::Resolve(Primitive::VulkanImage& dst, const Primitive::VulkanImage& src)
+	void VulkanCmdBuffer::Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size)
+	{
+		Barrier(src, Primitive::EResourceState::COPY_SRC);
+		Barrier(dst, Primitive::EResourceState::COPY_DST);
+		
+		VkBufferCopy buffer_region{};
+		buffer_region.dstOffset = dst_offset;
+		buffer_region.srcOffset = src_offset;
+		buffer_region.size = size;
+		vkCmdCopyBuffer(handle_, src.Get(), dst.Get(), 1, &buffer_region);
+	}
+
+	void VulkanCmdBuffer::Copy(Primitive::VulkanImage& dst, Primitive::VulkanBuffer& src)
+	{
+		Barrier(src, Primitive::EResourceState::COPY_SRC);
+		Barrier(dst, Primitive::EResourceState::COPY_DST);
+
+		VkBufferImageCopy image_region{};
+		vkCmdCopyBufferToImage(handle_, src.Get(), dst.Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_region);
+	}
+
+	void VulkanCmdBuffer::Resolve(Primitive::VulkanImage& dst, Primitive::VulkanImage& src)
 	{
 		VkImageSubresourceRange src_range, dst_range;
 		//todo 
@@ -161,6 +273,37 @@ namespace MetaInit
 			vkWaitForFences(pool_->GetDevice()->Get(), 1, &fence_, true, nano_seconds);
 		}
 		vkResetCommandBuffer(handle_, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	}
+
+	void VulkanCmdBuffer::Barrier(Primitive::VulkanImage& image, Primitive::EResourceState new_state)
+	{
+		VulkanBarrierInfo barrier_info{};
+		barrier_info.src_stage_flags_ = ResourceStateToStageFlags(image.GetState(), true);
+		barrier_info.dst_stage_flags_ = ResourceStateToStageFlags(new_state, false);
+		VkImageMemoryBarrier image_barrier{};
+		//todo fill image barrier
+		memset(&image_barrier, 0, sizeof(image_barrier));
+		image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		image_barrier.image = image.Get();
+		image_barrier.oldLayout = ResourceStateToImageLayout(image.GetState());
+		image_barrier.newLayout = ResourceStateToImageLayout(new_state);
+		image_barrier.srcAccessMask = ResourceStateToAccessFlags(image.GetState());
+		image_barrier.dstAccessMask = ResourceStateToAccessFlags(new_state);
+		image_barrier.subresourceRange = 0;//todo 
+		barrier_info.image_barrier_.emplace_back(image_barrier);
+		Barrier(barrier_info); //memory bugs  to fix
+		image.SetState(new_state);
+	}
+
+	void VulkanCmdBuffer::Barrier(Primitive::VulkanBuffer& buffer, Primitive::EResourceState new_state)
+	{
+		VulkanBarrierInfo barrier_info{};
+		barrier_info.src_stage_flags_ = ResourceStateToStageFlags(buffer.GetState(), true);
+		barrier_info.dst_stage_flags_ = ResourceStateToStageFlags(new_state, false);
+		VkBufferMemoryBarrier buffer_barrier{};
+		barrier_info.buffer_barrier_.emplace_back(buffer_barrier);
+		Barrier(barrier_info); //memory bugs  to fix
+		buffer.SetState(new_state);
 	}
 
 	//barriers need to be batched as aggressively as possible

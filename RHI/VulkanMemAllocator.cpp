@@ -2,7 +2,7 @@
 
 namespace MetaInit {
 
-	static constexpr uint32_t GetVulkanApiVersion()
+	static constexpr inline uint32_t GetVulkanApiVersion()
 	{
 #if VMA_VULKAN_VERSION == 1002000
 		return VK_API_VERSION_1_2;
@@ -19,7 +19,7 @@ namespace MetaInit {
 	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags)
 	{
 		VmaAllocatorCreateInfo alloc_info{};
-		memset(&alloc_info, sizeof(VmaAllocatorCreateInfo), 1);
+		memset(&alloc_info, 0, sizeof(VmaAllocatorCreateInfo));
 		alloc_info.flags = flags;
 		alloc_info.vulkanApiVersion = GetVulkanApiVersion();
 		return alloc_info;
@@ -28,10 +28,9 @@ namespace MetaInit {
 	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags)
 	{
 		VmaAllocationCreateInfo alloc_info{};
-		memset(&alloc_info, sizeof(VmaAllocationCreateInfo), 1);
+		memset(&alloc_info, 0, sizeof(VmaAllocationCreateInfo));
 		alloc_info.flags = flags;
 		alloc_info.pUserData = VK_NULL_HANDLE;
-		//alloc_info.
 		return alloc_info;
 	}
 
@@ -55,7 +54,7 @@ namespace MetaInit {
 		vma_info.usage = VMA_MEMORY_USAGE_UNKNOWN;
 		//vma_info.flags = info.flags; //FIXME
 
-		auto ret = vmaCreateImage(handle_, &info, nullptr, &result.image_, &result.allocation_, nullptr);
+		auto ret = vmaCreateImage(handle_, &vma_info, nullptr, &result.image_, &result.allocation_, nullptr);
 		assert(ret == VK_SUCCESS);
 		return result;
 	}

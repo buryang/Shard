@@ -67,6 +67,30 @@ namespace MetaInit
 		return cache_info;
 	}
 
+	static inline VkPipelineInputAssemblyStateCreateInfo MakeVkPipelineInputAssemblyStateCreateInfo()
+	{
+		VkPipelineInputAssemblyStateCreateInfo assemble_info{};
+		memset(&assemble_info, 0, sizeof(assemble_info));
+		assemble_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		return assemble_info;
+	}
+
+	static inline VkPipelineRasterizationStateCreateInfo MakeVkPipelineRasterizationStateCreateInfo()
+	{
+		VkPipelineRasterizationStateCreateInfo raster_info{};
+		memset(&raster_info, 0, sizeof(raster_info));
+		raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		return raster_info;
+	}
+
+	static inline VkPipelineColorBlendStateCreateInfo MakeVkPipelineColorBlendStateCreateInfo()
+	{
+		VkPipelineColorBlendStateCreateInfo color_info{};
+		memset(&color_info, 0, sizeof(color_info));
+		color_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		return color_info;
+	}
+
 	namespace
 	{
 		inline VkPipelineBindPoint TransPipeTypeToBindPoint(VulkanRenderPipeline::EPipeType type)

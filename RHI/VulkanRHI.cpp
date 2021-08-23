@@ -130,6 +130,13 @@ namespace MetaInit
 		return device_prop_.limits.maxColorAttachments;
 	}
 
+	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
+	{
+		VkFormatProperties format_prop{};
+		vkGetPhysicalDeviceFormatProperties(phy_devices_, format, &format_prop);
+		return format_prop;
+	}
+
 	void VulkanDevice::GetSwapchainSupportInfo() const
 	{
 	}

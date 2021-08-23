@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/VulkanRHI.h"
+#include "RHI/VulkanRenderShader.h"
 #include <unordered_map>
 
 namespace MetaInit
@@ -31,23 +32,26 @@ namespace MetaInit
 			throw std::runtime_error("not implement create function"); 
 		}
 		void Bind(VulkanCmdBuffer& cmd_buffer);
-		VkPipeline Get() {
-			return handle_;
-		}
+		VkPipeline Get() { return handle_; }
+		const VkPipelineLayout GetLayout()const { return layout_; }
+		EPipeType Type()const { return pipe_type_; }
 		DescriptorSetsWrapper& operator[](std::string& set_name);
-		~VulkanRenderPipeline() { vkDestroyPipeline(device_->Get(), handle_, nullptr); }
+		virtual ~VulkanRenderPipeline() { vkDestroyPipeline(device_->Get(), handle_, nullptr); }
 	private:
 		void BuildDescriptorSets();
 	private:
 		using DescRepo = std::unordered_map<VkDescriptorSetLayout, DescriptorSetsWrapper>;
 		using DescLut = std::unordered_map<std::string, VkDescriptorSetLayout>;
+		using ShaderList = Vector<VulkanShaderModule>;
+		VulkanDevice::Ptr				device_;
 		VkPipeline						handle_{ VK_NULL_HANDLE };
 		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
 		VkPipelineCache					pipe_cache_{ VK_NULL_HANDLE };
+		VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
 		DescRepo						desc_sets_;
 		DescLut							desc_lut_;
+		ShaderList						shaders_;
 		Vector<VkPushConstantRange>		const_ranges_;
-		VulkanDevice::Ptr				device_;
 		EPipeType						pipe_type_;
 	};
 

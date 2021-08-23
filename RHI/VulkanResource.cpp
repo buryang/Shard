@@ -6,8 +6,9 @@ namespace MetaInit
 {
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
 	{
-		VkImageCreateInfo image_info{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-		image_info.pNext = VK_NULL_HANDLE;
+		VkImageCreateInfo image_info{};
+		memset(&image_info, 0, sizeof(image_info));
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		image_info.flags = flags;
 		image_info.format = format;
 		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -42,7 +43,9 @@ namespace MetaInit
 	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size,
 		const SmallVector<uint32_t>& family_indices)
 	{
-		VkBufferCreateInfo buffer_info{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+		VkBufferCreateInfo buffer_info{};
+		memset(&buffer_info, 0, sizeof(buffer_info));
+		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		buffer_info.flags = flags;
 		buffer_info.pNext = VK_NULL_HANDLE;
 		buffer_info.size = size;
@@ -51,20 +54,16 @@ namespace MetaInit
 			buffer_info.queueFamilyIndexCount = family_indices.size();
 			buffer_info.pQueueFamilyIndices = family_indices.data();
 		}
-		else
-		{
-			buffer_info.queueFamilyIndexCount = 0;
-			buffer_info.pQueueFamilyIndices = VK_NULL_HANDLE;
-		}
 		return buffer_info;
 	}
 
 	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
 		VkFormat format, VkDeviceSize offset, VkDeviceSize range)
 	{
-		VkBufferViewCreateInfo view_info{ VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+		VkBufferViewCreateInfo view_info{};
+		memset(&view_info, 0, sizeof(view_info));
+		view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
 		view_info.flags = flags;
-		view_info.pNext = VK_NULL_HANDLE;
 		view_info.buffer = buffer;
 		view_info.format = format;
 		view_info.offset = offset;
@@ -76,7 +75,9 @@ namespace MetaInit
 												VkSamplerMipmapMode mipmap_mode, VkSamplerAddressMode address_modeu, 
 												VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew)
 	{
-		VkSamplerCreateInfo sample_info{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		VkSamplerCreateInfo sample_info{};
+		memset(&sample_info, 0, sizeof(sample_info));
+		sample_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		sample_info.flags = flags;
 		sample_info.magFilter = mag_filter;
 		sample_info.minFilter = min_filter;
@@ -88,8 +89,9 @@ namespace MetaInit
 
 	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout layout)
 	{
-		VkDescriptorSetAllocateInfo desc_info{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-		desc_info.pNext = VK_NULL_HANDLE;
+		VkDescriptorSetAllocateInfo desc_info{};
+		memset(&desc_info, 0, sizeof(desc_info));
+		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		desc_info.descriptorPool = pool;
 		desc_info.descriptorSetCount = 1;
 		desc_info.pSetLayouts = &layout;
@@ -99,18 +101,14 @@ namespace MetaInit
 	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
 																	const SmallVector<VkDescriptorSetLayoutBinding>& bindings)
 	{
-		VkDescriptorSetLayoutCreateInfo desc_info{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+		VkDescriptorSetLayoutCreateInfo desc_info{};
+		memset(&desc_info, 0, sizeof(desc_info));
+		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		desc_info.flags = flags;
-		desc_info.pNext = VK_NULL_HANDLE;
 		if (!bindings.empty())
 		{
 			desc_info.bindingCount = bindings.size();
 			desc_info.pBindings = bindings.data();
-		}
-		else
-		{
-			desc_info.bindingCount = 0;
-			desc_info.pBindings = VK_NULL_HANDLE;
 		}
 		return desc_info;
 	}
@@ -118,7 +116,9 @@ namespace MetaInit
 	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets,
 		const SmallVector<VkDescriptorPoolSize>& pool_size)
 	{
-		VkDescriptorPoolCreateInfo pool_info{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+		VkDescriptorPoolCreateInfo pool_info{};
+		memset(&pool_info, 0, sizeof(pool_info));
+		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		pool_info.flags = flags;
 		pool_info.pNext = VK_NULL_HANDLE;
 		pool_info.maxSets = max_sets;
@@ -126,11 +126,6 @@ namespace MetaInit
 		{
 			pool_info.poolSizeCount = pool_size.size();
 			pool_info.pPoolSizes = pool_size.data();
-		}
-		else
-		{
-			pool_info.poolSizeCount = 0;
-			pool_info.pPoolSizes = VK_NULL_HANDLE;
 		}
 		return pool_info;
 	}
@@ -288,7 +283,7 @@ namespace MetaInit
 		}
 	}
 
-	static inline VkDescriptorType set_descriptor_type(bool read_only, bool is_buffer, bool is_texel)
+	static inline VkDescriptorType SetDescriptorType(bool read_only, bool is_buffer, bool is_texel)
 	{
 		if (is_buffer) {
 			if (is_texel)
@@ -313,7 +308,7 @@ namespace MetaInit
 		write_set.dstSet = handle_;
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
-		write_set.descriptorType = set_descriptor_type(read_only_, false, false);
+		write_set.descriptorType = SetDescriptorType(read_only_, false, false);
 
 		VkDescriptorImageInfo image_info{};
 		image_info.imageLayout = read_only_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
@@ -344,7 +339,7 @@ namespace MetaInit
 		write_set.dstSet = handle_;
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
-		write_set.descriptorType = set_descriptor_type(read_only_, true, false);
+		write_set.descriptorType = SetDescriptorType(read_only_, true, false);
 		VkDescriptorBufferInfo buffer_info{};
 		buffer_info.buffer = buffer.Get();
 		buffer_info.offset = offset;
@@ -361,7 +356,7 @@ namespace MetaInit
 		write_set.dstSet = handle_;
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
-		write_set.descriptorType = set_descriptor_type(read_only_, true, true);
+		write_set.descriptorType = SetDescriptorType(read_only_, true, true);
 		write_cache_.emplace_back(write_set);
 	}
 
@@ -377,8 +372,28 @@ namespace MetaInit
 		image_info.sampler = VK_NULL_HANDLE;
 		//image_info.imageView = attach.
 		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		write_set.pImageInfo = &image_info;
+		write_set.pImageInfo = &image_info; //fixme deal with pointer
 		write_cache_.emplace_back(write_set);
+	}
+
+	void DescriptorSetsWrapper::UpdateAccelerationStructure(void*, uint32_t binding)
+	{
+		/*If descriptorType is VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 
+		 *the pNext chain must include a VkWriteDescriptorSetAccelerationStructureKHR
+		 *structure whose accelerationStructureCount member equals descriptorCount */
+		VkWriteDescriptorSetAccelerationStructureKHR acc_info;
+		memset(&acc_info, 0, sizeof(acc_info));
+		acc_info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+		acc_info.accelerationStructureCount = 1;
+		acc_info.pAccelerationStructures = nullptr; //todo
+		VkWriteDescriptorSet write_set;
+		memset(&write_set, 0, sizeof(write_set));
+		write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		write_set.dstBinding = binding;
+		write_set.dstSet = handle_;
+		write_set.pNext = &acc_info;
+		write_set.descriptorCount = acc_info.accelerationStructureCount;
+		write_cache_.emplace_back(write_set); //problem
 	}
 
 	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanImage& image)

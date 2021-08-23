@@ -117,6 +117,17 @@ namespace MetaInit
 			return format_;
 		}
 
+		EResourceState VulkanImage::GetState()const
+		{
+			return state_;
+		}
+
+		VulkanImage& VulkanImage::SetState(EResourceState new_state)
+		{
+			state_ = new_state;
+			return *this;
+		}
+
 		uint32_t VulkanImage::GetSampleCount()const
 		{
 			auto samples_flags = static_cast<uint32_t>(prop_info_.samples);
@@ -423,14 +434,23 @@ namespace MetaInit
 
 		VulkanBuffer& VulkanBuffer::Flush()	const
 		{
-			//todo
+			if (mapped_)
+			{
+				vmaFlushAllocation(graph_->GetMemeAllocator().Get(), vma_data_, 0, GetSize());
+			}
 			return *this;
 		}
 
 		VulkanBuffer& VulkanBuffer::Clear(uint32_t data)
 		{
-			vkCmdFillBuffer(nullptr, handle_, 0, VK_WHOLE_SIZE, data);
+			assert(VK_BUFFER_USAGE_TRANSFER_DST_BIT & prop_info_.usage);
+			vkCmdFillBuffer(graph_->GetMemeAllocator().Get(), handle_, 0, VK_WHOLE_SIZE, data);
 			return *this;
+		}
+
+		bool VulkanBuffer::IsStage()const
+		{
+			return prop_info_.usage & 0; //todo
 		}
 
 		VulkanBufferView::VulkanBufferView(VulkanBuffer::Ptr buffer, VkBufferViewCreateFlags flags, VkFormat format,

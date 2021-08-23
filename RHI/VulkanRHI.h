@@ -55,6 +55,7 @@ namespace MetaInit
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
 		uint32_t GetMaxColorTargetCount()const;
 		VkSurfaceCapabilitiesKHR GetSurfaceSupportInfo()const;
+		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;
 		bool IsFormatSupported(VkFormat format)const;
 		//VkPhysicalDevice operator[](uint32_t index);

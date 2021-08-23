@@ -20,8 +20,8 @@ namespace MetaInit {
 		VkAccelerationStructureKHR	acc_{ VK_NULL_HANDLE };
 	};
 
-	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags );
-	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags);
+	VmaAllocatorCreateInfo MakeVmaAllocatorCreateInfo(VmaAllocatorCreateFlags flags=VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
+	VmaAllocationCreateInfo MakeVmaAllocationCreateInfo(VmaAllocationCreateFlags flags=VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT);
 
 	class VulkanVMAWrapper {
 	public:
