@@ -270,6 +270,10 @@ namespace MetaInit
 		return PseudoDescriptor(this, desc_lut_[desc_name]);
 	}
 
+	void DescriptorSetsWrapper::Init(const DesSetDesc& desc)
+	{
+	}
+
 	void DescriptorSetsWrapper::BeginUpdates()
 	{
 		write_cache_.clear();
@@ -415,5 +419,9 @@ namespace MetaInit
 	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const VulkanAttachment& attach)
 	{
 		wrapper_->UpdateInAttachment(attach, desc_binding_);
+	}
+	bool ConstantRangeDesc::ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size)
+	{
+		return desc.offset_ & ~0x3 == 0 && desc.size_ & ~0x3 == 0 && desc.size_ <= max_const_size;
 	}
 }

@@ -6,7 +6,7 @@ namespace MetaInit
 {
 	class VulkanShaderModule;
 	VkShaderModuleCreateInfo MakeShaderModuleCreateInfo(const Span<char>& code);
-	VkPipelineShaderStageCreateInfo MakeShaderStageCreateInfo(VulkanShaderModule& module, const std::string& name);
+	VkPipelineShaderStageCreateInfo MakeShaderStageCreateInfo(VulkanShaderModule& module);
 
 	struct VulkanResourceDiscriptors
 	{
@@ -19,21 +19,31 @@ namespace MetaInit
 	public:
 		enum class EType
 		{
-			VERTEX,
-			PIXEL,
-			GEOMETRY,
-			COMPUTE,
-			HULL,
-			DOMAINS,
+			eVertex,
+			ePixel,
+			eGeometry,
+			eCompute,
+			eHull, //Tessellation
+			eDomain,
+			//ray tracing part
+			eRaygen,
+			eAnyHit,
+			eMiss,
+			eIntersction,
+			eMesh, //Mesh shader 
+			eCallable,
 		};
-		VulkanShaderModule(VulkanDevice::Ptr device, const std::string& shader_file, EType type);
+		using Ptr = std::shared_ptr<VulkanShaderModule>;
+		VulkanShaderModule(VulkanDevice::Ptr device, EType type, const std::string& shader_file, const std::string& name);
 		DISALLOW_COPY_AND_ASSIGN(VulkanShaderModule);
 		~VulkanShaderModule();
 		VkShaderModule Get();
 		EType Type()const;
+		const std::string& GetName()const;
 	private:
 		VkShaderModule			handle_{ VK_NULL_HANDLE };
 		VulkanDevice::Ptr		device_;
 		EType					shader_type_;
+		std::string				shader_name_;
 	};
 }

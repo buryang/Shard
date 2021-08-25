@@ -56,22 +56,22 @@ namespace MetaInit
 		/*cmd buffer type*/
 		enum class EType :uint8_t
 		{
-			PRIMARY,
-			SECONDARY,
-			COUNT
+			ePrimary,
+			eSecondary,
+			eCount
 		};
 		/*cmd buffer state*/
 		enum class EState:uint32_t
 		{
-			INITIAL,
-			RECORDING,
-			EXECUTABLE,
-			PENDING,
-			INVALID,
-			COUNT
+			eInitial,
+			eRecording,
+			eExecutable,
+			ePending,
+			eInvalid,
+			eCount
 		};
-		void SetViewPoint(mat4 view_matrix);
-		void SetLight(vec3 energy, vec3 position, vec3 direction);
+		//void SetViewPoint(mat4 view_matrix);
+		//void SetLight(vec3 energy, vec3 position, vec3 direction);
 		void SetState(EState state);
 		EState State()const;
 		void Begin();

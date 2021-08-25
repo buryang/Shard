@@ -14,7 +14,7 @@ namespace MetaInit {
 		return module_info;
 	}
 
-	VkPipelineShaderStageCreateInfo MakeShaderStageCreateInfo(VulkanShaderModule& module, const std::string& name)
+	VkPipelineShaderStageCreateInfo MakeShaderStageCreateInfo(VulkanShaderModule& module)
 	{
 		VkPipelineShaderStageCreateInfo stage_info{};
 		memset(&stage_info, 0, sizeof(stage_info));
@@ -22,27 +22,27 @@ namespace MetaInit {
 		using ShaderType = VulkanShaderModule::EType;
 		switch (module.Type())
 		{
-		case ShaderType::COMPUTE:
+		case ShaderType::eCompute:
 			stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 			break;
-		case ShaderType::VERTEX:
+		case ShaderType::eVertex:
 			stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
 			break;
-		case ShaderType::GEOMETRY:
+		case ShaderType::eGeometry:
 			stage_info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
 			break;
-		case ShaderType::PIXEL:
+		case ShaderType::ePixel:
 			stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 			break;
 		default:
 			throw std::runtime_error("not support such shader");
 		}
 		stage_info.module = module.Get();
-		stage_info.pName = name.c_str();
+		stage_info.pName = module.GetName().c_str();
 		return stage_info;
 	}
 
-	VulkanShaderModule::VulkanShaderModule(VulkanDevice::Ptr device, const std::string& shader_file, EType type):device_(device),shader_type_(type)
+	VulkanShaderModule::VulkanShaderModule(VulkanDevice::Ptr device, EType type, const std::string& shader_file, const std::string& name):device_(device),shader_type_(type), shader_name_(name)
 	{
 		std::ifstream shader_stream(shader_file, std::ios::binary | std::ios::ate);
 		auto stream_size = shader_stream.tellg();

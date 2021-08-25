@@ -10,16 +10,16 @@ namespace MetaInit
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::UNDEFINED:
-		case Primitive::EResourceState::PREINITIALIZED:
-		case Primitive::EResourceState::COMMON:
+		case Primitive::EResourceState::eUndefined:
+		case Primitive::EResourceState::ePreInitialized:
+		case Primitive::EResourceState::eCommon:
 			return is_src ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-		case Primitive::EResourceState::COPY_SRC:
-		case Primitive::EResourceState::COPY_DST:
-		case Primitive::EResourceState::RESOLVE_SRC:
-		case Primitive::EResourceState::RESOLVE_DST:
+		case Primitive::EResourceState::eCopySrc:
+		case Primitive::EResourceState::eCopyDst:
+		case Primitive::EResourceState::eResolveSrc:
+		case Primitive::EResourceState::eResolveDst:
 			return VK_PIPELINE_STAGE_TRANSFER_BIT;
-		case Primitive::EResourceState::RENDER_TARGET:
+		case Primitive::EResourceState::eRenderTarget:
 			return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		default:
 			throw std::invalid_argument("image state not supported now");
@@ -30,26 +30,26 @@ namespace MetaInit
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::UNDEFINED:
+		case Primitive::EResourceState::eUndefined:
 			return VK_IMAGE_LAYOUT_UNDEFINED;
-		case Primitive::EResourceState::PREINITIALIZED:
+		case Primitive::EResourceState::ePreInitialized:
 			return VK_IMAGE_LAYOUT_PREINITIALIZED;
-		case Primitive::EResourceState::COMMON:
-		case Primitive::EResourceState::UNORDERED_ACCESS:
+		case Primitive::EResourceState::eCommon:
+		case Primitive::EResourceState::eUnorderedAccess:
 			return VK_IMAGE_LAYOUT_GENERAL;
-		case Primitive::EResourceState::RENDER_TARGET:
+		case Primitive::EResourceState::eRenderTarget:
 			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		case Primitive::EResourceState::DEPTH_STENCIL:
+		case Primitive::EResourceState::eDepthStencil:
 			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		case Primitive::EResourceState::RESOLVE_SRC:
-		case Primitive::EResourceState::COPY_SRC:
+		case Primitive::EResourceState::eResolveSrc:
+		case Primitive::EResourceState::eCopySrc:
 			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		case Primitive::EResourceState::RESOLVE_DST:
-		case Primitive::EResourceState::COPY_DST:
+		case Primitive::EResourceState::eResolveDst:
+		case Primitive::EResourceState::eCopyDst:
 			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		case Primitive::EResourceState::SHADER_RESOURCE:
+		case Primitive::EResourceState::eShaderResource:
 			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		case Primitive::EResourceState::PRESENT:
+		case Primitive::EResourceState::ePresent:
 			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		default:
 			throw std::invalid_argument("resource state not supported by image layout transform");
@@ -60,30 +60,30 @@ namespace MetaInit
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::UNDEFINED:
-		case Primitive::EResourceState::COMMON:
-		case Primitive::EResourceState::PREINITIALIZED:
-		case Primitive::EResourceState::PRESENT:
+		case Primitive::EResourceState::eUndefined:
+		case Primitive::EResourceState::eCommon:
+		case Primitive::EResourceState::ePreInitialized:
+		case Primitive::EResourceState::ePresent:
 			return static_cast<VkAccessFlags>(0);
-		case Primitive::EResourceState::VERTEX_BUFFER:
+		case Primitive::EResourceState::eVertexBuffer:
 			return VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-		case Primitive::EResourceState::INDEX_BUFFER:
+		case Primitive::EResourceState::eIndexBuffer:
 			return VK_ACCESS_INDEX_READ_BIT;
-		case Primitive::EResourceState::SHADER_RESOURCE:
+		case Primitive::EResourceState::eShaderResource:
 			return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-		case Primitive::EResourceState::RESOLVE_SRC:
-		case Primitive::EResourceState::COPY_SRC:
+		case Primitive::EResourceState::eResolveSrc:
+		case Primitive::EResourceState::eCopySrc:
 			return VK_ACCESS_TRANSFER_READ_BIT;
-		case Primitive::EResourceState::RESOLVE_DST:
-		case Primitive::EResourceState::COPY_DST:
+		case Primitive::EResourceState::eResolveDst:
+		case Primitive::EResourceState::eCopyDst:
 			return VK_ACCESS_TRANSFER_WRITE_BIT;
-		case Primitive::EResourceState::INDIRECT_ARGS:
+		case Primitive::EResourceState::eIndirectArgs:
 			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-		case Primitive::EResourceState::UNORDERED_ACCESS:
+		case Primitive::EResourceState::eUnorderedAccess:
 			return VK_ACCESS_SHADER_WRITE_BIT;
-		case Primitive::EResourceState::RENDER_TARGET:
+		case Primitive::EResourceState::eRenderTarget:
 			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		case Primitive::EResourceState::DEPTH_STENCIL:
+		case Primitive::EResourceState::eDepthStencil:
 			return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		default:
 			throw std::invalid_argument("resource state not supported by access flags transform");
@@ -184,13 +184,13 @@ namespace MetaInit
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		begin_info.pInheritanceInfo = VK_NULL_HANDLE;
 		vkBeginCommandBuffer(handle_, &begin_info);
-		state_ = EState::RECORDING;
+		state_ = EState::eRecording;
 	}
 
-	void VulkanCmdBuffer::ExecuteEnd()
+	void VulkanCmdBuffer::End()
 	{
 		vkEndCommandBuffer(handle_);
-		state_ = EState::EXECUTABLE;
+		state_ = VulkanCmdBuffer::EState::eExecutable;
 	}
 
 	void VulkanCmdBuffer::Dispatch(vec3 group_size)
@@ -200,7 +200,7 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::DispatchIndirect(Primitive::VulkanBuffer& buffer, const VkDeviceSize offset)
 	{
-		Barrier(buffer, Primitive::ResourceState::INDIRECT_ARGS);
+		Barrier(buffer, Primitive::EResourceState::eIndirectArgs);
 		vkCmdDispatchIndirect(handle_, buffer.Get(), offset);
 	}
 
@@ -222,8 +222,8 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size)
 	{
-		Barrier(src, Primitive::EResourceState::COPY_SRC);
-		Barrier(dst, Primitive::EResourceState::COPY_DST);
+		Barrier(src, Primitive::EResourceState::eCopySrc);
+		Barrier(dst, Primitive::EResourceState::eCopyDst);
 		
 		VkBufferCopy buffer_region{};
 		buffer_region.dstOffset = dst_offset;
@@ -234,8 +234,8 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::Copy(Primitive::VulkanImage& dst, Primitive::VulkanBuffer& src)
 	{
-		Barrier(src, Primitive::EResourceState::COPY_SRC);
-		Barrier(dst, Primitive::EResourceState::COPY_DST);
+		Barrier(src, Primitive::EResourceState::eCopySrc);
+		Barrier(dst, Primitive::EResourceState::eCopyDst);
 
 		VkBufferImageCopy image_region{};
 		vkCmdCopyBufferToImage(handle_, src.Get(), dst.Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_region);
@@ -248,7 +248,8 @@ namespace MetaInit
 		VkImageResolve resolve_info{};
 		//resolve_info.srcSubresource = src_range;
 		//resolve_info.dstSubresource = dst_range;
-		vkCmdResolveImage(handle_, src.Get(), nullptr, dst.Get(), nullptr, 1, &resolve_info);
+		vkCmdResolveImage(handle_, src.Get(), ResourceStateToImageLayout(src.GetState()), 
+									dst.Get(), ResourceStateToImageLayout(dst.GetState()), 1, &resolve_info);
 	}
 
 	void VulkanCmdBuffer::Execute(Vector<VulkanCmdBuffer>& cmd_buffers)
@@ -262,12 +263,12 @@ namespace MetaInit
 			*vec_iter = buffer_iter->handle_;
 		}
 		vkCmdExecuteCommands(handle_, static_cast<uint32_t>(cmd_count), cmd_vec.data());
-		state_ = EState::PENDING;
+		state_ = EState::ePending;
 	}
 
 	void VulkanCmdBuffer::Reset()
 	{ 
-		if (state_ == EState::EXECUTABLE)//FIXME
+		if (state_ == EState::eExecutable)//FIXME
 		{
 			auto nano_seconds = 33 * 1000 * 1000LL;//copy from ue5
 			vkWaitForFences(pool_->GetDevice()->Get(), 1, &fence_, true, nano_seconds);
@@ -318,7 +319,7 @@ namespace MetaInit
 
 	VulkanCmdBuffer::VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool):handle_(cmd_buffer), pool_(cmd_pool)
 	{
-		state_ = EState::INITIAL;
+		state_ = EState::eInitial;
 	}
 
 	VulkanCmdPoolManager::VulkanCmdPoolManager(VulkanDevice::Ptr device, const uint32_t pool_size)

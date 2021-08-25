@@ -36,12 +36,12 @@ namespace MetaInit
 	class MINIT_API VulkanDevice
 	{
 	public:
-		enum EQueueType :uint32_t
+		enum class EQueueType :uint32_t
 		{
-			GRAPHICS,
-			COMPUTE,
-			TRANSFER,
-			ALLIN,
+			eGraphics,
+			eCompute,
+			eTransfer,
+			eAllIn,
 		};
 		using Ptr = std::shared_ptr<VulkanDevice>;
 		static Ptr Create(VulkanInstance::Ptr instance, const VkDeviceCreateInfo& device_info);
@@ -54,6 +54,7 @@ namespace MetaInit
 		void ReleaseQueue(VulkanQueue& queue);
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
 		uint32_t GetMaxColorTargetCount()const;
+		uint32_t GetMaxPushConstantLimit()const;
 		VkSurfaceCapabilitiesKHR GetSurfaceSupportInfo()const;
 		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;

@@ -79,8 +79,13 @@ namespace MetaInit
 			DescriptorSetsWrapper* wrapper_ = nullptr;
 			uint32_t desc_binding_ = 0;
 		};
+
+		typedef struct _DescriptorSetDesc
+		{
+			//todo 
+		}DesSetDesc;
 		PseudoDescriptor operator[](std::string& desc_name);
-		void Init();
+		void Init(const DesSetDesc& desc);
 		template <typename ...Args>
 		void Write(int index, Args ...args);
 		void BeginUpdates();
@@ -88,6 +93,7 @@ namespace MetaInit
 		void Reset();
 		void UnInit();
 		VkDescriptorSet Get()const { return handle_; }
+		VkDescriptorSetLayout GetLayout()const { return layout_; }
 		DescriptorSetsWrapper() = default;
 		DescriptorSetsWrapper(const DescriptorSetsWrapper&) = delete;
 		DescriptorSetsWrapper& operator=(const DescriptorSetsWrapper&) = delete;
@@ -104,11 +110,19 @@ namespace MetaInit
 		VulkanDevice::Ptr				device_;
 		DescriptorPoolManager			pool_repo_;
 		VkDescriptorSet					handle_{ VK_NULL_HANDLE };
-		VkDescriptorSetLayout			layouts_{ VK_NULL_HANDLE };
+		VkDescriptorSetLayout			layout_{ VK_NULL_HANDLE };
 		using DescLut = std::unordered_map<std::string, uint32_t>;
 		DescLut							desc_lut_;
 		Vector<VkWriteDescriptorSet>	write_cache_;
 		bool							read_only_ = false;
+	};
+
+	struct ConstantRangeDesc
+	{
+		uint32_t		flags_;
+		uint32_t		offset_;
+		uint32_t		size_;
+		static bool ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size);
 	};
 	
 }

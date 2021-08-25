@@ -130,6 +130,11 @@ namespace MetaInit
 		return device_prop_.limits.maxColorAttachments;
 	}
 
+	uint32_t VulkanDevice::GetMaxPushConstantLimit() const
+	{
+		return device_prop_.limits.maxPushConstantsSize;
+	}
+
 	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
 	{
 		VkFormatProperties format_prop{};
@@ -183,16 +188,16 @@ namespace MetaInit
 			VkQueueFlags queue_flags = 0;
 			switch (queue_type)
 			{
-			case GRAPHICS:
+			case EQueueType::eGraphics:
 				queue_flags = VK_QUEUE_GRAPHICS_BIT;
 				break;
-			case COMPUTE:
+			case EQueueType::eCompute:
 				queue_flags = VK_QUEUE_COMPUTE_BIT;
 				break;
-			case TRANSFER:
+			case EQueueType::eTransfer:
 				queue_flags = VK_QUEUE_TRANSFER_BIT;
 				break;
-			case ALLIN:
+			case EQueueType::eAllIn:
 				queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
 				break;
 			default:
@@ -209,10 +214,10 @@ namespace MetaInit
 			}
 		};
 
-		queue_creator(VulkanDevice::EQueueType::GRAPHICS);
-		queue_creator(VulkanDevice::EQueueType::COMPUTE);
-		queue_creator(VulkanDevice::EQueueType::TRANSFER);
-		queue_creator(VulkanDevice::EQueueType::ALLIN);
+		queue_creator(VulkanDevice::EQueueType::eGraphics);
+		queue_creator(VulkanDevice::EQueueType::eCompute);
+		queue_creator(VulkanDevice::EQueueType::eTransfer);
+		queue_creator(VulkanDevice::EQueueType::eAllIn);
 	}
 
 	VulkanInstance::Ptr VulkanInstance::Create(const VkInstanceCreateInfo& params)
@@ -281,7 +286,7 @@ namespace MetaInit
 		return instance_ptr;
 	}
 
-	VulkanQueue::VulkanQueue(VulkanDevice* device, uint32_t family_index, uint32_t index):device_(device), handle_(handle)
+	VulkanQueue::VulkanQueue(VulkanDevice* device, uint32_t family_index, uint32_t index):device_(device)
 	{
 		//todo other work
 		vkGetDeviceQueue(device->Get(), family_index, index, &handle_);

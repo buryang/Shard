@@ -1,5 +1,5 @@
 #pragma once
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
 
 namespace MetaInit
 {
@@ -31,10 +31,12 @@ namespace MetaInit
 		using TableImpl = VkBuffer;
 		enum class Type:uint32_t
 		{
-			RGEN,
-			RMISS,
-			RHIT,
-			RCALL,
+			eRegen,
+			eRmiss,
+			eRhit,
+			eRcall,
+			eShaderGroupCount,
+			eCount
 		};
 
 		struct HitEntry
@@ -58,7 +60,7 @@ namespace MetaInit
 		VulkanRayTraceBindTable(const String& spv_file);
 		const Table& GetBindTable()const;
 	private:
-		void Compile(const String& glsl_file);
+		//void Compile(const String& glsl_file);
 		void Load(const String& spv_file);
 	private:
 		Table					shader_tbl_;
@@ -69,7 +71,6 @@ namespace MetaInit
 		Type					type_;
 		Vector<HitEntry>		hit_entries_;
 		Vector<MissEntry>		miss_entries_;
-
 	};
 
 

@@ -14,21 +14,21 @@ namespace MetaInit
 		/*primitive resource state*/
 		enum class EResourceState : uint32_t
 		{
-			UNDEFINED,
-			PREINITIALIZED,
-			COMMON,
-			VERTEX_BUFFER,
-			INDEX_BUFFER,
-			UNORDERED_ACCESS,
-			DEPTH_STENCIL,
-			SHADER_RESOURCE,
-			PRESENT,
-			COPY_DST,
-			COPY_SRC,
-			RESOLVE_SRC,
-			RESOLVE_DST,
-			INDIRECT_ARGS,
-			RENDER_TARGET,
+			eUndefined,
+			ePreInitialized,
+			eCommon,
+			eVertexBuffer,
+			eIndexBuffer,
+			eUnorderedAccess,
+			eDepthStencil,
+			eShaderResource,
+			ePresent,
+			eCopyDst,
+			eCopySrc,
+			eResolveSrc,
+			eResolveDst,
+			eIndirectArgs,
+			eRenderTarget,
 		};
 
 		class VulkanBuffer;
