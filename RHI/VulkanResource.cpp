@@ -99,7 +99,7 @@ namespace MetaInit
 	}
 
 	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
-																	const SmallVector<VkDescriptorSetLayoutBinding>& bindings)
+																			const SmallVector<VkDescriptorSetLayoutBinding>& bindings)
 	{
 		VkDescriptorSetLayoutCreateInfo desc_info{};
 		memset(&desc_info, 0, sizeof(desc_info));
@@ -114,7 +114,7 @@ namespace MetaInit
 	}
 
 	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets,
-		const SmallVector<VkDescriptorPoolSize>& pool_size)
+																	const SmallVector<VkDescriptorPoolSize>& pool_size)
 	{
 		VkDescriptorPoolCreateInfo pool_info{};
 		memset(&pool_info, 0, sizeof(pool_info));
@@ -136,8 +136,7 @@ namespace MetaInit
 		Init(device, set_size, layout);
 	}
 
-	void DescriptorPool::Init(VulkanDevice::Ptr device, uint32_t set_size,
-		const VkDescriptorSetLayoutCreateInfo& layout_info)
+	void DescriptorPool::Init(VulkanDevice::Ptr device, uint32_t set_size)
 	{
 		device_ = device;
 		curr_ = VK_NULL_HANDLE;
@@ -185,14 +184,13 @@ namespace MetaInit
 			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
 		}
 		used_.clear();
-		vkDestroyDescriptorSetLayout(device_->Get(), layout_, g_host_alloc);
 	}
 
-	VkDescriptorSet DescriptorPool::CreateDescriptorSet()
+	VkDescriptorSet DescriptorPool::CreateDescriptorSet(VkDescriptorSetLayout layout)
 	{
 		auto desc_creater = [&](VkDescriptorPool pool) {
 			VkDescriptorSet desc_set = VK_NULL_HANDLE;
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layout_);
+			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layout);
 			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, &desc_set);
 			if (ret == VK_SUCCESS)
 			{
@@ -255,14 +253,14 @@ namespace MetaInit
 		used_.push_back(curr_);
 	}
 
-	DescriptorPool::Ptr DescriptorPoolManager::GetPool(VkDescriptorSetLayout layout)
+	DescriptorPool::Ptr DescriptorPoolManager::GetPool(uint32_t hash)
 	{
-		if (pools_.find(layout) == pools_.end())
+		if (pools_.find(hash) == pools_.end())
 		{
 			DescriptorPool::Ptr pool_ptr(new DescriptorPool);
-			pools_.insert(std::make_pair(layout, pool_ptr));
+			pools_.insert(std::make_pair(hash, pool_ptr));
 		}
-		return pools_[layout];
+		return pools_[hash];
 	}
 
 	DescriptorSetsWrapper::PseudoDescriptor DescriptorSetsWrapper::operator[](std::string& desc_name)
@@ -270,8 +268,18 @@ namespace MetaInit
 		return PseudoDescriptor(this, desc_lut_[desc_name]);
 	}
 
-	void DescriptorSetsWrapper::Init(const DesSetDesc& desc)
+	void DescriptorSetsWrapper::Init(DescriptorPool& pool, const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSetLayout layout)
 	{
+		name_ = desc_set.set_name_;
+		auto& bind_cfgs = desc_set.bindings_;
+		desc_lut_.clear();
+		for (auto n = 0; n < desc_set.bindings_.size(); ++n)
+		{
+			desc_lut_[bind_cfgs[n].binding_name_] = n;
+		}
+
+		layout_ = layout;
+		handle_ = pool.CreateDescriptorSet(layout);
 	}
 
 	void DescriptorSetsWrapper::BeginUpdates()
@@ -285,6 +293,11 @@ namespace MetaInit
 		{
 			vkUpdateDescriptorSets(device_->Get(), write_cache_.size(), write_cache_.data(), 0, VK_NULL_HANDLE);
 		}
+	}
+
+	void DescriptorSetsWrapper::UnInit()
+	{
+		//do nothing descriptor pool resp for release descriptorset
 	}
 
 	static inline VkDescriptorType SetDescriptorType(bool read_only, bool is_buffer, bool is_texel)
@@ -420,8 +433,19 @@ namespace MetaInit
 	{
 		wrapper_->UpdateInAttachment(attach, desc_binding_);
 	}
-	bool ConstantRangeDesc::ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size)
+
+	bool RootSignature::ConstantRangeDesc::ValidDesc(const RootSignature::ConstantRangeDesc& desc, const uint32_t max_const_size)
 	{
 		return desc.offset_ & ~0x3 == 0 && desc.size_ & ~0x3 == 0 && desc.size_ <= max_const_size;
+	}
+
+	void RootSignature::AddSet(DescriptorSetDesc& desc_set)
+	{
+		desc_sets_.emplace_back(desc_set);
+	}
+
+	void RootSignature::AddConstRange(ConstantRangeDesc& const_range)
+	{
+		consts_.emplace_back(const_range);
 	}
 }

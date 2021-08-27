@@ -45,8 +45,7 @@ namespace MetaInit {
 		vmaCreateAllocator(&alloc_info, &handle_);
 	}
 	
-	VMAAllocation VulkanVMAWrapper::CreateImage(size_t size, const VkImageCreateInfo& info,
-										VkImageLayout layout, VkMemoryPropertyFlags props)
+	VMAAllocation VulkanVMAWrapper::CreateImage(size_t size, const VkImageCreateInfo& info, VkImageLayout layout, VkMemoryPropertyFlags props)
 	{
 		VMAAllocation result;
 
@@ -72,7 +71,7 @@ namespace MetaInit {
 	}
 
 	/*use dedicated allocator?*/
-	VMAAccerleraion VulkanVMAWrapper::CreateAccleration(VkAccelerationStructureCreateInfoKHR& info, VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+	VMAAllocation VulkanVMAWrapper::CreateAccleration(VkAccelerationStructureCreateInfoKHR& info, VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
 	{
 		VMAAccerleraion result;
 		VkBufferCreateInfo buffer_info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};

@@ -479,5 +479,6 @@ namespace MetaInit
 				vkDestroyBufferView(buffer_->device_->Get(), handle_, g_host_alloc);
 			}
 		}
+
 	}
 }

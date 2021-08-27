@@ -1,5 +1,6 @@
 #pragma once
 #include "RHI/VulkanRHI.h"
+#include "RHI/VulkanResource.h"
 #include "RHI/VulkanRenderShader.h"
 #include <unordered_map>
 
@@ -24,8 +25,7 @@ namespace MetaInit
 			EPipeType						pipe_type_;
 			VkPipelineCreateFlags			flags_;
 			//pipeline layout create info params
-			Vector<VkDescriptorSetLayout>	ds_layouts_;
-			Vector<VkPushConstantRange>		pc_range_;
+			RootSignature					root_signatue_;
 			typedef struct _VulkanShaderInfo
 			{
 				VulkanShaderModule::EType shader_type_;
@@ -64,6 +64,7 @@ namespace MetaInit
 					uint32_t				polygon_mode_{ VK_POLYGON_MODE_FILL };
 					uint32_t				cull_mode_{ VK_CULL_MODE_BACK_BIT };
 					uint32_t				front_face_{ VK_FRONT_FACE_COUNTER_CLOCKWISE };
+					float					line_width_{ 1.0f};
 					//multisample arguments
 					uint32_t				sample_count_ = 1;
 					bool					use_alpha_coverage_ = false;
@@ -100,26 +101,26 @@ namespace MetaInit
 		}Desc;
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc_params);
 		void Bind(VulkanCmdBuffer& cmd_buffer);
+		//constant data 
 		void PushConsts(VulkanCmdBuffer& cmd_buffer, const uint32_t stage, const uint32_t offset, const Span<uint8_t>& data);
 		VkPipeline Get() { return handle_; }
 		const VkPipelineLayout GetLayout()const { return layout_; }
 		EPipeType Type()const { return pipe_type_; }
-		DescriptorSetsWrapper& operator[](const std::string& set_name);
+		DescriptorSetsWrapper& operator[](const std::string& set_name); 
 		VulkanRenderPipeline(VulkanDevice::Ptr device, const Desc& desc, EPipeType pipe_type);
 		virtual ~VulkanRenderPipeline();
 	private:
-		void BuildDescriptorSets();
+		void InitialDescSetLayouts(const RootSignature& root);
 	protected:
-		using DescRepo = std::unordered_map<VkDescriptorSetLayout, DescriptorSetsWrapper>;
-		using DescLut = std::unordered_map<std::string, VkDescriptorSetLayout>;
 		using ShaderList = Vector<VulkanShaderModule::Ptr>;
+		using DescList = Vector<DescriptorSetsWrapper>;
 		VulkanDevice::Ptr				device_;
 		VkPipeline						handle_{ VK_NULL_HANDLE };
 		EPipeType						pipe_type_;
 		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
+		Vector<VkDescriptorSetLayout>	ds_layouts_;
 		VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
-		DescRepo						desc_sets_;
-		DescLut							desc_lut_;
+		DescList						descs_;
 		ShaderList						stages_;
 	};
 
@@ -127,7 +128,7 @@ namespace MetaInit
 	class VulkanComputePipeline : public VulkanRenderPipeline
 	{
 	public:
-		explicit VulkanComputePipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param)
+		explicit VulkanComputePipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
 	};
 
 	class VulkanGraphicsPipeline : public VulkanRenderPipeline

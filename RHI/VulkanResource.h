@@ -34,7 +34,7 @@ namespace MetaInit
 		void Init(VulkanDevice::Ptr device, uint32_t set_size,
 					const VkDescriptorSetLayoutCreateInfo& layout);
 		void UnInit();
-		VkDescriptorSet CreateDescriptorSet();
+		VkDescriptorSet CreateDescriptorSet(const VkDescriptorSetLayout layout);
 		Vector<VkDescriptorSet> CreateDescriptorSets(uint32_t batch_size);
 		void Reset();
 		~DescriptorPool() { UnInit(); }
@@ -47,7 +47,6 @@ namespace MetaInit
 		List used_;
 		VkDescriptorPool			curr_{VK_NULL_HANDLE};
 		VulkanDevice::Ptr			device_;
-		VkDescriptorSetLayout		layout_;
 		uint32_t					pool_size_;
 		std::mutex					pool_mutex_;
 	};
@@ -58,9 +57,42 @@ namespace MetaInit
 		using Ptr = std::shared_ptr<DescriptorPoolManager>;
 		DescriptorPoolManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPoolManager);
-		DescriptorPool::Ptr GetPool(VkDescriptorSetLayout layout);
+		DescriptorPool::Ptr GetPool(uint32_t hash);
 	private:
-		std::unordered_map<VkDescriptorSetLayout, DescriptorPool::Ptr> pools_;
+		std::unordered_map<uint32_t, DescriptorPool::Ptr>	pools_;
+	};
+
+	//name from dxr
+	class RootSignature
+	{
+	public:
+		struct ConstantRangeDesc
+		{
+			uint32_t		flags_;
+			uint32_t		offset_;
+			uint32_t		size_;
+			static bool ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size);
+		};
+
+		struct DescriptorSetDesc
+		{
+			struct DescriptorBindDesc
+			{
+				uint32_t			binding_		= 0;
+				uint32_t			desc_type_		= VK_DESCRIPTOR_TYPE_SAMPLER;
+				uint32_t			desc_count_		= 0;
+				uint32_t			stage_flags_	= VK_SHADER_STAGE_ALL;
+				std::string			binding_name_;
+			};
+			Vector<DescriptorBindDesc>	bindings_;
+			std::string					set_name_;
+			uint32_t Size()const { return bindings_.size(); }
+		};
+		void AddSet(DescriptorSetDesc& desc_set);
+		void AddConstRange(ConstantRangeDesc& const_range);
+	private:
+		Vector<ConstantRangeDesc>		consts_;
+		Vector<DescriptorSetDesc>		desc_sets_;
 	};
 
 	class VulkanCmdBuffer;
@@ -79,24 +111,20 @@ namespace MetaInit
 			DescriptorSetsWrapper* wrapper_ = nullptr;
 			uint32_t desc_binding_ = 0;
 		};
-
-		typedef struct _DescriptorSetDesc
-		{
-			//todo 
-		}DesSetDesc;
 		PseudoDescriptor operator[](std::string& desc_name);
-		void Init(const DesSetDesc& desc);
+		void Init(DescriptorPool& pool, const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSetLayout layout);
 		template <typename ...Args>
 		void Write(int index, Args ...args);
 		void BeginUpdates();
 		void EndUpdates();
 		void Reset();
 		void UnInit();
+		const std::string& Name()const { return name_; }
 		VkDescriptorSet Get()const { return handle_; }
 		VkDescriptorSetLayout GetLayout()const { return layout_; }
 		DescriptorSetsWrapper() = default;
-		DescriptorSetsWrapper(const DescriptorSetsWrapper&) = delete;
-		DescriptorSetsWrapper& operator=(const DescriptorSetsWrapper&) = delete;
+		DISALLOW_COPY_AND_ASSIGN(DescriptorSetsWrapper);
+		//descriptor pool to manage resource release
 		~DescriptorSetsWrapper() = default;
 	private:
 		//configure descriptor 
@@ -115,14 +143,10 @@ namespace MetaInit
 		DescLut							desc_lut_;
 		Vector<VkWriteDescriptorSet>	write_cache_;
 		bool							read_only_ = false;
+		std::string						name_;
 	};
 
-	struct ConstantRangeDesc
-	{
-		uint32_t		flags_;
-		uint32_t		offset_;
-		uint32_t		size_;
-		static bool ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size);
-	};
-	
+
+
+
 }

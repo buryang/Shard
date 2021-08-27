@@ -1,5 +1,4 @@
 #include "RHI/VulkanRenderPipeline.h"
-
 #include "Utils/CommonUtils.h"
 #include "RHI/VulkanCmdContext.h"
 
@@ -10,17 +9,17 @@ namespace MetaInit
 	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(VkPipelineCacheCreateFlags flags, const Vector<uint8_t>& initial_data)
 	{
 		VkPipelineCacheCreateInfo cache_info;
-		memset(&cache_info, sizeof(VkPipelineCacheCreateInfo), 1);
+		memset(&cache_info, 0, sizeof(VkPipelineCacheCreateInfo));
 		cache_info.flags = flags;
 		cache_info.initialDataSize = initial_data.size();
 		cache_info.pInitialData = initial_data.data();
 		return cache_info;
 	}
 
-	static inline VkPipelineLayoutCreateInfo MakePipelineLayoutCreateInfo(const Vector<VkDescriptorSetLayout>& ds_layout, const Vector<VkPushConstantRange>& push_range)
+	static inline VkPipelineLayoutCreateInfo MakePipelineLayoutCreateInfo(const Vector<VkPushConstantRange>& push_range, const Vector<VkDescriptorSetLayout>& ds_layout)
 	{
 		VkPipelineLayoutCreateInfo layout_info;
-		memset(&layout_info, sizeof(VkPipelineLayoutCreateInfo), 1);
+		memset(&layout_info, 0, sizeof(VkPipelineLayoutCreateInfo));
 		if (!push_range.empty())
 		{
 			layout_info.pushConstantRangeCount = push_range.size();
@@ -83,11 +82,15 @@ namespace MetaInit
 		return viewpoint_info;
 	}
 
-	static inline VkPipelineRasterizationStateCreateInfo MakeVkPipelineRasterizationStateCreateInfo()
+	static inline VkPipelineRasterizationStateCreateInfo MakeVkPipelineRasterizationStateCreateInfo(uint32_t poly_mode, uint32_t cull_mode, uint32_t front_face, float line_width=1.f)
 	{
 		VkPipelineRasterizationStateCreateInfo raster_info{};
 		memset(&raster_info, 0, sizeof(raster_info));
 		raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		raster_info.polygonMode = static_cast<VkPolygonMode>(poly_mode);
+		raster_info.cullMode = static_cast<VkCullModeFlags>(cull_mode);
+		raster_info.frontFace = static_cast<VkFrontFace>(front_face);
+		raster_info.lineWidth = line_width;
 		return raster_info;
 	}
 
@@ -109,14 +112,12 @@ namespace MetaInit
 		return color_info;
 	}
 
-	static inline VkPipelineDynamicStateCreateInfo MakeVkPipelineDynamicStateCreateInfo(const VkDynamicState* states, const uint32_t count)
+	static inline void InitialVkPipelineDynamicStateCreateInfo(VkPipelineDynamicStateCreateInfo& dyn_info, const VkDynamicState* states, const uint32_t count)
 	{
-		VkPipelineDynamicStateCreateInfo dynamic_info{};
-		memset(&dynamic_info, 0, sizeof(dynamic_info));
-		dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamic_info.dynamicStateCount = count;
-		dynamic_info.pDynamicStates = states;
-		return dynamic_info;
+		memset(&dyn_info, 0, sizeof(dyn_info));
+		dyn_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dyn_info.dynamicStateCount = count;
+		dyn_info.pDynamicStates = states;
 	}
 
 	static inline VkPipelineBindPoint TransPipeTypeToBindPoint(VulkanRenderPipeline::EPipeType type)
@@ -165,22 +166,36 @@ namespace MetaInit
 
 		//todo when to bind descs, already do update work
 		SmallVector<VkDescriptorSet> bind_sets;
-		for (auto& desc_pair : desc_sets_)
+		for (auto& desc : descs_)
 		{
-			bind_sets.push_back(desc_pair.second.Get());
+			bind_sets.push_back(desc.Get());
 		}
 		vkCmdBindDescriptorSets(cmd_buffer.Get(), bind_point, layout_, 0, bind_sets.size(), bind_sets.data(), 0, nullptr);
 	}
 
 	DescriptorSetsWrapper& VulkanRenderPipeline::operator[](const std::string& set_name)
 	{
-		return desc_sets_[desc_lut_[set_name]];
+		auto iter = std::find_if(descs_.begin(), descs_.end(), [&](DescriptorSetsWrapper& pred) {return pred.Name() == set_name;});
+		if (descs_.end() != iter)
+		{
+			return *iter;
+		}
+		throw std::runtime_error("wrong descriptor name");
 	}
 
 	VulkanRenderPipeline::VulkanRenderPipeline(VulkanDevice::Ptr device, const Desc& desc, EPipeType pipe_type) : device_(device), pipe_type_(pipe_type)
 	{
+		//initial descriptor set layout
+		const auto& root_signature = desc.root_signatue_;
+		InitialDescSetLayouts(root_signature);
+		Vector<VkPushConstantRange> const_range(root_signature.consts_.size());
+		for (auto n = 0; n < const_range.size(); ++n)
+		{
+			assert(root_signature.consts_[n].ValidDesc());
+			const_range[n] = {root_signature.consts_[n].flags_, root_signature.consts_[n].offset_, root_signature.consts_[n].size_};
+		}
 		//create pipeline layout
-		auto& layout_info = MakePipelineLayoutCreateInfo(desc.ds_layouts_, desc.pc_range_);
+		auto& layout_info = MakePipelineLayoutCreateInfo(const_range, ds_layouts_);
 		auto ret = vkCreatePipelineLayout(device_->Get(), &layout_info, g_host_alloc, &layout_);
 		if (VK_SUCCESS != ret)
 		{
@@ -201,13 +216,39 @@ namespace MetaInit
 		}
 	}
 
+	void VulkanRenderPipeline::InitialDescSetLayouts(const RootSignature& root)
+	{
+		ds_layouts_.clear();
+		auto& ds_cfgs = root.desc_sets_;
+		for (auto n = 0; n < ds_cfgs.size(); ++n)
+		{
+			auto& set_cfg = ds_cfgs[n];
+			SmallVector<VkDescriptorSetLayoutBinding> binds;
+			for (auto m = 0; m < set_cfg.Size(); ++m)
+			{
+				VkDescriptorSetLayoutBinding bind{};
+				bind.binding = set_cfg.bindings_[m].binding_;
+				bind.descriptorCount = set_cfg.bindings_[m].desc_count_;
+				bind.descriptorType = static_cast<VkDescriptorType>(set_cfg.bindings_[m].desc_type_);
+				bind.stageFlags = set_cfg.bindings_[m].stage_flags_;
+				binds.emplace_back(bind);
+			}
+
+			auto& set_create_info = MakeDescriptorSetLayoutCreateInfo(0, binds);
+			VkDescriptorSetLayout set_handle;
+			vkCreateDescriptorSetLayout(device_->Get(), &set_create_info, g_host_alloc, &set_handle);
+			ds_layouts_.push_back(set_handle);
+		}
+
+	}
+
 	void VulkanRenderPipeline::PushConsts(VulkanCmdBuffer& cmd_buffer, const uint32_t stage, const uint32_t offset, const Span<uint8_t>& values)
 	{
 		assert(offset & 0x3 == 0 && values.size() & 0x3 == 0 && "push constants should align to 4");
 		vkCmdPushConstants(cmd_buffer.Get(), layout_, static_cast<VkShaderStageFlags>(stage), offset&~0x3, values.size()&~0x3, values.data());
 	}
 
-	VulkanComputePipeline::VulkanComputePipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) : VulkanRenderPipeline(device, EPipeType::eCompute)
+	VulkanComputePipeline::VulkanComputePipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) : VulkanRenderPipeline(device, param, EPipeType::eCompute)
 	{
 		VkComputePipelineCreateInfo pipeline_info;
 		memset(&pipeline_info, 0, sizeof(pipeline_info));
@@ -244,6 +285,8 @@ namespace MetaInit
 		stages_.clear();
 		for (auto& shader_info:gfx_info.stages_)
 		{
+			//The stage member of each element of pStages must not be VK_SHADER_STAGE_COMPUTE_BIT
+			assert(shader_info.shader_type_ != VulkanShaderModule::EType::eCompute);
 			auto& shader = std::make_shared<VulkanShaderModule>(new VulkanShaderModule(device, shader_info.shader_type_, shader_info.shader_path_,
 																						shader_info.shader_name_));
 			stages_.push_back(shader);
@@ -257,12 +300,20 @@ namespace MetaInit
 		pipeline_info.pVertexInputState = &input_vertex_info;
 		auto& assembly_info = MakeVkPipelineInputAssemblyStateCreateInfo(static_cast<VkPrimitiveTopology>(gfx_info.topology_));
 		pipeline_info.pInputAssemblyState = &assembly_info;
+		//pRasterizationState must be a valid pointer to a valid VkPipelineRasterizationStateCreateInfo structure
+		auto& raster_info = MakeVkPipelineRasterizationStateCreateInfo(gfx_info.polygon_mode_, gfx_info.cull_mode_, gfx_info.front_face_, gfx_info.line_width_);
+		pipeline_info.pRasterizationState = &raster_info;
 		auto& viewpoint_info = MakeVkPipelineViewportStateCreateInfo(gfx_info.view_points_, gfx_info.scissors_);
 		pipeline_info.pViewportState = &viewpoint_info;
 		auto& msaa_info = MakeVkPipelineMultisampleStateCreateInfo(gfx_info.sample_count_, gfx_info.use_alpha_coverage_);
 		pipeline_info.pMultisampleState = &msaa_info;
-		auto& dynamic_info = MakeVkPipelineDynamicStateCreateInfo(gfx_info.dyn_stats_.data(), gfx_info.dyn_stats_.size());
-		pipeline_info.pDynamicState = &dynamic_info;
+
+		VkPipelineDynamicStateCreateInfo dynamic_info;
+		if (!gfx_info.dyn_stats_.empty())
+		{
+			InitialVkPipelineDynamicStateCreateInfo(dynamic_info, gfx_info.dyn_stats_.data(), gfx_info.dyn_stats_.size());
+			pipeline_info.pDynamicState = &dynamic_info;
+		}
 		
 		auto ret = vkCreateGraphicsPipelines(device_->Get(), device->GetPipelineCache(), 1, &pipeline_info, g_host_alloc, &handle_);
 		if (VK_SUCCESS != ret)

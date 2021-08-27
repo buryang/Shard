@@ -1,6 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "VulkanRHI.h"
+#include "RHI/VulkanRHI.h"
 
 namespace MetaInit
 {
@@ -21,16 +21,18 @@ namespace MetaInit
 		{
 			eVertex,
 			ePixel,
-			eGeometry,
 			eCompute,
-			eHull, //Tessellation
-			eDomain,
+			eHull, //Tessellation control shader for vulkan
+			//eTessellator,//fixed-function tessellator 
+			eDomain,//tessellation evaluation shader for vulkan
+			eGeometry,
 			//ray tracing part
 			eRaygen,
 			eAnyHit,
 			eMiss,
 			eIntersction,
 			eMesh, //Mesh shader 
+			eTask,
 			eCallable,
 		};
 		using Ptr = std::shared_ptr<VulkanShaderModule>;

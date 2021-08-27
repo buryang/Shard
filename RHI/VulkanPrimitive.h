@@ -32,6 +32,7 @@ namespace MetaInit
 		};
 
 		class VulkanBuffer;
+		class VulkanImageView;
 		class VulkanImage
 		{
 		public:
@@ -50,6 +51,7 @@ namespace MetaInit
 			VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
 			void To(VulkanImage& image);
 			VulkanImage& From(VulkanImage& image); 
+			VulkanImageView ViewAs(void* params);
 		private:
 			void GenerateMipMap(VulkanCmdBuffer& cmd_buffer);
 			void UploadData(VulkanCmdBuffer& cmd_buffer);
@@ -63,7 +65,7 @@ namespace MetaInit
 			VkImage					handle_{VK_NULL_HANDLE};
 			VkExtent3D				size_;
 			VkFormat				format_;
-			VkImageCreateInfo		prop_info_;
+			//VkImageCreateInfo		prop_info_;
 			RenderGraph::Ptr		graph_;
 			VmaAllocation			vma_data_;
 			EResourceState			state_;
@@ -140,5 +142,6 @@ namespace MetaInit
 			VulkanBuffer::Ptr	buffer_;
 			VkBufferView		handle_{ VK_NULL_HANDLE };
 		};
+
 	}
 }

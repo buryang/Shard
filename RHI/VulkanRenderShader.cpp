@@ -34,6 +34,12 @@ namespace MetaInit {
 		case ShaderType::ePixel:
 			stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 			break;
+		case ShaderType::eHull:
+			stage_info.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+			break;
+		case ShaderType::eDomain:
+			stage_info.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+			break;
 		default:
 			throw std::runtime_error("not support such shader");
 		}
