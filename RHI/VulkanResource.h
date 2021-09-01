@@ -16,7 +16,7 @@ namespace MetaInit
 													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
 	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
 											VkSamplerAddressMode address_modeu, VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew);
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout layout);
+	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count);
 	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
 																		const SmallVector<VkDescriptorSetLayoutBinding>& bindings);
 	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets, 
@@ -26,16 +26,24 @@ namespace MetaInit
 	class DescriptorPool
 	{
 	public:
+		typedef struct _PoolDesc
+		{
+			uint32_t	set_size_;
+			struct DescCount
+			{
+				uint32_t	desc_type_;
+				uint32_t	desc_count_;
+			};
+			Vector<DescCount> desc_count_;
+		}Desc;
 		using Ptr = std::shared_ptr<DescriptorPool>;
 		DescriptorPool() = default;
-		explicit DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
-								const VkDescriptorSetLayoutCreateInfo& layout_info);
+		explicit DescriptorPool(VulkanDevice::Ptr device, const Desc& desc);
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPool);
-		void Init(VulkanDevice::Ptr device, uint32_t set_size,
-					const VkDescriptorSetLayoutCreateInfo& layout);
+		void Init(VulkanDevice::Ptr device, const Desc& desc);
 		void UnInit();
-		VkDescriptorSet CreateDescriptorSet(const VkDescriptorSetLayout layout);
-		Vector<VkDescriptorSet> CreateDescriptorSets(uint32_t batch_size);
+		VkDescriptorSet CreateDescriptorSet(VkDescriptorSetLayout layout);
+		Vector<VkDescriptorSet> CreateDescriptorSets(const Vector<VkDescriptorSetLayout>& layouts);
 		void Reset();
 		~DescriptorPool() { UnInit(); }
 	private:
@@ -45,7 +53,7 @@ namespace MetaInit
 		using List = std::list<VkDescriptorPool>;
 		List available_;
 		List used_;
-		VkDescriptorPool			curr_{VK_NULL_HANDLE};
+		VkDescriptorPool			curr_{ VK_NULL_HANDLE };
 		VulkanDevice::Ptr			device_;
 		uint32_t					pool_size_;
 		std::mutex					pool_mutex_;
@@ -71,7 +79,7 @@ namespace MetaInit
 			uint32_t		flags_;
 			uint32_t		offset_;
 			uint32_t		size_;
-			static bool ValidDesc(const ConstantRangeDesc& desc, const uint32_t max_const_size);
+			bool isValid()const;
 		};
 
 		struct DescriptorSetDesc
@@ -112,16 +120,14 @@ namespace MetaInit
 			uint32_t desc_binding_ = 0;
 		};
 		PseudoDescriptor operator[](std::string& desc_name);
-		void Init(DescriptorPool& pool, const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSetLayout layout);
+		void Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle);
 		template <typename ...Args>
 		void Write(int index, Args ...args);
 		void BeginUpdates();
 		void EndUpdates();
-		void Reset();
 		void UnInit();
 		const std::string& Name()const { return name_; }
 		VkDescriptorSet Get()const { return handle_; }
-		VkDescriptorSetLayout GetLayout()const { return layout_; }
 		DescriptorSetsWrapper() = default;
 		DISALLOW_COPY_AND_ASSIGN(DescriptorSetsWrapper);
 		//descriptor pool to manage resource release
@@ -136,9 +142,7 @@ namespace MetaInit
 		void UpdateAccelerationStructure(void*, uint32_t binding);
 	private:
 		VulkanDevice::Ptr				device_;
-		DescriptorPoolManager			pool_repo_;
 		VkDescriptorSet					handle_{ VK_NULL_HANDLE };
-		VkDescriptorSetLayout			layout_{ VK_NULL_HANDLE };
 		using DescLut = std::unordered_map<std::string, uint32_t>;
 		DescLut							desc_lut_;
 		Vector<VkWriteDescriptorSet>	write_cache_;

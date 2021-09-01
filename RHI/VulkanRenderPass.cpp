@@ -10,7 +10,7 @@ namespace
 
 namespace MetaInit {
 
-	VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
+	static VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
 		Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps)
 	{
 		VkRenderPassCreateInfo pass_info;
@@ -54,68 +54,139 @@ namespace MetaInit {
 
 	}
 
-	static VkRenderPass create_render_pass(VkDevice device, VkRenderPassCreateInfo pass_info)
+	VkRenderPassBeginInfo MakeRenderPassBeginInfo(VkRenderPass render_pass, VkFramebuffer frame_buffer, VkRect2D render_area, Span<VkClearValue> clear_values)
 	{
-		std::array<VkAttachmentDescription, max_render_targets> attach_descs;
-		std::array<VkAttachmentReference, max_render_targets> attach_refs;
-		std::array<VkSubpassDescription, max_subpass_count> subpass_descs;
-		std::array<VkSubpassDependency, max_subpass_count> subpass_deps;
-
-		const auto subpass_count = pass_info.subpassCount;
-
-		for (auto n = 0; n < subpass_count; ++n)
-		{
-			auto& subpass_desc= subpass_descs[n];
-			subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass_desc.colorAttachmentCount = 0;
-			subpass_desc.pColorAttachments = attach_refs.data();
-			subpass_desc.inputAttachmentCount = 0;
-			subpass_desc.pInputAttachments = VK_NULL_HANDLE;
-			subpass_desc.pDepthStencilAttachment = VK_NULL_HANDLE;
-
-			auto& subpass_dep = subpass_deps[n];
-			subpass_dep.srcSubpass = n == 0 ? VK_SUBPASS_EXTERNAL : n - 1;
-			subpass_dep.dstSubpass = n;
-			subpass_dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			subpass_dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			subpass_dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			subpass_dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-		}
-
-		//VkRenderPassCreateInfo pass_info{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-		pass_info.flags = 1;
-		pass_info.subpassCount = subpass_count;
-		pass_info.pSubpasses = subpass_descs.data();
-		pass_info.dependencyCount = subpass_count;
-		pass_info.pDependencies = subpass_deps.data();
-		pass_info.attachmentCount = 0;
-		pass_info.pAttachments = VK_NULL_HANDLE;
-		pass_info.pNext = VK_NULL_HANDLE;
-		VkRenderPass render_pass = VK_NULL_HANDLE;
-		vkCreateRenderPass(device, &pass_info, nullptr, &render_pass);
-		return render_pass;
+		return VkRenderPassBeginInfo();
 	}
 
-	VulkanRenderPass::Ptr VulkanRenderPass::Create(VulkanDevice::Ptr device, VkFramebuffer frame_buffer, const VkRenderPassCreateInfo& pass_info)
+	static inline VkAttachmentLoadOp TransTargetActionToAttachLoadOp(VulkanRenderPass::Desc::ETargetAction action)
 	{
-		auto pass_ptr = std::make_unique<VulkanRenderPass>();
-		//todo initial work
-		
+		auto load_op = static_cast<VulkanRenderPass::Desc::ELoadAction>(static_cast<uint32_t>(action) >> VulkanFrameBuffer::Desc::ETargetAction::eLoadOpMask);
+		switch (load_op)
+		{
+		case VulkanRenderPass::Desc::ELoadAction::eClear:
+			return VK_ATTACHMENT_LOAD_OP_CLEAR;
+		case VulkanRenderPass::Desc::ELoadAction::eLoad:
+			return VK_ATTACHMENT_LOAD_OP_LOAD;
+		default:
+			return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		}
+	}
+
+	static inline VkAttachmentStoreOp TransTargetActionToAttachStoreOp(VulkanRenderPass::Desc::ETargetAction action)
+	{
+		auto save_op = static_cast<VulkanRenderPass::Desc::ESaveAction>(static_cast<uint32_t>(action) & ((2 << static_cast<uint8_t>(VulkanFrameBuffer::Desc::ETargetAction::eLoadOpMask)) - 1));
+		switch (save_op)
+		{
+		case VulkanRenderPass::Desc::ESaveAction::eStore:
+			return VK_ATTACHMENT_STORE_OP_STORE;
+		case VulkanRenderPass::Desc::ESaveAction::eResolve:
+		default:
+			return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		}
+	}
+
+	VulkanRenderPass::Ptr VulkanRenderPass::Create(VulkanDevice::Ptr device, const VulkanRenderPass::Desc& desc)
+	{
+		auto pass_ptr = std::make_unique<VulkanRenderPass>(new VulkanRenderPass);
+		pass_ptr->Init(device, desc);
 		return pass_ptr;
 	}
 
 	VulkanRenderPass::~VulkanRenderPass()
 	{
-		vkDestroyRenderPass(device_->Get(), handle_, g_host_alloc);
+		if (VK_NULL_HANDLE != handle_)
+		{
+			vkDestroyRenderPass(device_->Get(), handle_, g_host_alloc);
+		}
 	}
 
-	void VulkanRenderPass::Begin(VulkanCmdBuffer& cmd)
+	const uint32_t VulkanRenderPass::NumColorAttachments() const
 	{
-		VkRenderPassBeginInfo begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-		begin_info.pNext = VK_NULL_HANDLE;
-		begin_info.framebuffer = fbo_.Get();
-		begin_info.pClearValues = nullptr;
-		//begin_info.renderArea = nullptr;
+		return desc_.color_targets_.size();
+	}
+
+	VkFormat VulkanRenderPass::GetColorAttachMentFormat(uint32_t index) const
+	{
+		return VkFormat();
+	}
+
+	uint32_t VulkanRenderPass::GetColorAttachMentSampleCount(uint32_t index) const
+	{
+		return uint32_t();
+	}
+
+	void VulkanRenderPass::Init(VulkanDevice::Ptr device, const Desc& desc)
+	{
+		//1.step init attachments
+		Vector<VkAttachmentDescription>	attach_descs(desc.color_targets_.size() + 1);
+		uint32_t iter_counter = 0;
+		for (auto& attach : desc.color_targets_)
+		{
+			if (attach.format_ != VK_FORMAT_UNDEFINED) //todo just copy do not understrand
+			{
+				VkAttachmentDescription color_attach{};
+				color_attach.flags = 0;
+				color_attach.format = attach.format_;
+				color_attach.samples = VK_SAMPLE_COUNT_1_BIT;//todo FIXME
+				color_attach.loadOp = TransTargetActionToAttachLoadOp(attach.action_);
+				color_attach.storeOp = TransTargetActionToAttachStoreOp(attach.action_);
+				//donnt care depthstencil op
+				color_attach.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				color_attach.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				color_attach.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				color_attach.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				attach_descs[iter_counter++] = color_attach;
+			}
+		}
+
+		//depthstencil attachment
+		VkAttachmentDescription depth_attach{};
+		depth_attach.flags = 0;
+		depth_attach.format = desc.depth_target_.format_;
+		depth_attach.samples = VK_SAMPLE_COUNT_1_BIT;//todo FIXME
+		depth_attach.loadOp = TransTargetActionToAttachLoadOp(desc.depth_target_.action_);
+		depth_attach.storeOp = TransTargetActionToAttachStoreOp(desc.depth_target_.action_);
+		depth_attach.stencilLoadOp = TransTargetActionToAttachLoadOp(desc.depth_target_.action_);
+		depth_attach.stencilStoreOp = TransTargetActionToAttachStoreOp(desc.depth_target_.action_);
+		depth_attach.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		depth_attach.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		attach_descs[iter_counter] = depth_attach;
+
+		//2.step init subpass
+		Vector<VkSubpassDescription> subpass_descs;
+		Vector<VkSubpassDependency> subpass_depends;
+		
+		if (!desc.subpass_descs_.empty())
+		{
+			for (const auto& desc : desc.subpass_descs_)
+			{
+				VkSubpassDescription tmp_desc{};
+				tmp_desc.colorAttachmentCount = desc.color_attachs_.size();
+				
+			}
+		}
+
+		if (!desc.subpass_depends_.empty())
+		{
+			for (const auto& depend : desc.subpass_depends_)
+			{
+				VkSubpassDependency tmp_depend{};
+			}
+		}
+		
+		auto& pass_info = MakeRenderPassCreateInfo(0, attach_descs, subpass_descs, subpass_depends);
+		vkCreateRenderPass(device->Get(), &pass_info, g_host_alloc, &handle_);
+		device_ = device;
+	}
+
+	void VulkanRenderPass::Begin(VulkanCmdBuffer& cmd, VulkanFrameBuffer& frame_buffer)
+	{
+		VkRenderPassBeginInfo begin_info{};
+		memset(&begin_info, 0, sizeof(begin_info));
+		begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		begin_info.framebuffer = frame_buffer.Get();
+		begin_info.renderArea = { {0, 0}, {frame_buffer.Width(), frame_buffer.Height()} };
 		begin_info.renderPass = handle_;
 		vkCmdBeginRenderPass(cmd.Get(), &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
@@ -125,23 +196,11 @@ namespace MetaInit {
 		vkCmdEndRenderPass(cmd.Get());
 	}
 
-	void VulkanRenderPass::AddSubPass(VulkanSubRenderPass&& sub_pass)
-	{
-		sub_passes_.emplace_back(sub_pass);
-
-		//todo add subpass
-	}
-
 	VulkanRenderPass::~VulkanRenderPass()
 	{
 		if (VK_NULL_HANDLE != handle_)
 		{
 			vkDestroyRenderPass(device_->Get(), handle_, g_host_alloc);
-		}
-
-		if (VK_NULL_HANDLE != fbo_)
-		{
-			vkDestroyFramebuffer(device_->Get(), fbo_, g_host_alloc);
 		}
 	}
 }

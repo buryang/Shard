@@ -94,6 +94,7 @@ namespace MetaInit
 		DIRECTIONAL,
 		AREA,
 		DISTANT,
+		POLYGONAL,
 	};
 
 
@@ -110,6 +111,11 @@ namespace MetaInit
 	struct DistantLight
 	{
 		LightType Type() const { return LightType::DISTANT; }
+	};
+
+	struct PolygonalLight
+	{
+		LightType Type() const { return LightType::POLYGONAL; }
 	};
 
 	using LightPtr = folly::DiscriminatedPtr<PointLight, SpotLight, DistantLight>;

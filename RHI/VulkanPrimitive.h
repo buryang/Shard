@@ -37,9 +37,9 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = std::shared_ptr<VulkanImage>;
-			explicit VulkanImage(RenderGraph::Ptr graph, Image&& image, const VkImageCreateInfo& create_info, bool gen_mips=false);
-			explicit VulkanImage(RenderGraph::Ptr graph, VulkanBuffer::Ptr buffer, bool gen_mips=false);
-			explicit VulkanImage(RenderGraph::Ptr graph, const VkImageCreateInfo& create_info);
+			explicit VulkanImage(VulkanDevice::Ptr device, Image&& image, const VkImageCreateInfo& create_info, bool gen_mips=false);
+			explicit VulkanImage(VulkanDevice::Ptr device, VulkanBuffer::Ptr buffer, bool gen_mips=false);
+			explicit VulkanImage(VulkanDevice::Ptr device, const VkImageCreateInfo& create_info);
 			~VulkanImage();
 			VkImage Get();
 			VkFormat GetFormat()const;
@@ -62,11 +62,11 @@ namespace MetaInit
 			static VkImageType TransImageType(EImageType);
 		private:
 			friend class VulkanImageView;
+			VulkanDevice::Ptr		device_;
 			VkImage					handle_{VK_NULL_HANDLE};
 			VkExtent3D				size_;
 			VkFormat				format_;
 			//VkImageCreateInfo		prop_info_;
-			RenderGraph::Ptr		graph_;
 			VmaAllocation			vma_data_;
 			EResourceState			state_;
 			uint32_t				levels_;
@@ -76,15 +76,19 @@ namespace MetaInit
 		class VulkanImageView
 		{
 		public:
-			VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, uint32_t mip_level, 
+			VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t mip_level,
 								uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers);
 			VkImageSubresourceRange GetSubResourceRange()const { return sub_res_range_; }
 			~VulkanImageView();
 			VkImageView	Get();
+			VkFormat Format()const { return format_; }
+			VkImageViewType ViewType()const { return view_type_; }
+			operator const VulkanImage::Ptr() { return image_; }
 		private:
 			VulkanImage::Ptr		image_;
 			VkImageView				handle_{ VK_NULL_HANDLE };
-			VkImageViewCreateInfo	view_info_;
+			VkFormat				format_;
+			VkImageViewType			view_type_;
 			VkImageSubresourceRange	sub_res_range_;
 		};
 
@@ -108,7 +112,7 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = std::shared_ptr<VulkanBuffer>;
-			explicit VulkanBuffer(RenderGraph::Ptr graph, const VkBufferCreateInfo& create_info);
+			explicit VulkanBuffer(VulkanDevice::Ptr device, const VkBufferCreateInfo& create_info);
 			~VulkanBuffer();
 			VkBuffer Get()const;
 			VkDeviceSize GetSize()const;
@@ -123,10 +127,10 @@ namespace MetaInit
 		private:
 			friend class VulkanBufferView;
 			friend class VulkanImage;
+			VulkanDevice::Ptr		device_;
 			bool					mapped_{ false };
 			VkBuffer				handle_{ VK_NULL_HANDLE };
 			VkBufferCreateInfo		prop_info_;
-			RenderGraph::Ptr		graph_;
 			VmaAllocation			vma_data_;
 			EResourceState			state_;
 		};
@@ -138,6 +142,7 @@ namespace MetaInit
 										VkFormat format, uint32_t offset, uint32_t range);
 			~VulkanBufferView();
 			VkBufferView Get();
+			operator VulkanBuffer::Ptr() { return buffer_; }
 		private:
 			VulkanBuffer::Ptr	buffer_;
 			VkBufferView		handle_{ VK_NULL_HANDLE };

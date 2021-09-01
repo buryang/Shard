@@ -57,7 +57,7 @@ namespace MetaInit
 			}
 		}
 
-		VulkanImage::VulkanImage(RenderGraph::Ptr graph, Image&& image, const VkImageCreateInfo& create_info):graph_(graph), 
+		VulkanImage::VulkanImage(VulkanDevice::Ptr device, Image&& image, const VkImageCreateInfo& create_info):device_(device), 
 									size_({image.size_.x, image.size_.y, image.size_.z}), prop_info_(create_info), format_(create_info.format)
 		{
 			prop_info_.imageType = TransImageType(image.type_);
@@ -78,7 +78,7 @@ namespace MetaInit
 			UploadData();
 		}
 
-		VulkanImage::VulkanImage(RenderGraph::Ptr graph, VulkanBuffer::Ptr buffer):graph_(graph_)
+		VulkanImage::VulkanImage(VulkanDevice::Ptr device, VulkanBuffer::Ptr buffer):device_(device)
 		{
 			//todo
 			ReadyForTransmit();
@@ -89,12 +89,12 @@ namespace MetaInit
 			region.imageSubresource = {};
 			region.imageOffset = { 0, 0, 0 };
 			region.imageExtent = {};
-			vkCmdCopyBufferToImage(graph_->GetDevice()->Get(), buffer->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+			vkCmdCopyBufferToImage(device_->Get(), buffer->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 		}
 
-		VulkanImage::VulkanImage(RenderGraph::Ptr graph, const VkImageCreateInfo& create_info):graph_(graph)
+		VulkanImage::VulkanImage(VulkanDevice::Ptr device, const VkImageCreateInfo& create_info):device_(device)
 		{
-			auto ret = vkCreateImage(graph_->GetDevice()->Get(), &create_info, g_host_alloc, &handle_);
+			auto ret = vkCreateImage(device->Get(), &create_info, g_host_alloc, &handle_);
 			assert(ret == VK_SUCCESS && "create vulkan image faild");
 		}
 
@@ -136,16 +136,15 @@ namespace MetaInit
 
 		VulkanImage& VulkanImage::Clear(VkClearValue value, const VkImageSubresourceRange& region)
 		{
-			auto& device = graph_->GetDevice();
 			if (region.aspectMask&VK_IMAGE_ASPECT_COLOR_BIT) 
 			{
 				const auto&color_value = value.color;
-				vkCmdClearColorImage(device->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &color_value, 1, &region);
+				vkCmdClearColorImage(device_->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &color_value, 1, &region);
 			}
 			else if(region.aspectMask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT))
 			{
 				const auto& depth_value = value.depthStencil;
-				vkCmdClearDepthStencilImage(device->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &depth_value, 1, &region);
+				vkCmdClearDepthStencilImage(device_->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &depth_value, 1, &region);
 			}
 			else
 			{
@@ -157,7 +156,7 @@ namespace MetaInit
 		void VulkanImage::GenerateMipMap(VulkanCmdBuffer& cmd_buffer)
 		{
 			uint32_t mip_width = 1024, mip_height = 1024;
-			VkImageMemoryBarrier barrier;
+			VkImageMemoryBarrier barrier{};
 			barrier.image = handle_;
 			barrier.subresourceRange = {};
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -287,9 +286,9 @@ namespace MetaInit
 			}
 		}
 
-		VulkanImageView::VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, uint32_t mip_level,
-										 uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers):image_(image),
-										 device_(image->GetDevice())
+		VulkanImageView::VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, mip_level,
+										 uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers):image_(image),view_type_(view_type), format_(format)
+										
 		{
 			auto image_vs_view_comp = [&](void) {
 				auto& image_info = image->prop_info_;

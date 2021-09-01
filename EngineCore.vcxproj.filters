@@ -48,9 +48,6 @@
     <ClCompile Include="RHI\VulkanFrameGraph.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="Shaders\VulkanRenderShader.cpp">
-      <Filter>RHI</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\CommonUtils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -70,6 +67,12 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="RHI\VulkanPrimitive.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanRenderShader.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\VulkanFrameBuffer.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
   </ItemGroup>
@@ -129,6 +132,9 @@
       <Filter>Passes</Filter>
     </ClInclude>
     <ClInclude Include="RHI\VulkanPrimitive.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanFrameBuffer.h">
       <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>

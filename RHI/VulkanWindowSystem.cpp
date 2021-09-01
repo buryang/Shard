@@ -219,6 +219,19 @@ namespace MetaInit
 		present_queue.Submit(present_info);
 	}
 
+	bool VulkanWindowSystemImpl::IsSwapChainImage(const VkImage image) const
+	{
+		for (auto& swap : swap_images_)
+		{
+			if (swap == image)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	void VulkanWindowSystemImpl::InitFBOs()
 	{
 		if (VK_NULL_HANDLE != swap_chain_)

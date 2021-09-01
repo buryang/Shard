@@ -31,6 +31,14 @@ namespace MetaInit
 
 	void VulkanFrameContextGraph::Execute()
 	{
+		if (!cmd_buffers_.empty())
+		{
+			SmallVector<VkCommandBuffer> tmp_cmd_bufs;
+			for (auto& cmd : cmd_buffers_)
+			{
+				tmp_cmd_bufs.push_back(cmd->Get());
+			}
+		}
 	}
 
 	void VulkanFrameContextGraph::InitRenderResource()

@@ -133,6 +133,11 @@ namespace MetaInit
 		}
 	}
 
+	bool VulkanCmdPool::IsFull() const
+	{
+		return false;
+	}
+
 	void VulkanCmdPool::Reset()
 	{
 		vkResetCommandPool(device_->Get(), pool_, 0); //VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT, not release resource
@@ -204,9 +209,26 @@ namespace MetaInit
 		vkCmdDispatchIndirect(handle_, buffer.Get(), offset);
 	}
 
+	//unreal engine use 0 as default first instance 
 	void VulkanCmdBuffer::Draw( uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count)
 	{
 		vkCmdDraw(handle_, vertex_count, instance_count, first_vertex, first_instance);
+	}
+
+	void VulkanCmdBuffer::DrawIndirect(const VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride)
+	{
+		vkCmdDrawIndirect(handle_, buffer.Get(), static_cast<VkDeviceSize>(offset), draw_count, stride);
+	}
+
+	void VulkanCmdBuffer::DrawIndexed(uint32_t first_instance, uint32_t instance_count, uint32_t vertex_offset, uint32_t first_index, uint32_t index_count)
+	{
+		instance_count = std::max(1U, instance_count);
+		vkCmdDrawIndexed(handle_, index_count, instance_count, first_index, vertex_offset, first_instance);
+	}
+
+	void VulkanCmdBuffer::DrawIndexedIndirect(const VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride)
+	{
+		vkCmdDrawIndexedIndirect(handle_, buffer.Get(), static_cast<VkDeviceSize>(offset), draw_count, stride);
 	}
 
 	void VulkanCmdBuffer::TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
@@ -322,20 +344,30 @@ namespace MetaInit
 		state_ = EState::eInitial;
 	}
 
-	VulkanCmdPoolManager::VulkanCmdPoolManager(VulkanDevice::Ptr device, const uint32_t pool_size)
+	VulkanCmdPool::Ptr VulkanCmdPoolManager::GetIdlePool(uint32_t famly_index)
 	{
-		pools_.reserve(pool_size);
-		for (auto n = 0; n < pool_size; ++n)
+		VulkanCmdPool::Ptr pool_ptr;
+		std::lock_guard<std::mutex> lock(read_mutex_);
 		{
-			VulkanCmdPool::Ptr cmd_pool(new VulkanCmdPool(device, 0, 0));
-			pools_.emplace_back(cmd_pool);
-		}
 
+			pool_tr
+		}
+		return pool_ptr;
 	}
 
-	VulkanCmdPool VulkanCmdPoolManager::GetIdlePool()
+	VulkanCmdPoolManager& VulkanCmdPoolManager::Instance()
 	{
-		return VulkanCmdPool();
+		static VulkanCmdPoolManager pool_manager;
+		return pool_manager;
+	}
+
+	void VulkanCmdPoolManager::Init(VulkanDevice::Ptr device)
+	{
+		std::lock_guard<std::mutex> lock(read_mutex_);
+		if (!is_inited_) {
+			device_ = device;
+			is_inited_ = true;
+		}
 	}
 
 }

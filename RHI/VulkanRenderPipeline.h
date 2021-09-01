@@ -100,6 +100,7 @@ namespace MetaInit
 			};
 		}Desc;
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc_params);
+		//pipeline resource 
 		void Bind(VulkanCmdBuffer& cmd_buffer);
 		//constant data 
 		void PushConsts(VulkanCmdBuffer& cmd_buffer, const uint32_t stage, const uint32_t offset, const Span<uint8_t>& data);
@@ -136,6 +137,19 @@ namespace MetaInit
 	public:
 		explicit VulkanGraphicsPipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
 		VulkanShaderModule::Ptr GetShader(VulkanShaderModule::EType shader_type);
+		//init render pass and etc.
+		void PrepareForDraw(VulkanCmdBuffer& cmd_buffer, VulkanFrameBuffer& frame_buffer);
+		void EndForDraw(VulkanCmdBuffer& cmd_buffer);
+		//dynamic state 
+		void SetViewPoint(VulkanCmdBuffer& cmd_buffer, const VkViewport& view_point);
+		void SetStencil(VulkanCmdBuffer& cmd_buffer, const uint32_t stentil_ref);
+		void SetScissor(VulkanCmdBuffer& cmd_buffer, const VkRect2D& scissor);
+	private:
+		//only initial when pipeline has graph viewpoint info
+		Optional<VkViewport>		view_point_;
+		Optional<uint32_t>			stencil_ref_;
+		Optional<VkRect2D>			scissor_;
+		VulkanFrameBuffer			frame_buffer_;
 	};
 
 	class VulkanRayTracingPipeline : public VulkanRenderPipeline

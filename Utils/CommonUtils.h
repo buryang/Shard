@@ -14,6 +14,7 @@
 #include "folly/FBString.h"
 #include "folly/small_vector.h"
 #include "absl/types/span.h"
+#include "absl/types/optional.h"
 #include <memory>
 #include <vector>
 #include <set>
@@ -48,6 +49,9 @@ namespace MetaInit {
 	
 	template<typename T>
 	using Span = absl::Span<T>;
+
+	template<typename T>
+	using Optional = absl::optional<T>;
 
 	using String = folly::fbstring;
 }

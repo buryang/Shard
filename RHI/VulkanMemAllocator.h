@@ -26,6 +26,7 @@ namespace MetaInit {
 	class VulkanVMAWrapper {
 	public:
 		using Ptr = std::shared_ptr<VulkanVMAWrapper>;
+		static Ptr Create(VulkanDevice::Ptr device, VulkanInstance::Ptr instance);
 		VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance::Ptr instance);
 		VMAAllocation CreateImage(size_t size,
 							const VkImageCreateInfo& info,

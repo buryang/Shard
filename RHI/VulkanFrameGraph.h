@@ -24,13 +24,11 @@ namespace MetaInit
 	public:
 		using Ptr = std::shared_ptr<VulkanFrameContextGraph>;
 		VulkanFrameContextGraph(VulkanInstance::Ptr instance,
-								VulkanDevice::Ptr device,
-								VulkanCmdPoolManager::Ptr cmd_pool);
+								VulkanDevice::Ptr device);
 		DISALLOW_COPY_AND_ASSIGN(VulkanFrameContextGraph);
 		~VulkanFrameContextGraph();
 		VulkanInstance::Ptr GetInstance() { return instance_; }
 		VulkanDevice::Ptr GetDevice() { return device_; }
-		VulkanCmdPoolManager::Ptr GetPoolManager() { return cmd_pool_; }
 		VulkanVMAWrapper::Ptr GetMemeAllocator() { return vma_alloc_; }
 		void BeginBuild();
 		void BuildSubTask();
@@ -42,12 +40,10 @@ namespace MetaInit
 	private:
 		VulkanInstance::Ptr				instance_;
 		VulkanDevice::Ptr				device_;
-		VulkanCmdPoolManager::Ptr		cmd_pool_;
-		VulkanCmdBuffer::Ptr			cmd_buffer_;
+		//a frame use multi cmdbuffer to build 
+		Vector<VulkanCmdBuffer::Ptr>	cmd_buffers_;
 		VulkanWindowSystemImpl&			wsi_impl_;
 		VulkanVMAWrapper&				vma_alloc_;
-		DescriptorPoolManager::Ptr		desc_manager_;
-		//VulkanRenderPass				render_pass_;
 		VkSemaphore						image_available_{ VK_NULL_HANDLE };
 		//ready for render
 		VkSemaphore						present_signal_{ VK_NULL_HANDLE };

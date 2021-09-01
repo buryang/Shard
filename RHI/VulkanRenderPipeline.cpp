@@ -191,7 +191,7 @@ namespace MetaInit
 		Vector<VkPushConstantRange> const_range(root_signature.consts_.size());
 		for (auto n = 0; n < const_range.size(); ++n)
 		{
-			assert(root_signature.consts_[n].ValidDesc());
+			assert(root_signature.consts_[n].IsValid());
 			const_range[n] = {root_signature.consts_[n].flags_, root_signature.consts_[n].offset_, root_signature.consts_[n].size_};
 		}
 		//create pipeline layout
@@ -213,6 +213,14 @@ namespace MetaInit
 		if (VK_NULL_HANDLE != layout_)
 		{
 			vkDestroyPipelineLayout(device_->Get(), layout_, g_host_alloc);
+		}
+
+		for (auto& ds_layout : ds_layouts_)
+		{
+			if (VK_NULL_HANDLE £¡ = ds_layout)
+			{
+				vkDestroyDescriptorSetLayout(device_->Get(), ds_layout, g_host_alloc);
+			}
 		}
 	}
 
@@ -238,6 +246,16 @@ namespace MetaInit
 			VkDescriptorSetLayout set_handle;
 			vkCreateDescriptorSetLayout(device_->Get(), &set_create_info, g_host_alloc, &set_handle);
 			ds_layouts_.push_back(set_handle);
+		}
+
+		//create descriptorset
+		auto& ds_alloc_info = MakeDescriptorSetAllocateInfo(nullptr, ds_layouts_.data(), ds_layouts_.size());
+		SmallVector<VkDescriptorSet> ds_buffer(ds_layouts_.size());
+		vkAllocateDescriptorSets(device_->Get(), &ds_alloc_info, ds_buffer.data());
+		descs_.resize(ds_buffer.size());
+		for (auto n = 0; n < descs_.size(); ++n)
+		{
+			descs_[n].Init(ds_cfgs[n], ds_buffer[n]);
 		}
 
 	}
@@ -305,6 +323,15 @@ namespace MetaInit
 		pipeline_info.pRasterizationState = &raster_info;
 		auto& viewpoint_info = MakeVkPipelineViewportStateCreateInfo(gfx_info.view_points_, gfx_info.scissors_);
 		pipeline_info.pViewportState = &viewpoint_info;
+		if (!gfx_info.view_points_.empty())
+		{
+			view_point_.emplace(gfx_info.view_points_[0]);
+		}
+		if (!gfx_info.scissors_.empty())
+		{
+			scissor_.emplace(gfx_info.scissors_[0]);
+		}
+		//todo depth 
 		auto& msaa_info = MakeVkPipelineMultisampleStateCreateInfo(gfx_info.sample_count_, gfx_info.use_alpha_coverage_);
 		pipeline_info.pMultisampleState = &msaa_info;
 
@@ -332,6 +359,47 @@ namespace MetaInit
 			}
 		}
 		throw std::runtime_error("no such type shader");
+	}
+
+	void VulkanGraphicsPipeline::PrepareForDraw(VulkanCmdBuffer& cmd_buffer, VulkanFrameBuffer& frame_buffer)
+	{
+		//other work
+
+		//init render pass
+		frame_buffer_ = frame_buffer;
+		frame_buffer_.GetPass().Begin(cmd_buffer, frame_buffer);
+	}
+
+	void VulkanGraphicsPipeline::EndForDraw(VulkanCmdBuffer& cmd_buffer)
+	{
+		frame_buffer_.GetPass().End(cmd_buffer);
+	}
+
+	void VulkanGraphicsPipeline::SetViewPoint(VulkanCmdBuffer& cmd_buffer, const VkViewport& view_point)
+	{
+		if (!view_point_.has_value() || std::memcmp(&view_point, &*view_point_, sizeof(view_point)) != 0)
+		{
+			vkCmdSetViewport(cmd_buffer.Get(), 0, 1, &view_point);
+			view_point_ = view_point;
+		}
+	}
+
+	void VulkanGraphicsPipeline::SetStencil(VulkanCmdBuffer& cmd_buffer, const uint32_t stentil_ref)
+	{
+		if (!stencil_ref_.has_value() || stencil_ref_.value() != stentil_ref)
+		{
+			vkCmdSetStencilReference(cmd_buffer.Get(), VK_STENCIL_FRONT_AND_BACK, stentil_ref);
+			stencil_ref_ = stentil_ref;
+		}
+	}
+
+	void VulkanGraphicsPipeline::SetScissor(VulkanCmdBuffer& cmd_buffer, const VkRect2D& scissor)
+	{
+		if (!scissor_.has_value() || std::memcmp(&scissor, &*scissor_, sizeof(scissor)) != 0)
+		{
+			vkCmdSetScissor(cmd_buffer.Get(), 0, 1, &scissor);
+			scissor_ = scissor;
+		}
 	}
 
 	VulkanRayTracingPipeline::VulkanRayTracingPipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) : VulkanRayTracingPipeline(device, EPipeType::eRayTrace)

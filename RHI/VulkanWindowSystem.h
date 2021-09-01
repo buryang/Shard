@@ -25,6 +25,8 @@ namespace MetaInit
 		void UpdateSwapChain(const VkSwapchainCreateInfoKHR& swap_info);
 		VkFramebuffer GetFrameBufferAsync(VkSemaphore& semaphore, uint32_t& fbo_index);
 		void SubmitFrameBufferAsync(const VkSemaphore semaphore, const uint32_t fbo_index);
+		//check whether a vkimage is swap_images
+		bool IsSwapChainImage(const VkImage image)const;
 	private:
 		void InitFBOs();
 	private:
@@ -35,7 +37,6 @@ namespace MetaInit
 		VkExtent2D						swap_extent_;
 		Vector<VkImage>					swap_images_;
 		Vector<VkImageView>				swap_image_views_;
-		//Vector<VkFramebuffer>			fbos_;
 		Vector<VkSemaphore>				semaphore_acquires_;
 		VulkanDevice::Ptr				device_;
 		VulkanInstance::Ptr				instance_;

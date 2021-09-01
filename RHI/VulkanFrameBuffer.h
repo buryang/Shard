@@ -1,24 +1,42 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/VulkanPrimitive.h"
+#include "RHI/VulkanRenderPass.h"
 
 namespace MetaInit
 {
-	class VulkanFrameBuffer
+	class MINIT_API VulkanFrameBuffer
 	{
 	public:
-		struct Attachment
+		typedef struct _VulkanFrameBufferDesc
 		{
-			Primitive::VulkanImageView	attach_;
-			uint32_t					mip_level_ = 0;
-			uint32_t					array_size_ = 1;
-			uint32_t					first_array_slice_ = 0;
-		};
-		VulkanFrameBuffer(Span<Attachment>& attchments);
+			struct Attachment
+			{
+				Primitive::VulkanImageView image_view_;
+			};
+			Vector<Attachment>		color_attachs_;
+			uint32_t				width_;
+			uint32_t				height_;
+			uint32_t				layers_;
+			uint32_t				flags_{ 0 };
+		}Desc;
+		VulkanFrameBuffer(VulkanDevice::Ptr device, VulkanRenderPass::Ptr render_pass, const Desc& desc);
 		~VulkanFrameBuffer();
 		VkFramebuffer Get() { return handle_; }
+		operator VulkanRenderPass::Ptr () { return pass_; }
+		VulkanRenderPass::Ptr GetPass() { return pass_; }
+		const uint32_t Width()const;
+		const uint32_t Height()const;
+		const uint32_t Layers()const;
 	private:
-		VkFramebuffer			handle_{ VK_NULL_HANDLE };
-		Vector<Attachment>		attachments_;
+		bool RenderPassCompatibleCheck(const Desc& desc);
+	private:
+		VulkanDevice::Ptr			device_;
+		VulkanRenderPass::Ptr		pass_;
+		VkFramebuffer				handle_{ VK_NULL_HANDLE };
+		uint32_t					width_;
+		uint32_t					height_;
+		uint32_t					layers_;
+		Vector<Desc::Attachment>	attachs_;
 	};
 }

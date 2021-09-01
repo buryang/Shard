@@ -34,6 +34,11 @@ namespace MetaInit {
 		return alloc_info;
 	}
 
+	VulkanVMAWrapper::Ptr VulkanVMAWrapper::Create(VulkanDevice::Ptr device, VulkanInstance::Ptr instance)
+	{
+		return VulkanVMAWrapper::Ptr(new VulkanVMAWrapper(device, instance));
+	}
+
 	VulkanVMAWrapper::VulkanVMAWrapper(VulkanDevice::Ptr device, VulkanInstance::Ptr instance):device_(device)
 	{
 		auto alloc_info = MakeVmaAllocatorCreateInfo(VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);

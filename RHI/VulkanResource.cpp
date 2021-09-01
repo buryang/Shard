@@ -87,14 +87,14 @@ namespace MetaInit
 		return sample_info;
 	}
 
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, VkDescriptorSetLayout layout)
+	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count)
 	{
 		VkDescriptorSetAllocateInfo desc_info{};
 		memset(&desc_info, 0, sizeof(desc_info));
 		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		desc_info.descriptorPool = pool;
-		desc_info.descriptorSetCount = 1;
-		desc_info.pSetLayouts = &layout;
+		desc_info.descriptorSetCount = layout_count;
+		desc_info.pSetLayouts = layout;
 		return desc_info;
 	}
 
@@ -130,45 +130,15 @@ namespace MetaInit
 		return pool_info;
 	}
 
-	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, uint32_t set_size,
-										const VkDescriptorSetLayoutCreateInfo& layout)
+	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, const Desc& desc)
 	{
-		Init(device, set_size, layout);
+		Init(device, desc);
 	}
 
-	void DescriptorPool::Init(VulkanDevice::Ptr device, uint32_t set_size)
+	void DescriptorPool::Init(VulkanDevice::Ptr device, const Desc& desc)
 	{
 		device_ = device;
-		curr_ = VK_NULL_HANDLE;
-
-		//todo check device support layout
-		VkDescriptorSetLayoutSupport support;
-		vkGetDescriptorSetLayoutSupport(device_->Get(), &layout_info, &support);
-
-		if (!support.supported)
-		{
-			throw std::runtime_error("descriptorset layout not supported by device");
-		}
-
-		Span<const VkDescriptorSetLayoutBinding> bindings{ layout_info.pBindings, layout_info.bindingCount };
-
-		uint32_t desc_buffer_count = 0, desc_tex_count = 0;
-		for (auto& binding : bindings)
-		{
-			if (binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-				binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
-			{
-				++desc_buffer_count;
-			}
-			else if (0)
-			{
-				++desc_tex_count;
-			}
-		}
-		
-		pool_size_ = (desc_buffer_count + desc_tex_count) * set_size;
-		auto ret = vkCreateDescriptorSetLayout(device_->Get(), &layout_info, g_host_alloc, &layout_);
-		assert(ret == VK_SUCCESS && "create descriptor layout failed");
+		UpdateCurrPool();
 	}
 
 	void DescriptorPool::UnInit()
@@ -190,7 +160,7 @@ namespace MetaInit
 	{
 		auto desc_creater = [&](VkDescriptorPool pool) {
 			VkDescriptorSet desc_set = VK_NULL_HANDLE;
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layout);
+			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, &layout, 1);
 			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, &desc_set);
 			if (ret == VK_SUCCESS)
 			{
@@ -220,9 +190,37 @@ namespace MetaInit
 
 	}
 
-	Vector<VkDescriptorSet> DescriptorPool::CreateDescriptorSets(uint32_t batch_size)
+	Vector<VkDescriptorSet> DescriptorPool::CreateDescriptorSets(const Vector<VkDescriptorSetLayout>& layouts)
 	{
-		return Vector<VkDescriptorSet>();
+		Vector<VkDescriptorSet> desc_sets(layouts.size());
+		auto desc_creater = [&](VkDescriptorPool pool) {
+			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layouts.data(), layouts.size());
+			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, desc_sets.data());
+			if (ret == VK_SUCCESS)
+			{
+				return;
+			}
+			throw std::runtime_error("alloc desc set failed");
+		};
+
+		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		if (curr_ == VK_NULL_HANDLE)
+		{
+			UpdateCurrPool();
+		}
+
+		try
+		{
+			desc_creater(curr_);
+			return desc_sets;
+		}
+		catch (std::runtime_error& e)
+		{
+			UpdateCurrPool();
+			desc_creater(curr_);
+			return desc_sets;
+		}
+
 	}
 
 	void DescriptorPool::Reset()
@@ -268,7 +266,7 @@ namespace MetaInit
 		return PseudoDescriptor(this, desc_lut_[desc_name]);
 	}
 
-	void DescriptorSetsWrapper::Init(DescriptorPool& pool, const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSetLayout layout)
+	void DescriptorSetsWrapper::Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle)
 	{
 		name_ = desc_set.set_name_;
 		auto& bind_cfgs = desc_set.bindings_;
@@ -278,8 +276,7 @@ namespace MetaInit
 			desc_lut_[bind_cfgs[n].binding_name_] = n;
 		}
 
-		layout_ = layout;
-		handle_ = pool.CreateDescriptorSet(layout);
+		handle_ = handle;
 	}
 
 	void DescriptorSetsWrapper::BeginUpdates()
@@ -434,11 +431,6 @@ namespace MetaInit
 		wrapper_->UpdateInAttachment(attach, desc_binding_);
 	}
 
-	bool RootSignature::ConstantRangeDesc::ValidDesc(const RootSignature::ConstantRangeDesc& desc, const uint32_t max_const_size)
-	{
-		return desc.offset_ & ~0x3 == 0 && desc.size_ & ~0x3 == 0 && desc.size_ <= max_const_size;
-	}
-
 	void RootSignature::AddSet(DescriptorSetDesc& desc_set)
 	{
 		desc_sets_.emplace_back(desc_set);
@@ -447,5 +439,9 @@ namespace MetaInit
 	void RootSignature::AddConstRange(ConstantRangeDesc& const_range)
 	{
 		consts_.emplace_back(const_range);
+	}
+	bool RootSignature::ConstantRangeDesc::isValid() const
+	{
+		return offset_ & ~0x3 == 0 && size_ & ~0x3 == 0 && size_ <= max_const_size;
 	}
 }
