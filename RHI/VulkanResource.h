@@ -88,7 +88,8 @@ namespace MetaInit
 			{
 				uint32_t			binding_		= 0;
 				uint32_t			desc_type_		= VK_DESCRIPTOR_TYPE_SAMPLER;
-				uint32_t			desc_count_		= 0;
+				//desc count > 0 for desccriptor indexing
+				uint32_t			desc_count_		= 1;
 				uint32_t			stage_flags_	= VK_SHADER_STAGE_ALL;
 				std::string			binding_name_;
 			};

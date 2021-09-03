@@ -2,6 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "RHI/VulkanPrimitive.h"
 #include "RHI/VulkanRenderPass.h"
+#include "Scene/Scene.h"
 
 namespace MetaInit
 {
@@ -15,6 +16,7 @@ namespace MetaInit
 				Primitive::VulkanImageView image_view_;
 			};
 			Vector<Attachment>		color_attachs_;
+			Attachment				depth_attach_;
 			uint32_t				width_;
 			uint32_t				height_;
 			uint32_t				layers_;

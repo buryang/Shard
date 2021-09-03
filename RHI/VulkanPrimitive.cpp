@@ -9,7 +9,6 @@ namespace MetaInit
 {
 	namespace Primitive
 	{
-
 		static inline VkAccessFlags GetAccessMaskForLayout(VkImageLayout layout)
 		{
 			switch (layout)
@@ -102,7 +101,7 @@ namespace MetaInit
 		{
 			if (VK_NULL_HANDLE != handle_)
 			{
-				vkDestroyImage(graph_->GetDevice()->Get(), handle_, g_host_alloc);
+				vkDestroyImage(device_->Get(), handle_, g_host_alloc);
 				vmaFreeMemory(nullptr, vma_data_.allocation_);
 			}
 		}
@@ -128,10 +127,9 @@ namespace MetaInit
 			return *this;
 		}
 
-		uint32_t VulkanImage::GetSampleCount()const
+		VkSampleCountFlagBits VulkanImage::GetSampleCount()const
 		{
-			auto samples_flags = static_cast<uint32_t>(prop_info_.samples);
-			return 31 - __lzcnt(samples_flags); //todo system relate
+			return prop_info_.samples;
 		}
 
 		VulkanImage& VulkanImage::Clear(VkClearValue value, const VkImageSubresourceRange& region)
@@ -174,7 +172,7 @@ namespace MetaInit
 				barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 				vkCmdPipelineBarrier(cmd_buffer.Get(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
 										0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &barrier);
-				/*blit logic:https://vulkan-tutorial.com/Generating_Mipmaps*/
+				/*blit logic:https://vulkan-tutorial.com/Generating_Mipmaps */
 				VkImageBlit blit_region{};
 				blit_region.srcOffsets[0] = { 0, 0, 0 };
 				blit_region.srcOffsets[1] = { mip_width, mip_height, 1 };
@@ -286,16 +284,16 @@ namespace MetaInit
 			}
 		}
 
-		VulkanImageView::VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, mip_level,
+		VulkanImageView::VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t mip_level,
 										 uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers):image_(image),view_type_(view_type), format_(format)
 										
 		{
-			auto image_vs_view_comp = [&](void) {
-				auto& image_info = image->prop_info_;
+			auto image_vs_view_comp = [=](void)->bool {
+				const auto& image_info = image->prop_info_;
 				switch (view_type)
 				{
 				case VK_IMAGE_VIEW_TYPE_1D:
-					return (image_info.imageType == VK_IMAGE_TYPE_1D && image_info.arrayLayers == 1);//&& image_info.extent.depth == 1);
+					return (image_info.imageType == VK_IMAGE_TYPE_1D && image_info.arrayLayers == 1);
 				case VK_IMAGE_VIEW_TYPE_2D:
 					return (image_info.imageType == VK_IMAGE_TYPE_2D && image_info.arrayLayers == 1);
 				case VK_IMAGE_VIEW_TYPE_3D:
@@ -304,26 +302,30 @@ namespace MetaInit
 					return (image_info.imageType == VK_IMAGE_TYPE_1D && image_info.arrayLayers > 1);
 				case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 					return (image_info.imageType == VK_IMAGE_TYPE_2D && image_info.arrayLayers > 1);
+				/*
 				case VK_IMAGE_VIEW_TYPE_CUBE:
 				case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
 					return ((image_info.flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) && image_info.imageType == VK_IMAGE_TYPE_2D);
 				default:
 					return false;
+				*/
 				}
-				return false;
 			};
-			if (!image_vs_view_comp())
+
+			if(!image_vs_view_comp())
 			{
 				throw std::invalid_argument("in-compability view and image parameters");
 			}
 			assert(array_layer < image->prop_info_.arrayLayers&& mip_level < image->prop_info_.mipLevels);
-			view_info_ = MakeImageViewCreateInfo(static_cast<VkImageViewCreateFlags>(0), image->Get(), image->prop_info_);
-			auto& sub_res = view_info_.subresourceRange;
+			auto view_type = GetImageViewType(image->prop_info_.imageType);
+			auto& view_info = MakeImageViewCreateInfo(static_cast<VkImageViewCreateFlags>(0), image->Get(), view_type);
+			auto& sub_res = view_info.subresourceRange;
 			sub_res.baseArrayLayer = array_layer;
-			sub_res.layerCount = n_array_layers < 1 ? VK_REMAINING_ARRAY_LAYERS:n_array_layers;
+			sub_res.layerCount = n_array_layers < 1 ? VK_REMAINING_ARRAY_LAYERS : n_array_layers;
 			sub_res.baseMipLevel = mip_level;
 			sub_res.levelCount = n_mip_levels < 1 ? VK_REMAINING_MIP_LEVELS : n_mip_levels;
-			auto ret = vkCreateImageView(image->graph_->GetDevice()->Get(), &view_info_, g_host_alloc, &handle_);
+			sub_res_range_ = sub_res;
+			auto ret = vkCreateImageView(image->graph_->GetDevice()->Get(), view_info, g_host_alloc, &handle_);
 			assert(ret == VK_SUCCESS && "create image view failed");
 		}
 

@@ -43,7 +43,7 @@ namespace MetaInit
 			~VulkanImage();
 			VkImage Get();
 			VkFormat GetFormat()const;
-			uint32_t GetSampleCount()const;
+			VkSampleCountFlagBits GetSampleCount()const;
 			EResourceState GetState()const;
 			uint32_t GetLevels()const;
 			uint32_t GetLayers()const;
@@ -51,7 +51,6 @@ namespace MetaInit
 			VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
 			void To(VulkanImage& image);
 			VulkanImage& From(VulkanImage& image); 
-			VulkanImageView ViewAs(void* params);
 		private:
 			void GenerateMipMap(VulkanCmdBuffer& cmd_buffer);
 			void UploadData(VulkanCmdBuffer& cmd_buffer);
@@ -66,7 +65,7 @@ namespace MetaInit
 			VkImage					handle_{VK_NULL_HANDLE};
 			VkExtent3D				size_;
 			VkFormat				format_;
-			//VkImageCreateInfo		prop_info_;
+			VkImageCreateInfo		prop_info_;
 			VmaAllocation			vma_data_;
 			EResourceState			state_;
 			uint32_t				levels_;
@@ -76,14 +75,14 @@ namespace MetaInit
 		class VulkanImageView
 		{
 		public:
-			VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t mip_level,
-								uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers);
+			VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t level,
+								uint32_t layer, uint32_t mip_levels, uint32_t array_layers);
 			VkImageSubresourceRange GetSubResourceRange()const { return sub_res_range_; }
 			~VulkanImageView();
 			VkImageView	Get();
 			VkFormat Format()const { return format_; }
 			VkImageViewType ViewType()const { return view_type_; }
-			operator const VulkanImage::Ptr() { return image_; }
+			operator VulkanImage::Ptr(){ return image_; }
 		private:
 			VulkanImage::Ptr		image_;
 			VkImageView				handle_{ VK_NULL_HANDLE };

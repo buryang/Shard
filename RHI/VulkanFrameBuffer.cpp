@@ -2,6 +2,7 @@
 
 namespace MetaInit {
 
+	using namespace Primitive;
 	static inline VkFramebufferCreateInfo MakeFramebufferCreateInfo(VkRenderPass pass, uint32_t width, uint32_t height, uint32_t layers,
 		uint32_t attach_count, const VkImageView* pattachs)
 	{
@@ -36,9 +37,9 @@ namespace MetaInit {
 			}
 		}
 		//depth attachment
-		if (VK_FORMAT_UNDEFINED != desc..image_view_.Format())
+		if (VK_FORMAT_UNDEFINED != desc.depth_attach_.image_view_.Format())
 		{
-			attchments.emplace_back(desc.depth_target_.image_view_);
+			attchments.emplace_back(desc.depth_attach_.image_view_.Format());
 		}
 		auto& frame_info = MakeFramebufferCreateInfo(pass_->Get(), width_, height_, layers_, attchments.size(), attchments.data());
 		vkCreateFramebuffer(device_->Get(), &frame_info, g_host_alloc, &handle_);
@@ -82,8 +83,9 @@ namespace MetaInit {
 			//matching format and sample count, or are both VK_ATTACHMENT_UNUSED or the pointer
 			//that would contain the reference is NULL"
 			auto& color_desc = desc.color_attachs_[n];
+			const VulkanImage::Ptr image = color_desc.image_view_;
 			if (color_desc.image_view_.Format() != pass_->GetColorAttachMentFormat(n) ||
-				color_desc.image_view_. != pass_->GetColorAttachMentSampleCount())
+				 image->GetSampleCount()!= pass_->GetColorAttachMentSampleCount(n))
 			{
 				return false;
 			}

@@ -13,7 +13,15 @@ namespace MetaInit
 	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index);
 	
 	class VulkanRayTraceBindTable;
-	namespace Primitive { class VulkanCmdBuffer; }
+	namespace Primitive {
+		class VulkanBuffer;
+	}
+	/*
+	* Command pools are application-synchronized, meaning that a command pool
+	* must not be used concurrently in multiple threads. That includes use via
+	* recording commands on any command buffers allocated from the pool, as well
+	* operations that allocate, free, and reset command buffers or the pool itself.
+	*/
 	class VulkanCmdPool
 	{
 	public:
@@ -28,17 +36,15 @@ namespace MetaInit
 		VkCommandPool Get() { return pool_; }
 		VulkanDevice::Ptr GetDevice() { return device_; }
 		EState State()const { return state_; }
+		uint32_t FamilyIndex()const { return family_index_; }
 		void SetState(EState state) { state_ = state; } 
 		bool IsFull()const;
 		void Reset();
 		virtual ~VulkanCmdPool();
 	private:
-		void CreateBuffers();
-	private:
 		VulkanDevice::Ptr			device_;
+		uint32_t					family_index_;
 		VkCommandPool				pool_{ VK_NULL_HANDLE };
-		Vector<VulkanCmdBuffer>		buffers_;
-		std::mutex					mutex_;
 		EState						state_{ EState::eIdle };
 	};
 
@@ -58,7 +64,7 @@ namespace MetaInit
 	{
 	public:
 		using Ptr = std::unique_ptr<VulkanCmdBuffer>;
-		static Ptr Create(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool);
+		static Ptr Create(VulkanCmdPool::Ptr cmd_pool);
 		~VulkanCmdBuffer();
 		VkCommandBuffer Get()const{
 			return handle_;
@@ -90,9 +96,9 @@ namespace MetaInit
 		void Dispatch(vec3 group_size);
 		void DispatchIndirect(Primitive::VulkanBuffer& buffer, const VkDeviceSize offset);
 		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);
-		void DrawIndirect(const VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+		void DrawIndirect(const Primitive::VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 		void DrawIndexed(uint32_t first_instance, uint32_t instance_count, uint32_t vertex_offset, uint32_t first_index, uint32_t index_count);
-		void DrawIndexedIndirect(const VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
+		void DrawIndexedIndirect(const Primitive::VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 		void TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
 		void Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size);
 		void Copy(Primitive::VulkanImage& dst, Primitive::VulkanBuffer& src);
@@ -104,7 +110,7 @@ namespace MetaInit
 		VkCommandBuffer Get() { return handle_; }
 	private:
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdBuffer);
-		explicit VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool);
+		explicit VulkanCmdBuffer(VulkanCmdPool::Ptr cmd_pool);
 		void Barrier(const VulkanBarrierInfo& barrier_info);
 	private:
 		friend class VulkanCmdPool;
@@ -120,19 +126,19 @@ namespace MetaInit
 	class VulkanCmdPoolManager
 	{
 	public:
-		static VulkanCmdPoolManager& Instance();
+		VulkanCmdPoolManager()=default;
 		void Init(VulkanDevice::Ptr device);
 		VulkanCmdPool::Ptr GetIdlePool(uint32_t famly_index);
 	private:
 		VulkanCmdPoolManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdPoolManager);
-		//~VulkanCmdPoolManager();
+		~VulkanCmdPoolManager() = default;
 	private:
-		using PoolList = std::unordered_map<uint32_t, Vector<VulkanCmdPool::Ptr>>;
-		std::mutex						read_mutex_;
+		using PoolList = Vector<VulkanCmdPool::Ptr>;
 		PoolList						pools_;
 		VulkanDevice::Ptr				device_;
 		bool							is_inited_ = false;
+		std::mutex						mutex_;
 	};
 
 }

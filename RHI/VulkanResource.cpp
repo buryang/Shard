@@ -31,17 +31,17 @@ namespace MetaInit
 		}
 	}
 
-	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& image_info)
+	static inline VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, VkImageViewType view_type)
 	{
 		VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
 		view_info.flags = flags;
 		view_info.pNext = VK_NULL_HANDLE;
-		view_info.viewType = GetImageViewType(image_info.imageType);
+		view_info.viewType = view_type;
 		return view_info;
 	}
 
-	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size,
-		const SmallVector<uint32_t>& family_indices)
+	static inline VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size,
+															const SmallVector<uint32_t>& family_indices)
 	{
 		VkBufferCreateInfo buffer_info{};
 		memset(&buffer_info, 0, sizeof(buffer_info));

@@ -1,14 +1,11 @@
-#include "VulkanFrameGraph.h"
+#include "RHI/VulkanFrameGraph.h"
 
 namespace MetaInit
 {
-
-	VkSemaphoreCreateInfo MakeSemphoreCreateInfo(VkSemaphoreCreateFlags flags)
+	VulkanFrameContextGraph::Ptr VulkanFrameContextGraph::Clone() const
 	{
-		VkSemaphoreCreateInfo semaphore_info{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-		semaphore_info.pNext = VK_NULL_HANDLE;
-		semaphore_info.flags = flags;
-		return semaphore_info;
+		return VulkanFrameContextGraph::Ptr(new VulkanFrameContextGraph(*this));
+		//todo other copy and assign work
 	}
 
 	VulkanFrameContextGraph::~VulkanFrameContextGraph()
@@ -19,6 +16,16 @@ namespace MetaInit
 	void VulkanFrameContextGraph::BeginBuild()
 	{
 
+	}
+
+	void VulkanFrameContextGraph::Build(SceneProxyHelper& scene)
+	{
+		InitRenderResource();
+		//multi thread build task here
+		for (;;)
+		{
+			BuildSubTask();
+		}
 	}
 
 	void VulkanFrameContextGraph::BuildSubTask()
@@ -38,7 +45,15 @@ namespace MetaInit
 			{
 				tmp_cmd_bufs.push_back(cmd->Get());
 			}
+
+			auto queue = device_->GetQueue(VulkanDevice::EQueueType::eAllIn);
+			queue.Submit(Span<VkCommandBuffer>(tmp_cmd_bufs.data(), tmp_cmd_bufs.size()), Span<VkSemaphore>(&image_available_, 1),
+						Span<VkSemaphore>(&present_signal_, 1));
+
+			//display
+			wsi_impl_->SubmitFrameBufferAsync(present_signal_, 0);//fixme
 		}
+
 	}
 
 	void VulkanFrameContextGraph::InitRenderResource()

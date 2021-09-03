@@ -18,28 +18,37 @@ namespace MetaInit
 	class VulkanWindowSystemImpl
 	{
 	public:
+		typedef struct _VulkanFrameWorkLoad
+		{
+			VkImage			image_{ VK_NULL_HANDLE };
+			VkImageView		image_view_{ VK_NULL_HANDLE };
+			VkFence			fence_{ VK_NULL_HANDLE };
+			bool			using_ = false;
+		}FrameWorkLoad;
 		using Ptr = std::shared_ptr<VulkanWindowSystemImpl>;
 		VulkanWindowSystemImpl(VulkanInstance::Ptr instance, VulkanDevice::Ptr device, GLFWwindow* window);
 		VulkanWindowSystemImpl(VulkanWindowSystemImpl&& wsi);
 		~VulkanWindowSystemImpl();
 		void UpdateSwapChain(const VkSwapchainCreateInfoKHR& swap_info);
-		VkFramebuffer GetFrameBufferAsync(VkSemaphore& semaphore, uint32_t& fbo_index);
-		void SubmitFrameBufferAsync(const VkSemaphore semaphore, const uint32_t fbo_index);
+		//https://stackoverflow.com/questions/60419749/why-does-vkacquirenextimagekhr-never-block-my-thread
+		//"image is not yet available to you"
+		FrameWorkLoad GetFrameBufferAsync(VkSemaphore& semaphore);
+		void SubmitFrameBufferAsync(VkSemaphore semaphore, const uint32_t index);
 		//check whether a vkimage is swap_images
 		bool IsSwapChainImage(const VkImage image)const;
 	private:
-		void InitFBOs();
+		void InitFrameWorkLoads();
 	private:
 		VkSurfaceKHR					surface_{ VK_NULL_HANDLE };
 		//VkSurfaceFormatKHR			surface_format_;
 		VkSwapchainKHR					swap_chain_{ VK_NULL_HANDLE };
 		VkFormat						swap_format_;
 		VkExtent2D						swap_extent_;
-		Vector<VkImage>					swap_images_;
-		Vector<VkImageView>				swap_image_views_;
-		Vector<VkSemaphore>				semaphore_acquires_;
+		Vector<FrameWorkLoad>			frame_workloads_;
+		Vector<VkSemaphore>				acquires_;
 		VulkanDevice::Ptr				device_;
 		VulkanInstance::Ptr				instance_;
 		GLFWwindow*						window_{ nullptr };
+		uint32_t						acquire_index_ = -1;
 	};
 }

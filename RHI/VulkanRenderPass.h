@@ -26,6 +26,7 @@ namespace MetaInit
 	};
 
 	class VulkanCmdBuffer;
+	class VulkanFrameBuffer;
 	//interface for vulkan render pass
 	class VulkanRenderPass
 	{
@@ -63,6 +64,7 @@ namespace MetaInit
 				VkFormat					format_{ VK_FORMAT_UNDEFINED };
 				bool						read_only_{ false };
 				ETargetAction				action_;
+				uint32_t					sample_count_;
 			};
 			Vector<TargetDesc>	color_targets_;
 			TargetDesc			depth_target_;
@@ -107,12 +109,12 @@ namespace MetaInit
 		/*property functions*/
 		const uint32_t NumColorAttachments()const;
 		VkFormat GetColorAttachMentFormat(uint32_t index)const;
-		uint32_t GetColorAttachMentSampleCount(uint32_t index)const;
+		VkSampleCountFlagBits GetColorAttachMentSampleCount(uint32_t index)const;
 	private:
 		void Init(VulkanDevice::Ptr device, const Desc& desc);
 	private:
 		VulkanDevice::Ptr				device_;
-		VkRenderPass					handle_{ VK_NULL_HANDLE };		
+		VkRenderPass					handle_{ VK_NULL_HANDLE };
 		Desc							desc_;
 	};
 }

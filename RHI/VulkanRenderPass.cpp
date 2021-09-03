@@ -86,6 +86,12 @@ namespace MetaInit {
 		}
 	}
 
+	static inline VkSampleCountFlagBits TransSampleCountToFlagBits(uint32_t sample_count)
+	{
+		assert(sample_count <= 64 && (sample_count & (sample_count - 1)) == 0);
+		return static_cast<VkSampleCountFlagBits>(sample_count);
+	}
+
 	VulkanRenderPass::Ptr VulkanRenderPass::Create(VulkanDevice::Ptr device, const VulkanRenderPass::Desc& desc)
 	{
 		auto pass_ptr = std::make_unique<VulkanRenderPass>(new VulkanRenderPass);
@@ -108,12 +114,12 @@ namespace MetaInit {
 
 	VkFormat VulkanRenderPass::GetColorAttachMentFormat(uint32_t index) const
 	{
-		return VkFormat();
+		return VkFormat(desc_.color_targets_[index].format_);
 	}
 
-	uint32_t VulkanRenderPass::GetColorAttachMentSampleCount(uint32_t index) const
+	VkSampleCountFlagBits VulkanRenderPass::GetColorAttachMentSampleCount(uint32_t index) const
 	{
-		return uint32_t();
+		return TransSampleCountToFlagBits(desc_.color_targets_[index].sample_count_);
 	}
 
 	void VulkanRenderPass::Init(VulkanDevice::Ptr device, const Desc& desc)
@@ -128,7 +134,7 @@ namespace MetaInit {
 				VkAttachmentDescription color_attach{};
 				color_attach.flags = 0;
 				color_attach.format = attach.format_;
-				color_attach.samples = VK_SAMPLE_COUNT_1_BIT;//todo FIXME
+				color_attach.samples = TransSampleCountToFlagBits(attach.sample_count_);//todo FIXME
 				color_attach.loadOp = TransTargetActionToAttachLoadOp(attach.action_);
 				color_attach.storeOp = TransTargetActionToAttachStoreOp(attach.action_);
 				//donnt care depthstencil op
@@ -144,7 +150,7 @@ namespace MetaInit {
 		VkAttachmentDescription depth_attach{};
 		depth_attach.flags = 0;
 		depth_attach.format = desc.depth_target_.format_;
-		depth_attach.samples = VK_SAMPLE_COUNT_1_BIT;//todo FIXME
+		depth_attach.samples = TransSampleCountToFlagBits(desc.depth_target_.sample_count_);//todo FIXME
 		depth_attach.loadOp = TransTargetActionToAttachLoadOp(desc.depth_target_.action_);
 		depth_attach.storeOp = TransTargetActionToAttachStoreOp(desc.depth_target_.action_);
 		depth_attach.stencilLoadOp = TransTargetActionToAttachLoadOp(desc.depth_target_.action_);

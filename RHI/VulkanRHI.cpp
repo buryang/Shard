@@ -28,6 +28,8 @@ namespace MetaInit
 		vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, phy_devices.data());
 		//find the best phydevice
 		auto query_phy_device = [&](VkPhysicalDevice device) {
+
+			//1.step check extension support
 			uint32_t extension_count;
 			vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
 			SmallVector<VkExtensionProperties> available_extensions;
@@ -36,6 +38,28 @@ namespace MetaInit
 			{
 				auto ext_iter = std::find(available_extensions.begin(), available_extensions.end(), device_info.ppEnabledExtensionNames[n]);
 				if (available_extensions.end() == ext_iter)
+				{
+					return false;
+				}
+			}
+			
+			//2.step check feature support
+			if (nullptr != device_info.pEnabledFeatures)
+			{
+				VkPhysicalDeviceDescriptorIndexingFeaturesEXT index_feature{};
+				memset(&index_feature, 0, sizeof(index_feature));
+				index_feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+				VkPhysicalDeviceFeatures2 device_features{};
+				device_features.pNext = &index_feature;
+				vkGetPhysicalDeviceFeatures2(device, &device_features);
+				if (std::memcmp(device_info.pEnabledFeatures, &device_features.features, sizeof(device_features.features)) != 0)
+				{
+					return false;
+				}
+
+				///now force bindless add bindless check like https://zhuanlan.zhihu.com/p/136449475
+				if (!(index_feature.runtimeDescriptorArray && index_feature.descriptorBindingVariableDescriptorCount
+					&& index_feature.shaderSampledImageArrayNonUniformIndexing))
 				{
 					return false;
 				}
@@ -53,12 +77,7 @@ namespace MetaInit
 		device_ptr->device_info_ = device_info;
 		vkGetPhysicalDeviceProperties(*selected_phy_device, &device_ptr->device_prop_);
 
-		if (nullptr != device_info.pEnabledFeatures)
-		{
-
-		}
-
-		device_ptr->InitialQueues();
+		device_ptr->Init();
 		return device_ptr;
 	}
 
@@ -169,7 +188,7 @@ namespace MetaInit
 		}
 	}
 
-	void VulkanDevice::InitialQueues()
+	void VulkanDevice::Init()
 	{
 		uint32_t family_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices_, &family_count, nullptr);
@@ -218,6 +237,9 @@ namespace MetaInit
 		queue_creator(VulkanDevice::EQueueType::eCompute);
 		queue_creator(VulkanDevice::EQueueType::eTransfer);
 		queue_creator(VulkanDevice::EQueueType::eAllIn);
+
+		//init command pool
+		pool_manager_.Init(handle_);
 	}
 
 	VulkanInstance::Ptr VulkanInstance::Create(const VkInstanceCreateInfo& params)
@@ -292,7 +314,7 @@ namespace MetaInit
 		vkGetDeviceQueue(device->Get(), family_index, index, &handle_);
 	}
 
-	void VulkanQueue::Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem)
+	void VulkanQueue::Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem, VkFence fence = VK_NULL_HANDLE)
 	{
 		VkSubmitInfo submit_info{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 		memset(&submit_info, 0, sizeof(VkSubmitInfo));
@@ -316,7 +338,7 @@ namespace MetaInit
 			submit_info.pSignalSemaphores = signal_sem.data();
 		}
 
-		vkQueueSubmit(handle_, 1, &submit_info, VK_NULL_HANDLE); //FIXME
+		vkQueueSubmit(handle_, 1, &submit_info, fence); 
 	}
 
 	void VulkanQueue::Submit(const VkPresentInfoKHR& present_info)

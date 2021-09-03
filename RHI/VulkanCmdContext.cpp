@@ -1,10 +1,11 @@
 #include "RHI/VulkanCmdContext.h"
 #include "RHI/VulkanRenderPass.h"
 #include "RHI/VulkanRayTraceKHR.h"
+#include "RHI/VulkanPrimitive.h"
 
 namespace MetaInit
 {
-
+	using namespace Primitive;
 	/*copy from falcor*/
 	static inline VkPipelineStageFlags ResourceStateToStageFlags(Primitive::EResourceState state, bool is_src)
 	{
@@ -123,7 +124,7 @@ namespace MetaInit
 		return pool_info;
 	}
 
-	VulkanCmdPool::VulkanCmdPool(VulkanDevice::Ptr device, VkCommandPoolCreateFlags flags, uint32_t family_index):device_(device)
+	VulkanCmdPool::VulkanCmdPool(VulkanDevice::Ptr device, VkCommandPoolCreateFlags flags, uint32_t family_index):device_(device), family_index_(family_index)
 	{
 		auto create_info = MakeCommandPoolCreateInfo(flags, family_index);
 		auto ret = vkCreateCommandPool(device_->Get(), &create_info, g_host_alloc, &pool_);
@@ -141,6 +142,7 @@ namespace MetaInit
 	void VulkanCmdPool::Reset()
 	{
 		vkResetCommandPool(device_->Get(), pool_, 0); //VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT, not release resource
+		state_ = EState::eIdle;
 	}
 
 	VulkanCmdPool::~VulkanCmdPool()
@@ -151,9 +153,9 @@ namespace MetaInit
 		}
 	}
 
-	VulkanCmdBuffer::Ptr VulkanCmdBuffer::Create(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool)
+	VulkanCmdBuffer::Ptr VulkanCmdBuffer::Create(VulkanCmdPool::Ptr cmd_pool)
 	{
-		VulkanCmdBuffer::Ptr cmd_ptr(new VulkanCmdBuffer(cmd_buffer, cmd_pool));
+		VulkanCmdBuffer::Ptr cmd_ptr(new VulkanCmdBuffer(cmd_pool));
 		VkFenceCreateInfo fence_info{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		fence_info.pNext = VK_NULL_HANDLE;
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -339,18 +341,39 @@ namespace MetaInit
 			barrier_info.image_barrier_.size(), barrier_info.image_barrier_.size() > 0 ? barrier_info.image_barrier_.data() : nullptr);
 	}
 
-	VulkanCmdBuffer::VulkanCmdBuffer(VkCommandBuffer cmd_buffer, VulkanCmdPool::Ptr cmd_pool):handle_(cmd_buffer), pool_(cmd_pool)
+	VulkanCmdBuffer::VulkanCmdBuffer(VulkanCmdPool::Ptr cmd_pool):pool_(cmd_pool)
 	{
+		//first to support primary command
+		auto& cmd_info = MakeCommandBufferAllocateInfo(pool_->Get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+		auto ret = vkAllocateCommandBuffers(pool_->GetDevice()->Get(), &cmd_info, &handle_);
+		if(VK_SUCCESS != ret)
+		{
+			throw std::runtime_error("alloc command buffer failed");
+		}
 		state_ = EState::eInitial;
 	}
 
-	VulkanCmdPool::Ptr VulkanCmdPoolManager::GetIdlePool(uint32_t famly_index)
+	VulkanCmdPool::Ptr VulkanCmdPoolManager::GetIdlePool(uint32_t family_index)
 	{
 		VulkanCmdPool::Ptr pool_ptr;
-		std::lock_guard<std::mutex> lock(read_mutex_);
+		std::lock_guard<std::mutex> lock(mutex_);
 		{
+			auto check_pool = [&](const VulkanCmdPool::Ptr pool) {
+				return pool->FamilyIndex() == family_index && pool->State() == VulkanCmdPool::EState::eIdle;
+			};
+			
+			auto iter = std::find_if(pools_.begin(), pools_.end(), check_pool);
+			if (pools_.end() == iter)
+			{
+				pool_ptr = std::make_shared<VulkanCmdPool>(new VulkanCmdPool(device_, 0, family_index));
+				pools_.push_back(pool_ptr);
+			}
+			else
+			{
+				pool_ptr = *iter;
+			}
+			pool_ptr->SetState(VulkanCmdPool::EState::eUsing);
 
-			pool_tr
 		}
 		return pool_ptr;
 	}

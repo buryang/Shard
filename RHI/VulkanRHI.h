@@ -20,7 +20,7 @@ namespace MetaInit
 	class MINIT_API VulkanInstance
 	{
 	public:
-		using Ptr = std::unique_ptr<VulkanInstance>;
+		using Ptr = std::shared_ptr<VulkanInstance>;
 		static Ptr Create(const VkInstanceCreateInfo& params);
 		VkInstance Get() { return handle_; }
 		~VulkanInstance() { vkDestroyInstance(handle_, g_host_alloc); }
@@ -33,6 +33,7 @@ namespace MetaInit
 	//todo alloc queue, and do swapchain init check
 	class VulkanVMAWrapper;
 	class VulkanQueue;
+	class VulkanCmdPoolManager;
 	class MINIT_API VulkanDevice
 	{
 	public:
@@ -51,6 +52,8 @@ namespace MetaInit
 		VulkanQueue& GetQueue(EQueueType queue_type);
 		VulkanQueue& QueryQueue(QueryCallback query);
 		VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
+		//function to deal with command buffer logic
+		VulkanCmdPoolManager& GetCmdPoolManager() { return pool_manager_; }
 		void ReleaseQueue(VulkanQueue& queue);
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
 		uint32_t GetMaxColorTargetCount()const;
@@ -68,13 +71,14 @@ namespace MetaInit
 	private:
 		VulkanDevice() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanDevice);
-		void InitialQueues();
+		void Init();
 	private:
 		VkDevice									handle_{ VK_NULL_HANDLE };
 		VkPhysicalDevice							phy_devices_{ VK_NULL_HANDLE };
 		VkPhysicalDeviceProperties					device_prop_;
 		VkDeviceCreateInfo							device_info_;
-		VkPipelineCache								pipeline_cache_{ VK_NULL_HANDLE };//todo FIXME
+		VkPipelineCache								pipeline_cache_{ VK_NULL_HANDLE };//todo 
+		VulkanCmdPoolManager						pool_manager_;
 		//pair<family_index, handle>
 		std::unordered_map<EQueueType, Vector<uint32_t> >	queue_families_;
 		Vector<Vector<int> >								queue_inuse_;
@@ -88,7 +92,7 @@ namespace MetaInit
 		VulkanQueue() = default;
 		explicit VulkanQueue(VulkanDevice* device, uint32_t family_index, uint32_t index);
 		DISALLOW_COPY_AND_ASSIGN(VulkanQueue);
-		void Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem);
+		void Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem, VkFence fence=VK_NULL_HANDLE);
 		void Submit(const VkPresentInfoKHR& present_info);
 		void WaitIdle()const;
 		VkQueue Get()const { return handle_; };

@@ -150,7 +150,7 @@ namespace MetaInit
 		}
 
 		//FIXME to deal with old swapchain
-		InitFBOs();
+		InitFrameWorkLoads();
 	
 	}
 
@@ -162,7 +162,7 @@ namespace MetaInit
 		device_ = wsi.device_;
 		wsi.surface_ = VK_NULL_HANDLE;
 		wsi.swap_chain_ = VK_NULL_HANDLE;
-		InitFBOs();
+		InitFrameWorkLoads();
 	}
 
 	VulkanWindowSystemImpl::~VulkanWindowSystemImpl()
@@ -178,28 +178,62 @@ namespace MetaInit
 			vkDestroySwapchainKHR(device_->Get(), swap_chain_, g_host_alloc);
 		}
 
-		for (auto& image : swap_images_)
+		for (auto& frame : frame_workloads_)
 		{
-			vkDestroyImage(device_->Get(), image, g_host_alloc);	
+
+			if (frame.image_ != VK_NULL_HANDLE)
+			{
+				vkDestroyImage(device_->Get(), frame.image_, g_host_alloc);
+			}
+
+			if (frame.image_view_ != VK_NULL_HANDLE)
+			{
+				vkDestroyImageView(device_->Get(), frame.image_view_, g_host_alloc);
+			}
+
+			if (frame.fence_ != VK_NULL_HANDLE)
+			{
+				vkDestroyFence(device_->Get(), frame.fence_, g_host_alloc);
+			}
 		}
 
-		for (auto& view : swap_image_views_)
+		for (auto& acquire : acquires_)
 		{
-			vkDestroyImageView(device_->Get(), view, g_host_alloc);
+			if (acquire != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(device_->Get(), acquire, g_host_alloc);
+			}
 		}
+
 	}
 
-	VkFramebuffer VulkanWindowSystemImpl::GetFrameBufferAsync(VkSemaphore& semaphore, uint32_t& fbo_index)
+	VulkanWindowSystemImpl::FrameWorkLoad VulkanWindowSystemImpl::GetFrameBufferAsync(VkSemaphore& semaphore)
 	{
-		uint32_t image_index;
+		uint32_t frame_index;
+		acquire_index_ = (acquire_index_ + 1) % acquires_.size();
+		semaphore = acquires_[acquire_index_];
+		//semaphore and fence must not both be equal to VK_NULL_HANDLE
 		vkAcquireNextImageKHR(device_->Get(), swap_chain_, std::numeric_limits<uint64_t>::max(),
-								nullptr, nullptr, &image_index);
+									semaphore, nullptr, &frame_index);
 
-		//other sync work
+		auto& work_load = frame_workloads_[frame_index];
+		//check whether work_load is being writing
+		if (work_load.using_)
+		{
+			auto ret = vkWaitForFences(device_->Get(), 1, &work_load.fence_, VK_TRUE, std::numeric_limits<uint64_t>::max());
+			if (VK_SUCCESS == ret)
+			{
+				throw std::runtime_error("wait frame workload too long");
+			}
+		}
+
+		vkResetFences(device_->Get(), 1, &work_load.fence_);
+		work_load.using_ = true;
+		return work_load;
 		
 	}
 
-	void VulkanWindowSystemImpl::SubmitFrameBufferAsync(const VkSemaphore semaphore, const uint32_t fbo_index)
+	void VulkanWindowSystemImpl::SubmitFrameBufferAsync(VkSemaphore semaphore, const uint32_t fbo_index)
 	{
 		VkPresentInfoKHR present_info{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 		present_info.waitSemaphoreCount = 1;
@@ -221,9 +255,9 @@ namespace MetaInit
 
 	bool VulkanWindowSystemImpl::IsSwapChainImage(const VkImage image) const
 	{
-		for (auto& swap : swap_images_)
+		for (auto& frame : frame_workloads_)
 		{
-			if (swap == image)
+			if (frame.image_ == image)
 			{
 				return true;
 			}
@@ -232,28 +266,45 @@ namespace MetaInit
 		return false;
 	}
 
-	void VulkanWindowSystemImpl::InitFBOs()
+	void VulkanWindowSystemImpl::InitFrameWorkLoads()
 	{
 		if (VK_NULL_HANDLE != swap_chain_)
 		{
 			uint32_t image_count = 0;
 			vkGetSwapchainImagesKHR(device_->Get(), swap_chain_, &image_count, nullptr);
 			assert(image_count > 0 && "swapchain should has images");
-			swap_images_.resize(image_count);
+			SmallVector<VkImage> swap_images(image_count);
 			vkGetSwapchainImagesKHR(device_->Get(), swap_chain_, &image_count, swap_images_.data());
 
 			//other post work
-			swap_image_views_.resize(image_count);
-			VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-			memset(&view_info, 0, sizeof(view_info));
-			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			view_info.format = swap_format_;
-			view_info.subresourceRange.levelCount = 1;
-			view_info.subresourceRange.layerCount = 1;
-			for (auto n = 0; n < image_count; ++n)
+			frame_workloads_.resize(image_count);
+			for(auto n = 0; n < image_count; ++n)
+			{ 
+				VkImageViewCreateInfo view_info{};
+				memset(&view_info, 0, sizeof(view_info));
+				view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+				view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+				view_info.format = swap_format_;
+				view_info.subresourceRange.levelCount = 1;
+				view_info.subresourceRange.layerCount = 1;
+				view_info.image = swap_images[n];
+				frame_workloads_[n].image_ = swap_images[n];
+				vkCreateImageView(device_->Get(), &view_info, g_host_alloc, &(frame_workloads_[n].image_view_));
+				VkFenceCreateInfo fence_info{};
+				fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				fence_info.pNext = VK_NULL_HANDLE;
+				fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+				vkCreateFence(device_->Get(), &fence_info, g_host_alloc, &(frame_workloads_[n].fence_));
+			}
+
+			acquires_.resize(image_count);
+			for (auto& acquire : acquires_)
 			{
-				view_info.image = swap_images_[n];
-				vkCreateImageView(device_->Get(), &view_info, g_host_alloc, &swap_image_views_[n]);
+				VkSemaphoreCreateInfo semp_info{};
+				memset(&semp_info, 0, sizeof(semp_info));
+				//flags is reserved for future use.
+				semp_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				vkCreateSemaphore(device_->Get(), &semp_info, g_host_alloc, &acquire);
 			}
 		}
 	}
