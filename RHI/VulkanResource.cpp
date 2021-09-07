@@ -130,12 +130,12 @@ namespace MetaInit
 		return pool_info;
 	}
 
-	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, const Desc& desc)
+	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, const DescriptorPool::Desc& desc)
 	{
 		Init(device, desc);
 	}
 
-	void DescriptorPool::Init(VulkanDevice::Ptr device, const Desc& desc)
+	void DescriptorPool::Init(VulkanDevice::Ptr device, const DescriptorPool::Desc& desc)
 	{
 		device_ = device;
 		UpdateCurrPool();
@@ -211,16 +211,24 @@ namespace MetaInit
 
 		try
 		{
+			if (!CanAllocate())
+			{
+				UpdateCurrPool();
+			}
 			desc_creater(curr_);
 			return desc_sets;
 		}
 		catch (std::runtime_error& e)
 		{
-			UpdateCurrPool();
-			desc_creater(curr_);
-			return desc_sets;
+			throw std::runtime_error("descriptor set alloc failed");
 		}
 
+	}
+
+	bool DescriptorPool::CanAllocate(VkDescriptorSetLayout layout)const
+	{
+		//fixme memory logic
+		return alloc_size_ < pool_size_;
 	}
 
 	void DescriptorPool::Reset()
@@ -271,11 +279,11 @@ namespace MetaInit
 		name_ = desc_set.set_name_;
 		auto& bind_cfgs = desc_set.bindings_;
 		desc_lut_.clear();
-		for (auto n = 0; n < desc_set.bindings_.size(); ++n)
+		for (auto n = 0; n < bind_cfgs.size(); ++n)
 		{
 			desc_lut_[bind_cfgs[n].binding_name_] = n;
 		}
-
+		desc_infos_.resize(bind_cfgs.size());
 		handle_ = handle;
 	}
 
@@ -324,11 +332,11 @@ namespace MetaInit
 		write_set.descriptorCount = 1;
 		write_set.descriptorType = SetDescriptorType(read_only_, false, false);
 
-		VkDescriptorImageInfo image_info{};
-		image_info.imageLayout = read_only_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-		image_info.imageView = 0;
-		image_info.sampler = nullptr;
-		write_set.pImageInfo = &image_info;
+		auto* image_info = new (&desc_infos_[binding])VkDescriptorImageInfo;
+		image_info->imageLayout = read_only_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+		image_info->imageView = 0;
+		image_info->sampler = nullptr;
+		write_set.pImageInfo = image_info;
 		write_cache_.emplace_back(write_cache_);
 	}
 
@@ -340,10 +348,10 @@ namespace MetaInit
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
 		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		VkDescriptorImageInfo image_info;
-		
+		auto* image_info = new(&desc_infos_[binding])VkDescriptorImageInfo;
+		image_info->sampler = sampler.Get();
+		write_set.pImageInfo = image_info;
 		write_cache_.emplace_back(write_set);
-		//todo
 	}
 
 	void DescriptorSetsWrapper::UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset)
@@ -354,11 +362,11 @@ namespace MetaInit
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
 		write_set.descriptorType = SetDescriptorType(read_only_, true, false);
-		VkDescriptorBufferInfo buffer_info{};
-		buffer_info.buffer = buffer.Get();
-		buffer_info.offset = offset;
-		buffer_info.range = buffer.GetSize();
-		write_set.pBufferInfo = &buffer_info;
+		auto* buffer_info = new(&desc_infos_[binding])VkDescriptorBufferInfo;
+		buffer_info->buffer = buffer.Get();
+		buffer_info->offset = offset;
+		buffer_info->range = buffer.GetSize();
+		write_set.pBufferInfo = buffer_info;
 		write_cache_.emplace_back(write_set);
 		//todo
 	}
@@ -371,6 +379,7 @@ namespace MetaInit
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
 		write_set.descriptorType = SetDescriptorType(read_only_, true, true);
+		write_set.pTexelBufferView = buffer_view.Get();
 		write_cache_.emplace_back(write_set);
 	}
 
@@ -382,11 +391,11 @@ namespace MetaInit
 		write_set.dstBinding = binding;
 		write_set.descriptorCount = 1;
 		write_set.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		VkDescriptorImageInfo image_info{};
-		image_info.sampler = VK_NULL_HANDLE;
-		//image_info.imageView = attach.
-		image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		write_set.pImageInfo = &image_info; //fixme deal with pointer
+		auto* image_info = new(&desc_infos_[binding])VkDescriptorImageInfo;
+		image_info->sampler = VK_NULL_HANDLE;
+		//image_info->imageView = attach.
+		image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		write_set.pImageInfo = image_info; 
 		write_cache_.emplace_back(write_set);
 	}
 
@@ -395,19 +404,19 @@ namespace MetaInit
 		/*If descriptorType is VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 
 		 *the pNext chain must include a VkWriteDescriptorSetAccelerationStructureKHR
 		 *structure whose accelerationStructureCount member equals descriptorCount */
-		VkWriteDescriptorSetAccelerationStructureKHR acc_info;
-		memset(&acc_info, 0, sizeof(acc_info));
-		acc_info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-		acc_info.accelerationStructureCount = 1;
-		acc_info.pAccelerationStructures = nullptr; //todo
+		auto* acc_info = new(&desc_infos_[binding])VkWriteDescriptorSetAccelerationStructureKHR;
+		memset(acc_info, 0, sizeof(*acc_info));
+		acc_info->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+		acc_info->accelerationStructureCount = 1;
+		acc_info->pAccelerationStructures = nullptr; //todo
 		VkWriteDescriptorSet write_set;
 		memset(&write_set, 0, sizeof(write_set));
 		write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write_set.dstBinding = binding;
 		write_set.dstSet = handle_;
-		write_set.pNext = &acc_info;
+		write_set.pNext = acc_info;
 		write_set.descriptorCount = acc_info.accelerationStructureCount;
-		write_cache_.emplace_back(write_set); //problem
+		write_cache_.emplace_back(write_set); 
 	}
 
 	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanImage& image)

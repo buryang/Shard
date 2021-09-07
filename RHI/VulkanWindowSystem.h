@@ -29,6 +29,8 @@ namespace MetaInit
 		VulkanWindowSystemImpl(VulkanInstance::Ptr instance, VulkanDevice::Ptr device, GLFWwindow* window);
 		VulkanWindowSystemImpl(VulkanWindowSystemImpl&& wsi);
 		~VulkanWindowSystemImpl();
+		void OnWindowChange(GLFWwindow* window);
+		void OnWindowResize(uint32_t sizex, uint32_t sizey);
 		void UpdateSwapChain(const VkSwapchainCreateInfoKHR& swap_info);
 		//https://stackoverflow.com/questions/60419749/why-does-vkacquirenextimagekhr-never-block-my-thread
 		//"image is not yet available to you"
@@ -38,6 +40,7 @@ namespace MetaInit
 		bool IsSwapChainImage(const VkImage image)const;
 	private:
 		void InitFrameWorkLoads();
+		void ResetFrameWorkLoads();
 	private:
 		VkSurfaceKHR					surface_{ VK_NULL_HANDLE };
 		//VkSurfaceFormatKHR			surface_format_;
@@ -48,7 +51,10 @@ namespace MetaInit
 		Vector<VkSemaphore>				acquires_;
 		VulkanDevice::Ptr				device_;
 		VulkanInstance::Ptr				instance_;
+		VulkanQueue::Ptr				present_queue_;
 		GLFWwindow*						window_{ nullptr };
 		uint32_t						acquire_index_ = -1;
+		//critical section resouce here
+		std::mutex						mutex_;
 	};
 }

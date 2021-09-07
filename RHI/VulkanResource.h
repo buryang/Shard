@@ -5,6 +5,7 @@
 #include <list>
 #include <mutex>
 
+//https://stackoverflow.com/questions/48867995/how-to-correctly-use-decriptor-sets-for-multiple-interleaving-buffers
 namespace MetaInit
 {
 	/*functions to make create informations for resource related structure*/
@@ -34,7 +35,7 @@ namespace MetaInit
 				uint32_t	desc_type_;
 				uint32_t	desc_count_;
 			};
-			Vector<DescCount> desc_count_;
+			//Vector<DescCount> desc_count_;
 		}Desc;
 		using Ptr = std::shared_ptr<DescriptorPool>;
 		DescriptorPool() = default;
@@ -47,6 +48,7 @@ namespace MetaInit
 		void Reset();
 		~DescriptorPool() { UnInit(); }
 	private:
+		bool CanAllocate(VkDescriptorSetLayout layout)const;
 		void UpdateCurrPool();
 	private:
 		friend class DescriptorPoolManager;
@@ -55,6 +57,7 @@ namespace MetaInit
 		List used_;
 		VkDescriptorPool			curr_{ VK_NULL_HANDLE };
 		VulkanDevice::Ptr			device_;
+		uint32_t					alloc_size_ = 0;//size allocated from curr pool
 		uint32_t					pool_size_;
 		std::mutex					pool_mutex_;
 	};
@@ -92,6 +95,13 @@ namespace MetaInit
 				uint32_t			desc_count_		= 1;
 				uint32_t			stage_flags_	= VK_SHADER_STAGE_ALL;
 				std::string			binding_name_;
+				//the sampler objects must not be destroyed before the final 
+				//use of the set layout and any descriptor poolsand sets created using it
+				VkSampler			sampler = VK_NULL_HANDLE;
+				bool IsSamplerMutable()const {
+					return !((desc_type_ == VK_DESCRIPTOR_TYPE_SAMPLER || desc_type_ == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+								&& sampler != VK_NULL_HANDLE);
+				}
 			};
 			Vector<DescriptorBindDesc>	bindings_;
 			std::string					set_name_;
@@ -99,6 +109,14 @@ namespace MetaInit
 		};
 		void AddSet(DescriptorSetDesc& desc_set);
 		void AddConstRange(ConstantRangeDesc& const_range);
+		uint32_t GetNumConstants()const { return consts_.size(); }
+		uint32_t GetNumDescriptorSets()const { return desc_sets_.size(); }
+		const ConstantRangeDesc& GetConstantDesc(uint32_t index)const {
+			return consts_[index];
+		}
+		const DescriptorSetDesc& GetDescriptorSetDesc(uint32_t index)const {
+			return desc_sets_[index];
+		}
 	private:
 		Vector<ConstantRangeDesc>		consts_;
 		Vector<DescriptorSetDesc>		desc_sets_;
@@ -122,8 +140,6 @@ namespace MetaInit
 		};
 		PseudoDescriptor operator[](std::string& desc_name);
 		void Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle);
-		template <typename ...Args>
-		void Write(int index, Args ...args);
 		void BeginUpdates();
 		void EndUpdates();
 		void UnInit();
@@ -149,6 +165,17 @@ namespace MetaInit
 		Vector<VkWriteDescriptorSet>	write_cache_;
 		bool							read_only_ = false;
 		std::string						name_;
+		//descriptor set write data container
+		struct DescriptorInfoDetail
+		{
+			union
+			{
+				VkDescriptorBufferInfo	buffer_info_;
+				VkDescriptorImageInfo	image_info_;
+				//WriteDescriptorSetAccelerationStructureKHR acc_info_;
+			};
+		};
+		Vector<DescriptorInfoDetail>	desc_infos_;
 	};
 
 

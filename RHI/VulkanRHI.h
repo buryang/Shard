@@ -34,7 +34,7 @@ namespace MetaInit
 	class VulkanVMAWrapper;
 	class VulkanQueue;
 	class VulkanCmdPoolManager;
-	class MINIT_API VulkanDevice
+	class MINIT_API VulkanDevice : public std::enable_shared_from_this<VulkanDevice>
 	{
 	public:
 		enum class EQueueType :uint32_t
@@ -46,18 +46,20 @@ namespace MetaInit
 		};
 		using Ptr = std::shared_ptr<VulkanDevice>;
 		static Ptr Create(VulkanInstance::Ptr instance, const VkDeviceCreateInfo& device_info);
-		using QueryCallback = auto(*)(VkPhysicalDevice device, uint32_t family_index) -> bool;
+		using QueryCallback = std::function<bool(VkPhysicalDevice device, uint32_t family_index)>;
 		VkDevice Get() { return handle_; }
 		VkPhysicalDevice GetPhy() { return phy_devices_; }
-		VulkanQueue& GetQueue(EQueueType queue_type);
-		VulkanQueue& QueryQueue(QueryCallback query);
+		VulkanQueue::Ptr GetQueue(EQueueType queue_type);
+		VulkanQueue::Ptr QueryQueue(QueryCallback query);
 		VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
 		//function to deal with command buffer logic
 		VulkanCmdPoolManager& GetCmdPoolManager() { return pool_manager_; }
-		void ReleaseQueue(VulkanQueue& queue);
+		void ReleaseQueue(VulkanQueue::Ptr queue);
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
 		uint32_t GetMaxColorTargetCount()const;
 		uint32_t GetMaxPushConstantLimit()const;
+		uint32_t GetMaxVertexInputAttributes()const;
+		uint32_t GetMaxVertexInputBinds()const;
 		VkSurfaceCapabilitiesKHR GetSurfaceSupportInfo()const;
 		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;
@@ -89,8 +91,9 @@ namespace MetaInit
 	class VulkanQueue
 	{
 	public:
+		using Ptr = std::shared_ptr<VulkanQueue>;
 		VulkanQueue() = default;
-		explicit VulkanQueue(VulkanDevice* device, uint32_t family_index, uint32_t index);
+		explicit VulkanQueue(VulkanDevice::Ptr device, uint32_t family_index, uint32_t index);
 		DISALLOW_COPY_AND_ASSIGN(VulkanQueue);
 		void Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem, VkFence fence=VK_NULL_HANDLE);
 		void Submit(const VkPresentInfoKHR& present_info);
@@ -100,7 +103,7 @@ namespace MetaInit
 		uint32_t GetIndex()const { return index_; }
 		~VulkanQueue();
 	private:
-		VulkanDevice*		device_{ nullptr };
+		VulkanDevice::Ptr	device_;
 		VkQueue				handle_{ VK_NULL_HANDLE };
 		uint32_t			family_index_ = 0;
 		uint32_t			index_ = 0;

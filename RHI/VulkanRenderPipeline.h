@@ -2,6 +2,7 @@
 #include "RHI/VulkanRHI.h"
 #include "RHI/VulkanResource.h"
 #include "RHI/VulkanRenderShader.h"
+#include "RHI/VulkanFrameBuffer.h"
 #include <unordered_map>
 
 namespace MetaInit
@@ -86,7 +87,7 @@ namespace MetaInit
 					Vector<VkDynamicState>	dyn_stats_;
 					//vertex attribution arguments
 					Vector<VkVertexInputBindingDescription>		vertex_descs_;
-					Vector< VkVertexInputAttributeDescription>	attribute_descs_;
+					Vector<VkVertexInputAttributeDescription>	attribute_descs_;
 				}gfx_;
 				struct {
 					ShaderDesc				stage_;
@@ -114,14 +115,14 @@ namespace MetaInit
 		void InitialDescSetLayouts(const RootSignature& root);
 	protected:
 		using ShaderList = Vector<VulkanShaderModule::Ptr>;
-		using DescList = Vector<DescriptorSetsWrapper>;
+		using DescSetList = Vector<DescriptorSetsWrapper>;
 		VulkanDevice::Ptr				device_;
 		VkPipeline						handle_{ VK_NULL_HANDLE };
 		EPipeType						pipe_type_;
 		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
 		Vector<VkDescriptorSetLayout>	ds_layouts_;
-		VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
-		DescList						descs_;
+		//VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
+		DescSetList						descs_;
 		ShaderList						stages_;
 	};
 
@@ -137,19 +138,23 @@ namespace MetaInit
 	public:
 		explicit VulkanGraphicsPipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
 		VulkanShaderModule::Ptr GetShader(VulkanShaderModule::EType shader_type);
+		//bind vertex info
+		void SetVAO(const VulkanVertexAttributes& vao);
+		//dynamic state 
+		void SetViewPoint(const VkViewport& view_point);
+		void SetStencil(const uint32_t stentil_ref);
+		void SetScissor(const VkRect2D& scissor);
 		//init render pass and etc.
 		void PrepareForDraw(VulkanCmdBuffer& cmd_buffer, VulkanFrameBuffer& frame_buffer);
 		void EndForDraw(VulkanCmdBuffer& cmd_buffer);
-		//dynamic state 
-		void SetViewPoint(VulkanCmdBuffer& cmd_buffer, const VkViewport& view_point);
-		void SetStencil(VulkanCmdBuffer& cmd_buffer, const uint32_t stentil_ref);
-		void SetScissor(VulkanCmdBuffer& cmd_buffer, const VkRect2D& scissor);
 	private:
 		//only initial when pipeline has graph viewpoint info
 		Optional<VkViewport>		view_point_;
 		Optional<uint32_t>			stencil_ref_;
 		Optional<VkRect2D>			scissor_;
 		VulkanFrameBuffer			frame_buffer_;
+		//fixed-function vertex process data
+
 	};
 
 	class VulkanRayTracingPipeline : public VulkanRenderPipeline

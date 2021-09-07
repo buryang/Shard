@@ -57,6 +57,7 @@ namespace MetaInit
 				eLoad_NoAction = RTACTION_MAKE_MASK(ELoadAction::eLoad, ESaveAction::eNoAction),
 				eClear_Resolve = RTACTION_MAKE_MASK(ELoadAction::eClear, ESaveAction::eResolve),
 				eLoad_Resolve = RTACTION_MAKE_MASK(ELoadAction::eLoad, ESaveAction::eResolve),
+#undef RTACTION_MAKE_MASK
 			};
 
 			struct TargetDesc

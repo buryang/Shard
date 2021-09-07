@@ -1,14 +1,12 @@
 #pragma once
 #include <memory>
+#include "RHI/VulkanRHI.h"
 #include "RHI/VulkanFrameGraph.h"
 #include "Scene/Primitive.h"
 
 
 namespace MetaInit
 {
-	
-	class VulkanFrameContextGraph;
-	using RenderGraph = VulkanFrameContextGraph;
 	namespace Primitive
 	{
 		/*primitive resource state*/
@@ -129,6 +127,7 @@ namespace MetaInit
 			VulkanDevice::Ptr		device_;
 			bool					mapped_{ false };
 			VkBuffer				handle_{ VK_NULL_HANDLE };
+			//VkBuffer				stage_buffer_{ VK_NULL_HANDLE };
 			VkBufferCreateInfo		prop_info_;
 			VmaAllocation			vma_data_;
 			EResourceState			state_;
@@ -145,6 +144,24 @@ namespace MetaInit
 		private:
 			VulkanBuffer::Ptr	buffer_;
 			VkBufferView		handle_{ VK_NULL_HANDLE };
+		};
+
+		class VulkanVertexAttributes
+		{
+		public:
+			enum ETopology
+			{
+				ePoint,
+				eLine,
+				eTriangle,
+				ePatch,
+			};
+			VulkanVertexAttributes();
+			VulkanBuffer::Ptr GetVertex();
+			VulkanBuffer::Ptr GetIndex();
+		private:
+			VulkanBuffer::Ptr	vertex_;
+			VulkanBuffer::Ptr	index_;
 		};
 
 	}

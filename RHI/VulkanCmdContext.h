@@ -5,17 +5,13 @@
 #include <unordered_map>
 #include <mutex>
 
-
 namespace MetaInit
 {
 	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count);
 	VkCommandBufferBeginInfo MakeCommandBufferBeginInfo(VkCommandBufferUsageFlags flags);
 	VkCommandPoolCreateInfo MakeCommandPoolCreateInfo(VkCommandPoolCreateFlags flags, uint32_t family_index);
-	
+	VkSemaphoreCreateInfo MakeSemphoreCreateInfo(VkSemaphoreCreateFlags flags = 0x0);
 	class VulkanRayTraceBindTable;
-	namespace Primitive {
-		class VulkanBuffer;
-	}
 	/*
 	* Command pools are application-synchronized, meaning that a command pool
 	* must not be used concurrently in multiple threads. That includes use via

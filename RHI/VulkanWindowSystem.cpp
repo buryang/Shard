@@ -16,7 +16,7 @@ namespace MetaInit
 		swap_info.imageExtent.height = surface_capabilities.currentExtent.height;
 		swap_info.oldSwapchain = old_swap; //to further check this
 		swap_info.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-		swap_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		swap_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		swap_info.imageArrayLayers = 1;
 		//VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR specifies that image content is presented without being changed
 		swap_info.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR; //VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR
@@ -149,9 +149,15 @@ namespace MetaInit
 			throw std::runtime_error("failed to create swapchain");
 		}
 
+		//init present queue
+		auto& query_surface_queue = [&](VkPhysicalDevice device, uint32_t family_index)->bool {
+			VkBool32 present_able = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, family_index, surface_, &present_able);
+			return present_able == VK_TRUE;
+		};
+		present_queue_ = device_->QueryQueue(query_surface_queue);
 		//FIXME to deal with old swapchain
 		InitFrameWorkLoads();
-	
 	}
 
 	VulkanWindowSystemImpl::VulkanWindowSystemImpl(VulkanWindowSystemImpl&& wsi)
@@ -160,6 +166,7 @@ namespace MetaInit
 		swap_chain_ = wsi.swap_chain_;
 		instance_ = wsi.instance_;
 		device_ = wsi.device_;
+		present_queue_ = wsi.present_queue_;
 		wsi.surface_ = VK_NULL_HANDLE;
 		wsi.swap_chain_ = VK_NULL_HANDLE;
 		InitFrameWorkLoads();
@@ -178,33 +185,36 @@ namespace MetaInit
 			vkDestroySwapchainKHR(device_->Get(), swap_chain_, g_host_alloc);
 		}
 
-		for (auto& frame : frame_workloads_)
+		ResetFrameWorkLoads();
+		//release present queue
+		device_->ReleaseQueue(present_queue_);
+	}
+
+	void VulkanWindowSystemImpl::OnWindowChange(GLFWwindow* window)
+	{
+		//first create a surface
+		window_ = window;
+		ResetFrameWorkLoads();
+		if (VK_NULL_HANDLE != surface_)
 		{
-
-			if (frame.image_ != VK_NULL_HANDLE)
-			{
-				vkDestroyImage(device_->Get(), frame.image_, g_host_alloc);
-			}
-
-			if (frame.image_view_ != VK_NULL_HANDLE)
-			{
-				vkDestroyImageView(device_->Get(), frame.image_view_, g_host_alloc);
-			}
-
-			if (frame.fence_ != VK_NULL_HANDLE)
-			{
-				vkDestroyFence(device_->Get(), frame.fence_, g_host_alloc);
-			}
+			vkDestroySurfaceKHR(instance_->Get(), surface_, g_host_alloc);
 		}
-
-		for (auto& acquire : acquires_)
+		if (VK_NULL_HANDLE != swap_chain_)
 		{
-			if (acquire != VK_NULL_HANDLE)
-			{
-				vkDestroySemaphore(device_->Get(), acquire, g_host_alloc);
-			}
+			vkDestroySwapchainKHR(device_->Get(), nullptr, g_host_alloc);
 		}
+		auto ret = glfwCreateWindowSurface(instance_->Get(), window, g_host_alloc, &surface_);
+		if (VK_SUCCESS != ret)
+		{
+			const char* error_message = NULL;
+			glfwGetError(&error_message);
+			throw std::runtime_error(error_message);
+		}
+	}
 
+	void VulkanWindowSystemImpl::OnWindowResize(uint32_t sizex, uint32_t sizey)
+	{
+		ResetFrameWorkLoads();
 	}
 
 	VulkanWindowSystemImpl::FrameWorkLoad VulkanWindowSystemImpl::GetFrameBufferAsync(VkSemaphore& semaphore)
@@ -236,21 +246,16 @@ namespace MetaInit
 	void VulkanWindowSystemImpl::SubmitFrameBufferAsync(VkSemaphore semaphore, const uint32_t fbo_index)
 	{
 		VkPresentInfoKHR present_info{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-		present_info.waitSemaphoreCount = 1;
-		present_info.pWaitSemaphores = &semaphore;
+		memset(&present_info, 0, sizeof(present_info));
+		if (VK_NULL_HANDLE != semaphore)
+		{
+			present_info.waitSemaphoreCount = 1;
+			present_info.pWaitSemaphores = &semaphore;
+		}
 		present_info.swapchainCount = 1;
 		present_info.pSwapchains = &swap_chain_;
 		present_info.pImageIndices = &fbo_index;
-		present_info.pResults = VK_NULL_HANDLE;
-
-		auto query_surface_queue = [&](VkPhysicalDevice device, uint32_t family_index) {
-			VkBool32 present_able = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, family_index, surface_, &present_able);
-			return present_able == VK_TRUE;
-		};
-
-		auto& present_queue = device_->QueryQueue(query_surface_queue);
-		present_queue.Submit(present_info);
+		present_queue_->Submit(present_info);
 	}
 
 	bool VulkanWindowSystemImpl::IsSwapChainImage(const VkImage image) const
@@ -274,7 +279,7 @@ namespace MetaInit
 			vkGetSwapchainImagesKHR(device_->Get(), swap_chain_, &image_count, nullptr);
 			assert(image_count > 0 && "swapchain should has images");
 			SmallVector<VkImage> swap_images(image_count);
-			vkGetSwapchainImagesKHR(device_->Get(), swap_chain_, &image_count, swap_images_.data());
+			vkGetSwapchainImagesKHR(device_->Get(), swap_chain_, &image_count, swap_images.data());
 
 			//other post work
 			frame_workloads_.resize(image_count);
@@ -307,5 +312,37 @@ namespace MetaInit
 				vkCreateSemaphore(device_->Get(), &semp_info, g_host_alloc, &acquire);
 			}
 		}
+	}
+	void VulkanWindowSystemImpl::ResetFrameWorkLoads()
+	{
+		device_->WaitIdle();
+		for (auto& frame : frame_workloads_)
+		{
+			if (frame.image_ != VK_NULL_HANDLE)
+			{
+				vkDestroyImage(device_->Get(), frame.image_, g_host_alloc);
+			}
+
+			if (frame.image_view_ != VK_NULL_HANDLE)
+			{
+				vkDestroyImageView(device_->Get(), frame.image_view_, g_host_alloc);
+			}
+
+			if (frame.fence_ != VK_NULL_HANDLE)
+			{
+				vkDestroyFence(device_->Get(), frame.fence_, g_host_alloc);
+			}
+		}
+
+		frame_workloads_.clear();
+
+		for (auto& acquire : acquires_)
+		{
+			if (acquire != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(device_->Get(), acquire, g_host_alloc);
+			}
+		}
+		acquires_.clear();
 	}
 }

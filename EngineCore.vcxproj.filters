@@ -75,6 +75,9 @@
     <ClCompile Include="RHI\VulkanFrameBuffer.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
+    <ClCompile Include="RHI\VulkanStaticScene.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RHI\VulkanRHI.h">
@@ -135,6 +138,9 @@
       <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="RHI\VulkanFrameBuffer.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\VulkanStaticScene.h">
       <Filter>RHI</Filter>
     </ClInclude>
   </ItemGroup>

@@ -227,10 +227,9 @@ namespace MetaInit
 	void VulkanRenderPipeline::InitialDescSetLayouts(const RootSignature& root)
 	{
 		ds_layouts_.clear();
-		auto& ds_cfgs = root.desc_sets_;
-		for (auto n = 0; n < ds_cfgs.size(); ++n)
+		for (auto n = 0; n < root.GetNumDescriptorSets(); ++n)
 		{
-			auto& set_cfg = ds_cfgs[n];
+			const auto& set_cfg = root.GetDescriptorSetDesc(n);
 			SmallVector<VkDescriptorSetLayoutBinding> binds;
 			for (auto m = 0; m < set_cfg.Size(); ++m)
 			{
@@ -253,9 +252,9 @@ namespace MetaInit
 		SmallVector<VkDescriptorSet> ds_buffer(ds_layouts_.size());
 		vkAllocateDescriptorSets(device_->Get(), &ds_alloc_info, ds_buffer.data());
 		descs_.resize(ds_buffer.size());
-		for (auto n = 0; n < descs_.size(); ++n)
+		for (auto n = 0; n < root.GetNumDescriptorSets(); ++n)
 		{
-			descs_[n].Init(ds_cfgs[n], ds_buffer[n]);
+			descs_[n].Init(root.GetDescriptorSetDesc(n), ds_buffer[n]);
 		}
 
 	}
@@ -368,6 +367,8 @@ namespace MetaInit
 		//init render pass
 		frame_buffer_ = frame_buffer;
 		frame_buffer_.GetPass().Begin(cmd_buffer, frame_buffer);
+
+		if(desc_.)
 	}
 
 	void VulkanGraphicsPipeline::EndForDraw(VulkanCmdBuffer& cmd_buffer)

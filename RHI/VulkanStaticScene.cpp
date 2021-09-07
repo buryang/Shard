@@ -6,4 +6,9 @@ namespace MetaInit
 	{
 
 	}
+
+	bool VulkanStaticScene::IsIndexed() const
+	{
+		return vertex_indices_;
+	}
 }

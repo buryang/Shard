@@ -81,7 +81,7 @@ namespace MetaInit
 		return device_ptr;
 	}
 
-	VulkanQueue& VulkanDevice::GetQueue(VulkanDevice::EQueueType queue_type)
+	VulkanQueue::Ptr VulkanDevice::GetQueue(VulkanDevice::EQueueType queue_type)
 	{
 		auto family_index = queue_families_[queue_type];
 
@@ -94,13 +94,13 @@ namespace MetaInit
 			{
 				auto index = static_cast<uint32_t>(iter - inuse.begin());
 				inuse[index] = 0xffffff; // fixme
-				return VulkanQueue(this, findex, index);
+				return std::make_shared<VulkanQueue>(new VulkanQueue(shared_from_this(), findex, index));
 			}
 		}
 		throw std::runtime_error("no supported queue for this type");
 	}
 
-	VulkanQueue& VulkanDevice::QueryQueue(QueryCallback query)
+	VulkanQueue::Ptr VulkanDevice::QueryQueue(QueryCallback query)
 	{
 		for (uint32_t findex = 0; findex < queue_inuse_.size(); ++findex)
 		{
@@ -114,7 +114,7 @@ namespace MetaInit
 				{
 					auto index = static_cast<uint32_t>(iter - inuse.begin());
 					inuse[index] = 0xffffff; // fixme
-					return VulkanQueue(this, findex, index);
+					return std::make_shared<VulkanQueue>( new VulkanQueue(shared_from_this(), findex, index));
 				}
 
 			}
@@ -123,10 +123,10 @@ namespace MetaInit
 		throw std::runtime_error("no supported queue");
 	}
 
-	void VulkanDevice::ReleaseQueue(VulkanQueue& queue)
+	void VulkanDevice::ReleaseQueue(VulkanQueue::Ptr queue)
 	{
 		std::lock_guard<std::mutex> queue_lock(mutex_);
-		queue_inuse_[queue.GetFamilyIndex()][queue.GetIndex()] = 0;
+		queue_inuse_[queue->GetFamilyIndex()][queue->GetIndex()] = 0;
 	}
 
 	VkSampleCountFlags VulkanDevice::GetMaxUsableSampleCount()const
@@ -152,6 +152,16 @@ namespace MetaInit
 	uint32_t VulkanDevice::GetMaxPushConstantLimit() const
 	{
 		return device_prop_.limits.maxPushConstantsSize;
+	}
+
+	uint32_t VulkanDevice::GetMaxVertexInputAttributes() const
+	{
+		return device_prop_.limits.maxVertexInputAttributes;
+	}
+
+	uint32_t VulkanDevice::GetMaxVertexInputBinds() const
+	{
+		return device_prop_.limits.maxVertexInputBindings;
 	}
 
 	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
@@ -308,7 +318,7 @@ namespace MetaInit
 		return instance_ptr;
 	}
 
-	VulkanQueue::VulkanQueue(VulkanDevice* device, uint32_t family_index, uint32_t index):device_(device)
+	VulkanQueue::VulkanQueue(VulkanDevice::Ptr device, uint32_t family_index, uint32_t index):device_(device)
 	{
 		//todo other work
 		vkGetDeviceQueue(device->Get(), family_index, index, &handle_);

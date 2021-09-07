@@ -31,6 +31,7 @@
     <ClCompile Include="RHI\VulkanRenderShader.cpp" />
     <ClCompile Include="RHI\VulkanResource.cpp" />
     <ClCompile Include="RHI\VulkanRHI.cpp" />
+    <ClCompile Include="RHI\VulkanStaticScene.cpp" />
     <ClCompile Include="RHI\VulkanWindowSystem.cpp" />
     <ClCompile Include="Scene\Material.cpp" />
     <ClCompile Include="Scene\Mesh.cpp" />
@@ -52,6 +53,7 @@
     <ClInclude Include="RHI\VulkanRenderShader.h" />
     <ClInclude Include="RHI\VulkanResource.h" />
     <ClInclude Include="RHI\VulkanRHI.h" />
+    <ClInclude Include="RHI\VulkanStaticScene.h" />
     <ClInclude Include="RHI\VulkanWindowSystem.h" />
     <ClInclude Include="Scene\BaseComputePass.h" />
     <ClInclude Include="Scene\BaseGraphicsPass.h" />
