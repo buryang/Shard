@@ -1,49 +1,59 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "RHI/VulkanRHI.h"
-#include "RHI/VulkanResource.h"
-#include "RHI/VulkanRenderPass.h"
-#include "RHI/VulkanRenderPipeline.h"
-#include "RHI/VulkanCmdContext.h"
-#include "RHI/VulkanMemAllocator.h"
-#include "RHI/VulkanWindowSystem.h"
-#include <set>
+#include "RHI/VulkanPrimitive.h"
+#include <string>
+#include <unordered_set>
+#include <unordered_map>
 #include <memory>
 
 namespace MetaInit
 {
-	class MINIT_API RenderFrameContextGraph : public std::enable_shared_from_this<RenderFrameContextGraph>
+	namespace Renderer
 	{
-	public:
-		using Ptr = std::shared_ptr<RenderFrameContextGraph>;
-		RenderFrameContextGraph(VulkanInstance::Ptr instance,
-			VulkanDevice::Ptr device);
-		RenderFrameContextGraph::Ptr Clone()const;
-		virtual ~RenderFrameContextGraph();
-		VulkanInstance::Ptr GetInstance() { return instance_; }
-		VulkanDevice::Ptr GetDevice() { return device_; }
-		VulkanVMAWrapper::Ptr GetMemeAllocator() { return vma_alloc_; }
-		virtual void Build(SceneProxyHelper& scene);
-		void Execute();
-		Ptr Get() { return shared_from_this(); }
-	private:
-		RenderFrameContextGraph(const RenderFrameContextGraph& graph);
-		RenderFrameContextGraph& operator=(const RenderFrameContextGraph& graph);
-		void InitRenderResource();
-		void BuildSubTask();
-	private:
-		VulkanInstance::Ptr				instance_;
-		VulkanDevice::Ptr				device_;
-		//fixme render pass relative to framebuffer and pipeline
-		VulkanRenderPass::Ptr			render_pass_;
-		Vector<VulkanRenderPipeline::Ptr>	render_pipelines_;
-		//a frame use multi cmdbuffer to build 
-		Vector<VulkanCmdBuffer::Ptr>	cmd_buffers_;
-		VulkanWindowSystemImpl::Ptr		wsi_impl_;
-		VulkanVMAWrapper::Ptr			vma_alloc_;
-		//ready for pipeline to render
-		VkSemaphore						image_available_{ VK_NULL_HANDLE };
-		//ready for wsi to present
-		VkSemaphore						present_signal_{ VK_NULL_HANDLE };
-	};
+		class MINIT_API RtRenderResource
+		{
+		public:
+			enum class EType
+			{
+				eBuffer,
+				eTexture,
+				eUnkown,
+			};
+			void AddReadPass(uint32_t pass);
+			void AddWritePass(uint32_t pass);
+			bool IsTransient()const;
+			void SetTransient(bool value);
+		private:
+			std::unordered_set<uint32_t>	read_in_passes_;
+			std::unordered_set<uint32_t>	write_in_passes_;
+			bool							transient_;
+			EType							type_;
+		};
+
+		class RtRenderPass;
+		class MINIT_API RtRendererFrameContextGraph 
+		{
+		public:
+			using Ptr = std::shared_ptr<RtRendererFrameContextGraph>;
+			virtual ~RtRendererFrameContextGraph() = default;
+			void LoadFromJson(const std::string& json);
+			void ExportToJson(const std::string& json)const;
+			void AddPass();
+			RtRenderResource& GetTextureResource();
+			RtRenderResource& GetBufferResource();
+		private:
+			DISALLOW_COPY_AND_ASSIGN(RtRendererFrameContextGraph);
+			void InitRenderResource();
+			void BuildSubTask();
+		private:
+			std::unordered_map<std::string, uint32_t>	resource_to_index_;
+			std::unordered_map<std::string, uint32_t>	pass_to_index_;
+			Vector<RtRenderResource>					resources_;
+			SmallVector<RtRendererPass>					passes_;
+
+			//physical resources
+			Vector<Primitive::VulkanBuffer::Ptr>		physical_buffers_;
+			Vector<Primitive::VulkanImage::Ptr>			physical_images_;
+		};
+	}
 }
