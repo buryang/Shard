@@ -164,6 +164,11 @@ namespace MetaInit
 		return device_prop_.limits.maxVertexInputBindings;
 	}
 
+	VkDeviceSize VulkanDevice::GetMinUniformBufferOffsetAlignment() const
+	{
+		return device_prop_.limits.minUniformBufferOffsetAlignment;
+	}
+
 	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
 	{
 		VkFormatProperties format_prop{};

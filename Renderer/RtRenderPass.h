@@ -25,7 +25,14 @@ namespace MetaInit
 			uint32_t GetFLags()const;
 		private:
 			friend class RtRendererPass;
-			std::string				name_;
+			std::string					name_;
+			SmallVector<Handle>			producers_;
+			SmallVector<Handle>			consumers_;
+			RtRendererPass::Handle		pass_;
+			struct SubFiledRange
+			{
+			};
+			SmallVector<SubFiledRange>	sub_resources_;
 		};
 
 
@@ -48,23 +55,23 @@ namespace MetaInit
 			const std::string					name_;
 			const uint32_t						pass_id_;
 			//todo
-			std::unordered_set<Ptr>				producers_;
-			std::unordered_set<Ptr>				consumers_;
+			std::unordered_set<Handle>			producers_;
+			std::unordered_set<Handle>			consumers_;
 			SmallVector<RtField::Handle>		inputs_;
 			SmallVector<RtField::Handle>		outputs_;
 			SmallVector<RtField::Handle>		internals_;
 			//whether in a async task queue
-			bool								is_async_{ false };
+			uint8_t								is_async_:1;
 			//generate/wait sync fence for follow pass
 			//whether gfx fork/join	
-			bool								is_gfx_fork_{ false };
-			bool								is_gfx_join_{ false };
+			uint8_t								is_gfx_fork_:1;
+			uint8_t								is_gfx_join_:1;
 			//whether async compute fork/join
-			bool								is_compute_begin_{ false };
-			bool								is_compute_end_{ false };
+			uint8_t								is_compute_begin_:1;
+			uint8_t								is_compute_end_:1;
 			//culling able
-			bool								is_culling_able_{ false };
-			bool								is_output_{ false };
+			uint8_t								is_culling_able_:1;
+			uint8_t								is_output_:1;
 			
 		};
 

@@ -13,11 +13,11 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{4d11364c-acdc-4002-aa44-022c0359f640}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Render">
-      <UniqueIdentifier>{b8f34e2c-0273-421e-8354-6cc6f57ae520}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Passes">
       <UniqueIdentifier>{f9377743-716d-449f-9cb8-b755d88da258}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{b8f34e2c-0273-421e-8354-6cc6f57ae520}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -28,7 +28,7 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\RtRenderGraph.cpp">
-      <Filter>Render</Filter>
+      <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="RHI\VulkanCmdContext.cpp">
       <Filter>RHI</Filter>
@@ -43,9 +43,6 @@
       <Filter>RHI</Filter>
     </ClCompile>
     <ClCompile Include="RHI\VulkanResource.cpp">
-      <Filter>RHI</Filter>
-    </ClCompile>
-    <ClCompile Include="RHI\VulkanFrameGraph.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
     <ClCompile Include="Utils\CommonUtils.cpp">
@@ -78,6 +75,21 @@
     <ClCompile Include="RHI\VulkanStaticScene.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\RtRenderPass.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\RtRenderResources.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\RtRenderGraphExe.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\RtRenderGraphBuilder.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\RtRenderGraphPerfDebug.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RHI\VulkanRHI.h">
@@ -87,10 +99,10 @@
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\RtRenderGraph.h">
-      <Filter>Render</Filter>
+      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\RtRenderPass.h">
-      <Filter>Render</Filter>
+      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="RHI\VulkanResource.h">
       <Filter>RHI</Filter>
@@ -110,9 +122,6 @@
     <ClInclude Include="RHI\VulkanRenderShader.h">
       <Filter>RHI</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\VulkanFrameGraph.h">
-      <Filter>RHI</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\CommonUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -124,9 +133,6 @@
     </ClInclude>
     <ClInclude Include="Scene\Primitive.h">
       <Filter>Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene\BaseComputePass.h">
-      <Filter>Passes</Filter>
     </ClInclude>
     <ClInclude Include="Scene\BaseGraphicsPass.h">
       <Filter>Passes</Filter>
@@ -142,6 +148,18 @@
     </ClInclude>
     <ClInclude Include="RHI\VulkanStaticScene.h">
       <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderResources.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderGraphExe.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderGraphBuilder.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderGraphPerfDebug.h">
+      <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

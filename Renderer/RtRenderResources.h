@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+#include "Renderer/RtRenderPass.h"
 
 namespace MetaInit
 {
@@ -20,9 +21,9 @@ namespace MetaInit
 				eCount,
 			}InitState;
 			RtRenderResource() = default;
+			RtRenderResource(const RtField& field);
 			~RtRenderResource();
 			bool IsTransient()const;
-			RtRenderResource& Merge(const RtRenderResource& other);
 		private:
 			ResourceHandle						handle_;
 			std::pair<uint32_t, uint32_t>		life_time_;

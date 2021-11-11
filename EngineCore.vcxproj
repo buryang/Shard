@@ -20,12 +20,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Renderer\RtRenderGraph.cpp" />
+    <ClCompile Include="Renderer\RtRenderGraphBuilder.cpp" />
+    <ClCompile Include="Renderer\RtRenderGraphExe.cpp" />
+    <ClCompile Include="Renderer\RtRenderGraphPerfDebug.cpp" />
+    <ClCompile Include="Renderer\RtRenderPass.cpp" />
+    <ClCompile Include="Renderer\RtRenderResources.cpp" />
     <ClCompile Include="RHI\VulkanCmdContext.cpp" />
     <ClCompile Include="RHI\VulkanFrameBuffer.cpp" />
     <ClCompile Include="RHI\VulkanMemAllocator.cpp" />
     <ClCompile Include="RHI\VulkanPrimitive.cpp" />
     <ClCompile Include="RHI\VulkanRayTraceKHR.cpp" />
-    <ClCompile Include="RHI\VulkanFrameGraph.cpp" />
     <ClCompile Include="RHI\VulkanRenderPass.cpp" />
     <ClCompile Include="RHI\VulkanRenderPipeline.cpp" />
     <ClCompile Include="RHI\VulkanRenderShader.cpp" />
@@ -41,13 +45,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\RtRenderGraph.h" />
+    <ClInclude Include="Renderer\RtRenderGraphBuilder.h" />
+    <ClInclude Include="Renderer\RtRenderGraphExe.h" />
+    <ClInclude Include="Renderer\RtRenderGraphPerfDebug.h" />
     <ClInclude Include="Renderer\RtRenderPass.h" />
+    <ClInclude Include="Renderer\RtRenderResources.h" />
     <ClInclude Include="RHI\VulkanCmdContext.h" />
     <ClInclude Include="RHI\VulkanFrameBuffer.h" />
     <ClInclude Include="RHI\VulkanMemAllocator.h" />
     <ClInclude Include="RHI\VulkanPrimitive.h" />
     <ClInclude Include="RHI\VulkanRayTraceKHR.h" />
-    <ClInclude Include="RHI\VulkanFrameGraph.h" />
     <ClInclude Include="RHI\VulkanRenderPass.h" />
     <ClInclude Include="RHI\VulkanRenderPipeline.h" />
     <ClInclude Include="RHI\VulkanRenderShader.h" />
@@ -55,7 +62,6 @@
     <ClInclude Include="RHI\VulkanRHI.h" />
     <ClInclude Include="RHI\VulkanStaticScene.h" />
     <ClInclude Include="RHI\VulkanWindowSystem.h" />
-    <ClInclude Include="Scene\BaseComputePass.h" />
     <ClInclude Include="Scene\BaseGraphicsPass.h" />
     <ClInclude Include="Scene\BaseScreenSpacePass.h" />
     <ClInclude Include="Scene\Primitive.h" />

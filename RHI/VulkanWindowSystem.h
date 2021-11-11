@@ -39,6 +39,8 @@ namespace MetaInit
 		//check whether a vkimage is swap_images
 		bool IsSwapChainImage(const VkImage image)const;
 	private:
+		void CreateSwapChain();
+		void DestroySwapchain();
 		void InitFrameWorkLoads();
 		void ResetFrameWorkLoads();
 	private:

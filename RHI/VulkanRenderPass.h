@@ -103,6 +103,7 @@ namespace MetaInit
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc);
 		VkRenderPass Get() { return handle_; }
 		void Begin(VulkanCmdBuffer& cmd, VulkanFrameBuffer& frame_buffer);
+		void NextSubpass(VulkanCmdBuffer& cmd);
 		void End(VulkanCmdBuffer& cmd);
 		~VulkanRenderPass();
 		VulkanRenderPass() = default;

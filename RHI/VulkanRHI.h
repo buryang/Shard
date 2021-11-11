@@ -60,6 +60,7 @@ namespace MetaInit
 		uint32_t GetMaxPushConstantLimit()const;
 		uint32_t GetMaxVertexInputAttributes()const;
 		uint32_t GetMaxVertexInputBinds()const;
+		VkDeviceSize GetMinUniformBufferOffsetAlignment()const;
 		VkSurfaceCapabilitiesKHR GetSurfaceSupportInfo()const;
 		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;

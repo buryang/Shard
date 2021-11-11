@@ -271,6 +271,14 @@ namespace MetaInit
 		return false;
 	}
 
+	void VulkanWindowSystemImpl::CreateSwapChain()
+	{
+	}
+
+	void VulkanWindowSystemImpl::DestroySwapchain()
+	{
+	}
+
 	void VulkanWindowSystemImpl::InitFrameWorkLoads()
 	{
 		if (VK_NULL_HANDLE != swap_chain_)

@@ -197,6 +197,11 @@ namespace MetaInit {
 		vkCmdBeginRenderPass(cmd.Get(), &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
+	void VulkanRenderPass::NextSubpass(VulkanCmdBuffer& cmd)
+	{
+		vkCmdNextSubpass(cmd.Get(), VK_SUBPASS_CONTENTS_INLINE);
+	}
+
 	void VulkanRenderPass::End(VulkanCmdBuffer& cmd)
 	{
 		vkCmdEndRenderPass(cmd.Get());
