@@ -50,6 +50,9 @@
     <ClInclude Include="Renderer\RtRenderGraphPerfDebug.h" />
     <ClInclude Include="Renderer\RtRenderPass.h" />
     <ClInclude Include="Renderer\RtRenderResources.h" />
+    <ClInclude Include="RHI\RHI.h" />
+    <ClInclude Include="RHI\RHICommand.h" />
+    <ClInclude Include="RHI\RHIResource.h" />
     <ClInclude Include="RHI\VulkanCmdContext.h" />
     <ClInclude Include="RHI\VulkanFrameBuffer.h" />
     <ClInclude Include="RHI\VulkanMemAllocator.h" />
@@ -67,6 +70,7 @@
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
+    <ClInclude Include="Utils\DirectedAcyclicGraph.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\frag_shader.frag">
@@ -74,11 +78,13 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Renderer\RtRenderResources.inl" />
     <None Include="Shaders\ray_trace.defi" />
     <None Include="Shaders\ray_trace.rchit" />
     <None Include="Shaders\ray_trace.rgen" />
     <None Include="Shaders\ray_trace.rmiss" />
     <None Include="Shaders\shape_shader.vert" />
+    <None Include="Utils\DirectedAcyclicGraph.inl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -145,13 +151,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(IncludePath);C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;..\MetaInit</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);D:\vcpkg\installed\x64-windows\lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(IncludePath);C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;..\MetaInit</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);D:\vcpkg\installed\x64-windows\lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -191,11 +197,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -210,11 +216,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

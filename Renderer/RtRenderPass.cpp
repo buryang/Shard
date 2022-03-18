@@ -4,18 +4,13 @@ namespace MetaInit
 {
 	namespace Renderer
 	{
-		RtRendererPass::RtRendererPass(const std::string& name, uint32_t index):name_(name), pass_id_(index)
+		RtRendererPass::RtRendererPass(const std::string& name, const EPipeLine pipeline, uint32_t index):name_(name), pipeline_(pipeline)
 		{
 		}
-
-		bool RtRendererPass::IsIsolated() const
+		RtField& RtRendererPass::RtPassParameters::operator[](const uint32_t index)
 		{
-			return false;
-		}
-
-		bool RtRendererPass::IsAysnc() const
-		{
-			return is_async_;
+			assert(index < fields_.size());
+			return fields_[index];
 		}
 	}
 }

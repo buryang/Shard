@@ -1,12 +1,14 @@
 #pragma once
 
+#include "Renderer/RtRenderPass.h"
 #include "Renderer/RtRenderGraphExe.h"
+#include "RHI/RHI.h"
 
 namespace MetaInit
 {
 	namespace Renderer
 	{
-		class RtRenderGraph;
+		class RtRendererGraph;
 		class RtRenderGraphBuilder
 		{
 		public:
@@ -16,17 +18,18 @@ namespace MetaInit
 				bool	culling_passes_{ false };
 				bool	res_aliasing_enable_{ false };
 			}Params;
-			RtRenderGraphExecutor::Ptr Build(RtRenderGraph& graph, const Params& param);
+			RtRenderGraphExecutor::Ptr Build(RtRendererGraph::Ptr graph, const Params& param);
 		private:
 			void CullingNoUsePasses();
 			void AddAssistPasses();
 			void SplitAsyncCompute(RtRenderGraphExecutor::Ptr executor);
 			void AnalysisResourceUsage();
+			//build resource barrier
+			void AddResourceTransition();
+			void ValidateFinalizeGraph()const;
 		private:
-			Vector<uint32_t>		pass_to_async_;
-			Vector<uint32_t>		pass_to_culling_;
-			Vector<uint32_t>		pass_never_culling_;
-			Vector<uint32_t>		pass_no_params_;
+			RtRendererGraph::Ptr		graph_;
+			Vector<RtRendererPass>		command_list_;
 		};
 	}
 }

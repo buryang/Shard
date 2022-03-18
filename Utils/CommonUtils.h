@@ -19,7 +19,9 @@
 #include <vector>
 #include <set>
 #include <array>
+#include <map>
 #include <algorithm>
+#include <assert.h>
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
 class_name(const class_name##&)=delete; \
@@ -55,3 +57,4 @@ namespace MetaInit {
 
 	using String = folly::fbstring;
 }
+
