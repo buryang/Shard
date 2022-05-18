@@ -92,9 +92,9 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = std::shared_ptr<RtBarrierBatch>;
-			void Submit(RHICommand);
+			void Submit(RHI::RHICommandContext& context);
 		private:
-			SmallVector<RHIBarrier>	barriers_;
+			SmallVector<RHI::RHIBarrier>	barriers_;
 		};
 
 		/*warper for rhi resource*/
@@ -138,7 +138,7 @@ namespace MetaInit
 		public:
 			void CollectAllResources();
 			void RegistResource(const RtRenderResource<ResourceHandle>& resource);
-			ResourceHandle GetResource(RtRenderResouce<ResourceHandle>& resource);
+			ResourceHandle GetResource(RtRenderResource<ResourceHandle>& resource);
 			void Clear(uint32_t curr_frame_index);
 		private:
 			void DoAliasingProcess();
@@ -162,7 +162,25 @@ namespace MetaInit
 			void ExecutePass(const uint32_t pass_index);
 			~RtTransiantResourceWatchDog();
 		private:
-			std::unordered_map<uint32_t, >		
+			std::unordered_map<uint32_t, RtRenderResource> transiants_;
+		};
+
+
+		class RtRenderResourceManager
+		{
+		public:
+			struct ResourceProxy
+			{
+
+			};
+			template<typename T>
+			struct ResourceData : public ResourceProxy
+			{
+				T* resource_{ nullptr };
+			};
+			ResourceProxy CreateOrGet();
+		private:
+			std::unordered_map<uint32_t, ResourceProxy>	resources_;
 		};
 	}
 }

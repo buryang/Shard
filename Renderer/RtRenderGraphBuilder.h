@@ -18,7 +18,7 @@ namespace MetaInit
 				bool	culling_passes_{ false };
 				bool	res_aliasing_enable_{ false };
 			}Params;
-			RtRenderGraphExecutor::Ptr Build(RtRendererGraph::Ptr graph, const Params& param);
+			RtRenderGraphExecutor::Ptr Build(RtRenderererGraph::Ptr graph, const Params& param);
 		private:
 			void CullingNoUsePasses();
 			void AddAssistPasses();

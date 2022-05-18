@@ -2,7 +2,7 @@
 
 namespace MetaInit
 {
-	namespace Renderer
+	namespace Effect
 	{
 
 	}

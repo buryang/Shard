@@ -13,7 +13,10 @@
 #include "folly/FBVector.h"
 #include "folly/FBString.h"
 #include "folly/small_vector.h"
+#include "folly/memory.h"
+#include "folly/futures/Future.h"
 #include "absl/types/span.h"
+#include "absl/hash/hash.h"
 #include "absl/types/optional.h"
 #include <memory>
 #include <vector>
@@ -48,7 +51,7 @@ namespace MetaInit {
 	using Vector = folly::fbvector<T>;
 	template<typename T, int reverse_size=16>
 	using SmallVector = folly::small_vector<T, reverse_size>;
-	
+
 	template<typename T>
 	using Span = absl::Span<T>;
 
@@ -56,5 +59,12 @@ namespace MetaInit {
 	using Optional = absl::optional<T>;
 
 	using String = folly::fbstring;
+	
+	//multi thread 
+	template<typename T>
+	using Future = folly::Future<T>;
+
+	template<typename T>
+	using Promise = folly::Promise<T>;
 }
 

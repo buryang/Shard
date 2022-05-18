@@ -21,7 +21,7 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = std::shared_ptr<RtRendererGraph>;
-			virtual ~RtRendererGraph() = default;
+			virtual ~RtRenderererGraph() = default;
 			void AddPass(RtRendererPass::Ptr pass, const std::string& pass_name);
 			void RemovePass(const std::string& pass_name);
 			void AddField(RtRenderResource<>::Ptr texture, const std::string& field_name);

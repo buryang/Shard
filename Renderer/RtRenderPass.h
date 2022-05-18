@@ -34,7 +34,7 @@ namespace MetaInit
 				eNerverCull	= 8,
 			};
 
-			//how to bind resource and field
+			//how to bind resource and field FIXME
 			class RtPassParameters
 			{
 			public:
@@ -55,6 +55,7 @@ namespace MetaInit
 			virtual ~RtRendererPass();
 			virtual void Execute() = 0;
 			RtRendererPass& AddField(RtField::Ptr field);
+			RtRendererPass& AddParameters(Parameters&& params);
 			bool IsOutput()const { return is_output_; }
 			bool IsAysnc()const { return is_async_; }
 			bool IsCullAble()const { return is_culling_able_; }
@@ -91,9 +92,20 @@ namespace MetaInit
 					uint8_t								is_culling_able_ : 1;
 					uint8_t								is_output_ : 1;
 				};
-				uint8_t	pack_bits_ = 0;
+				uint8_t	pack_bits_{ 0 };
 			};
 			
+		};
+
+		//lambda render pass
+		template <typename LAMBDA>
+		class RtLambdaRendererPass : public RtRendererPass
+		{
+		public:
+			RtLambdaRendererPass(Lambda&& lamda);
+			void Execute() override;
+		private:
+			LAMBDA& pass_;
 		};
 
 		template<class GELE>
