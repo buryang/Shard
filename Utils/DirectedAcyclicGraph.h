@@ -11,9 +11,10 @@ namespace MetaInit
 		class NodeData
 		{
 		public:
+			using Handle = NodeHandle;
 			NodeData() = default();
-			NodeData(NodeHandle handle) :handle_(handle) {}
-			NodeHandle Get() { return handle_; }
+			NodeData(Handle handle) :handle_(handle) {}
+			Handle Get() { return handle_; }
 			void AddInEdge(uint32_t edge);
 			void AddOutEdge(uint32_t edge);
 			void RemoveInEdge(uint32_t edge_index);
@@ -22,7 +23,7 @@ namespace MetaInit
 			uint32_t GetOutEdgeCount()const { return out_edges_.size(); }
 		private:
 			uint32_t				index{ -1 };
-			NodeHandle				handle_;
+			Handle					handle_;
 			SmallVector<uint32_t>	in_edges_;
 			SmallVector<uint32_t>	out_edges_;
 
@@ -31,6 +32,8 @@ namespace MetaInit
 		template<typename EdgeHandle>
 		class EdgeData
 		{
+		public:
+			using Handle = EdgeHandle;
 			EdgeData(uint32_t src, uint32_t dst) :src_node_(src), dst_node_(dst) {}
 			uint32_t GetSrc()const;
 			uint32_t GetDst()const;

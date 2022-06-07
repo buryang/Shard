@@ -4,9 +4,22 @@ namespace MetaInit
 {
 	namespace Utils
 	{
-		void SimpleJobSystem::Init(const uint32_t group_count)
+		SimpleJobSystem& SimpleJobSystem::Instance()
+		{
+			static SimpleJobSystem js;
+			return js;
+		}
+
+		void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size)
 		{	
-			const auto thread_loop = [&](const uint32_t group_id) {
+			//ugly only config once time
+			static std::atomic<bool> initable{ false };
+			bool expected = false;
+			if (!initable.compare_exchange_weak(expected, true)) {
+				return;
+			}
+
+			const auto thread_loop = [&, this](const uint32_t group_id) {
 				while (!is_terminated_.load())
 				{
 					auto curr_job = local_queues_[group_id].PopFront();
@@ -33,12 +46,22 @@ namespace MetaInit
 
 				}
 			};
-			thread_pool_.reserve(group_count);
-			for (auto n = 0; n < group_count; ++n)
+
+			auto thread_count = group_count > 0 ? group_count : std::thread::hardware_concurrency();
+
+			//init job queue
+			for (auto n = 0; n < thread_count; ++n)
+			{
+				local_queues_.emplace_back(RingBuffer<JobEntry*>(queue_size));
+				global_queues_.emplace_back(RingBuffer<JobEntry*>(queue_size));
+			}
+			//init thread pool
+			thread_pool_.reserve(thread_count);
+			for (auto n = 0; n < thread_count; ++n)
 			{
 				thread_pool_.push_back(std::thread(thread_loop));
+				thread_pool_.back().detach();
 			}
-
 		}
 
 		void Utils::SimpleJobSystem::UnInit()
@@ -56,7 +79,7 @@ namespace MetaInit
 			auto group_id = std::rand() % thread_pool_.size();
 
 			//FIXME put into local/global queue?
-			if (job.stealable_)
+			if (job->stealable_)
 			{
 				global_queues_[group_id].PushBack(job);
 			}
