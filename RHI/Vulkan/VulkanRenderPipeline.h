@@ -18,7 +18,7 @@ namespace MetaInit
 			eCompute,
 			eGraphics,
 			eRayTrace,
-			eCount,
+			eNum,
 		};
 		using Ptr = std::unique_ptr<VulkanRenderPipeline>;
 		typedef struct _VulkanRenderPipelineDescs
@@ -26,7 +26,7 @@ namespace MetaInit
 			EPipeType						pipe_type_;
 			VkPipelineCreateFlags			flags_;
 			//pipeline layout create info params
-			RootSignature					root_signatue_;
+			PipelineLayout					layout_;
 			typedef struct _VulkanShaderInfo
 			{
 				VulkanShaderModule::EType shader_type_;

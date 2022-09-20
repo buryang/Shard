@@ -9,7 +9,7 @@ namespace MetaInit
 	namespace Renderer
 	{
 		class RtRendererGraph;
-		class RtRenderGraphBuilder
+		class MINIT_API RtRenderGraphBuilder
 		{
 		public:
 			typedef struct _BuildParams
@@ -18,18 +18,18 @@ namespace MetaInit
 				bool	culling_passes_{ false };
 				bool	res_aliasing_enable_{ false };
 			}Params;
-			RtRenderGraphExecutor::Ptr Build(RtRenderererGraph::Ptr graph, const Params& param);
+			static RtRenderGraphExecutor::Ptr Build(RtRendererGraph& graph, const Params& param);
 		private:
+			RtRenderGraphBuilder(RtRendererGraph& graph);
 			void CullingNoUsePasses();
 			void AddAssistPasses();
-			void SplitAsyncCompute(RtRenderGraphExecutor::Ptr executor);
 			void AnalysisResourceUsage();
 			//build resource barrier
 			void AddResourceTransition();
-			void ValidateFinalizeGraph()const;
+			bool ValidateFinalizeGraph()const;
 		private:
-			RtRendererGraph::Ptr		graph_;
-			Vector<RtRendererPass>		command_list_;
+			RtRendererGraph&			graph_;
+			Vector<PassHandle>			command_list_;
 		};
 	}
 }

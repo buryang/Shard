@@ -12,6 +12,14 @@ namespace MetaInit
 		class MINIT_API DrawWorkCommandIR
 		{
 		public:
+			/*
+				A bit flag encoding some hinting about what
+				kind of command head is actually pointing
+			*/
+			enum 
+			{
+
+			};
 			//key to sort command
 			struct CommandIRSortKey
 			{
@@ -48,6 +56,8 @@ namespace MetaInit
 			};
 		private:
 			friend class DrawWorkCommandIRBatch;
+			CommandIRSortKey		sort_key_;
+			uint32_t				flags_{ 0 };
 
 		};
 

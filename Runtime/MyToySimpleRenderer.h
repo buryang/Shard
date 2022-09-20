@@ -11,6 +11,7 @@ namespace MetaInit
 		class MINIT_API MyToySimpleRenderer final : public RuntimeSceneRenderInterface
 		{
 		public:
+			//fixme register parameter anywhere like ue
 			struct RendererCfg
 			{
 #ifdef RAY_TRACING
@@ -27,7 +28,8 @@ namespace MetaInit
 #endif
 				struct RasterCfg
 				{
-
+					//cpu culling now
+					bool	use_cpu_culling_{ true }; 
 				};
 
 				//render graph parameters

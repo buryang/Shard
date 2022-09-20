@@ -70,7 +70,7 @@ namespace MetaInit
 			void AddEdge(uint32_t src_node, uint32_t dst_node);
 			void RemoveEdge(const uint32_t index);
 			void AddNode(NodeHandle&& node);
-			void RemoveNode(uint32_t node_index);
+			void RemoveNode(const uint32_t node_index);
 			Node* GetNode(uint32_t node_index);
 			Edge* GetEdge(uint32_t edge_index);
 			//check whether this's valid acyclic graph

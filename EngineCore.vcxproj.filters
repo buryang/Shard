@@ -13,14 +13,17 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{4d11364c-acdc-4002-aa44-022c0359f640}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Passes">
-      <UniqueIdentifier>{f9377743-716d-449f-9cb8-b755d88da258}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Renderer">
       <UniqueIdentifier>{b8f34e2c-0273-421e-8354-6cc6f57ae520}</UniqueIdentifier>
     </Filter>
     <Filter Include="RHI\Vulkan">
       <UniqueIdentifier>{3dd8dadb-a7d6-4757-abb7-6b964ddd10e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime">
+      <UniqueIdentifier>{f9377743-716d-449f-9cb8-b755d88da258}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effect">
+      <UniqueIdentifier>{627c3f75-ee4d-417e-8b2e-16d3c328694b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -57,42 +60,69 @@
     <ClCompile Include="Renderer\RtRenderGraphPerfDebug.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanCmdContext.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\MyToySimpleRenderer.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanFrameBuffer.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Utils\Memory.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanMemAllocator.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\RuntimeWorkIR.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanPrimitive.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\RuntimeSceneRender.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRayTraceKHR.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\RuntimeWorkData.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRenderPass.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\RuntimeShaderPermunation.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRenderPipeline.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Runtime\RuntimeWorkProcessor.cpp">
+      <Filter>Runtime</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRenderShader.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Effect\EffectRayTracingUtils.cpp">
+      <Filter>Effect</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanResource.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Effect\EffectRayTracingCore.cpp">
+      <Filter>Effect</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanRHI.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Scene\Volumetric.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanStaticScene.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Scene\GeometryProxy.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\VulkanWindowSystem.cpp">
-      <Filter>RHI\Vulkan</Filter>
+    <ClCompile Include="Scene\SceneComponent.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\SimpleJobSystem.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\SimpleCoro.inl">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\Vulkan\VulkanCmdContext.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanFrameBuffer.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanMemAllocator.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanPrimitive.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRayTraceKHR.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderPass.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderPipeline.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderShader.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanResource.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRHI.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRHIImpl.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanStaticScene.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanWindowSystem.cpp" />
+    <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourceVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
+    <ClCompile Include="RHI\RHIResourceHeap.cpp" />
+    <ClCompile Include="RHI\RHI.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourceAllocatorVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIContextVulkan.cpp" />
+    <ClCompile Include="Renderer\RtRenderShader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -110,12 +140,6 @@
     <ClInclude Include="Scene\Primitive.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\BaseGraphicsPass.h">
-      <Filter>Passes</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene\BaseScreenSpacePass.h">
-      <Filter>Passes</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\RtRenderResources.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -128,43 +152,6 @@
     <ClInclude Include="Renderer\RtRenderGraphPerfDebug.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\DirectedAcyclicGraph.h" />
-    <ClInclude Include="RHI\VulkanCmdContext.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanFrameBuffer.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanMemAllocator.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanPrimitive.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRayTraceKHR.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRenderPass.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRenderPipeline.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRenderShader.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanResource.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanRHI.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanStaticScene.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\VulkanWindowSystem.h">
-      <Filter>RHI\Vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="RHI\RHIResource.h">
       <Filter>RHI</Filter>
     </ClInclude>
@@ -174,6 +161,79 @@
     <ClInclude Include="RHI\RHICommand.h">
       <Filter>RHI</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Memory.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\MyToySimpleRenderer.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DirectedAcyclicGraph.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\RuntimeWorkIR.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\RuntimeWorkData.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\RuntimeSceneRender.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\RuntimeShaderPermunation.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\RuntimeWorkProcessor.h">
+      <Filter>Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="Effect\EffectRayTracing.h">
+      <Filter>Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\GeometrytProxy.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneComponent.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\SimpleJobSystem.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\SimpleCoro.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Logger.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Algorithm.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\SimpleEntitySystem.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Handle.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\RtRenderResourceDefinitions.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Vulkan\VulkanCmdContext.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanFrameBuffer.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanMemAllocator.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanPrimitive.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRayTraceKHR.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderPass.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderPipeline.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderShader.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanResource.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRHI.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanStaticScene.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
+    <ClInclude Include="Renderer\RtRenderResourceAllocator.h" />
+    <ClInclude Include="RHI\RHIResourceHeap.h" />
+    <ClInclude Include="Renderer\RtRenderBarrier.h" />
+    <ClInclude Include="RHI\RHIResourceAllocator.h" />
+    <ClInclude Include="RHI\RHIContext.h" />
+    <ClInclude Include="Renderer\RtRenderShader.h" />
+    <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\frag_shader.frag">
@@ -199,6 +259,14 @@
     <None Include="Renderer\RtRenderResources.inl">
       <Filter>Renderer</Filter>
     </None>
-    <None Include="Utils\DirectedAcyclicGraph.inl" />
+    <None Include="Utils\DirectedAcyclicGraph.inl">
+      <Filter>Utils</Filter>
+    </None>
+    <None Include="Utils\Algorithm.inl">
+      <Filter>Utils</Filter>
+    </None>
+    <None Include="Utils\SimpleEntitySystem.cpp">
+      <Filter>Utils</Filter>
+    </None>
   </ItemGroup>
 </Project>

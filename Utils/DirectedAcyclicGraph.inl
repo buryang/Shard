@@ -97,19 +97,23 @@ namespace MetaInit
 		}
 
 		template<typename NodeHandle, typename EdgeHandle>
-		inline void DirectedAcyclicGraph<NodeHandle, EdgeHandle>::RemoveNode(uint32_t node_index)
+		inline void DirectedAcyclicGraph<NodeHandle, EdgeHandle>::RemoveNode(const uint32_t node_index)
 		{
 			auto node = GetNode(node_index);
 			if (nullptr != node)
 			{
 				for (auto n = 0; n < node.GetInEdgeCount(); ++n)
 				{
-					node.RemoveInEdge();
+					auto edge_index = node.GetInEdge(n);
+					node.RemoveInEdge(edge_index);
+					RemoveEdge(edge_index);
 				}
 
 				for (auto n = 0; n < node.GetOutEdgeCount(); ++n)
 				{
-					node.RemoveOutEdge();
+					auto edge_index = node.GetOutEdge(n);
+					node.RemoveOutEdge(edge_index);
+					RemoveEdge(edge_index);
 				}
 				nodes_.erase(node_index);
 			}
@@ -171,7 +175,11 @@ namespace MetaInit
 		template<typename NodeHandle, typename EdgeHandle>
 		inline void DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Truncate()
 		{
-			for(auto )
+			for (auto& [index, node] : nodes_) {
+				if (!node->IsValid()) {
+					RemoveNode(index);
+				}
+			}
 		}
 
 		template<template<typename> typename Method, class Graph>

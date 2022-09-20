@@ -1,6 +1,8 @@
 #pragma once
 #include <unordered_map>
+#include "Renderer/RtRenderResourceDefinitions.h"
 #include "Utils/CommonUtils.h"
+#include "Utils/Handle.h"
 #include "RHI/RHI.h"
 
 namespace MetaInit
@@ -15,43 +17,45 @@ namespace MetaInit
 			{
 				eBuffer,
 				eTexture,
+				eNum,
 			};
 
-			enum class EState : uint32_t
+			enum class EFlags : uint32_t
 			{
 				eCommon = 0x0,
 				eVertex = 0x1,
 				eIndexBuffer = 0x2,
+				eIndirectArgs = 0x3,
 				eCopySrc = 0x4,
-				eCopyDst = 0x8,
-				eResolveDst = 0x9,
+				eCopyDst = 0x5,
+				eDepthStencil = 0x6,
+				eResolveDst = 0x7,
+				//support views
+				eCBV = 0x9,
 				eSRV = 0x10,
 				eRTV = 0x11,
 				eUAV = 0x12,
-				ePresent = 0x13
+				eDSV = 0x13,
+				ePresent = 0x14,
+				eRenderTarget = 0x15,
+				eExternal = 0x100,
 			};
 
-			static bool IsStateMergeAble(EState state, EState other);
 			enum class EUsage
 			{
 				eInput,
 				eOutput,
 				eInternal,
+				eCulled, //filed deleted
+				eNum,
 			};
 
-			enum class EFlags : uint8_t
-			{
-				eNone,
-				eOptional,
-				ePresent,
-			};
-
-			using Ptr = std::shared_ptr<RtField>;
-			using Handle = std::pair<Ptr, uint32_t>;
-			uint32_t GetFLags()const;
 			bool IsWholeResource()const { return sub_resources_.size() == 1; }
 			bool IsMergeAble(const RtField& other)const;
-			bool IsTransiantAble(const RtField& dst)const;
+			bool IsTransitionNeeded(const RtField& dst)const;
+			bool IsExternal()const { return flags_ == EFlags::eExternal; }
+			bool IsOutput()const { return usage_ == EUsage::eOutput; }
+			bool IsTransiant()const;
 			RtField& Name(const std::string& name);
 			RtField& Width(const uint32_t width);
 			RtField& Height(const uint32_t height);
@@ -59,6 +63,12 @@ namespace MetaInit
 			RtField& MipSlices(const uint32_t mip_slices);
 			RtField& ArraySlices(const uint32_t array_slices);
 			RtField& PlaneSlices(const uint32_t plane_slices);
+			RtField& StageFlags(PipelineStageFlags stage);
+			RtField& IncrRef(uint32_t reference = 1);
+			RtField& DecrRef(uint32_t reference = 1);
+			RtField& ForceTransiant();
+			EType GetType()const;
+			uint32_t GetFlags()const;
 			uint32_t GetSubFieldCount()const;
 			friend bool operator==(const RtField& lhs, const RtField& rhs);
 			friend bool operator!=(const RtField& lhs, const RtField& rhs) { return !(lhs == rhs); }
@@ -67,7 +77,15 @@ namespace MetaInit
 			std::string					name_;
 			EType						type_;
 			EUsage						usage_;
-			EState						state_;
+			EFlags						flags_;
+			//id for attachment
+			uint8_t						id_{ 0 };
+			//control resource lifetime
+			mutable uint32_t			reference_{ 0 };
+			//which stage of pass use this rtfield
+			PipelineStageFlags			stage_{ PipelineStageFlags::eStageUnkown };
+			//user force it tobe transiant
+			bool						force_transiant_{ false };
 			uint32_t					sample_count_{ 1 };
 			uint32_t					width_{ 0 };
 			uint32_t					height_{ 0 };
@@ -87,101 +105,46 @@ namespace MetaInit
 			SmallVector<SubTextureFieldRange>	sub_resources_;
 		};
 
-
-		class RtBarrierBatch
-		{
-		public:
-			using Ptr = std::shared_ptr<RtBarrierBatch>;
-			void Submit(RHI::RHICommandContext& context);
-		private:
-			SmallVector<RHI::RHIBarrier>	barriers_;
-		};
+		using FieldHandle = Utils::Handle<RtField>;
+		using FieldManager = Utils::ResourceManager<RtField>;
 
 		/*warper for rhi resource*/
-		template <class ResourceHandle>
+		template <class RHIHandle>
+		requires std::is_same_v<std::decltype(std::declval<RHIHandle>().Release()), void>//FIXME
 		class RtRenderResource
 		{
 		public:
-			using Ptr = std::shared_ptr<RtRenderResource<ResourceHandle> >;
+			using HandleType = RHIHandle;
+			using Ptr = RtRenderResource<HandleType>*;
 			enum class _InitialState
 			{
 				eUnkown,
 				eClear,
 				eLoad,
-				eCount,
+				eNum,
 			}InitState;
 
-			class RtSubResourceState
-			{
-
-			};
-
 			RtRenderResource() = default;
-			RtRenderResource(const RtField& field);
-			~RtRenderResource();
+			RtRenderResource(const RtField& field) { Init(field); }
+			void Init(const RtField& field);
+			~RtRenderResource() { handle_.Release(); }
+			bool IsExternal()const;
 			bool IsTransient()const;
+			bool IsOutput()const;
+			bool IsValid(float time) const { return time >= life_time_.first && time <= life_time_.second; }
+			HandleType Handle() const { return handle_; }
 		private:
-			ResourceHandle						handle_;
+			RHIHandle							handle_{ nullptr };
 			std::pair<uint32_t, uint32_t>		life_time_;
-			bool								imported_{ false };
-			bool								is_transient_{ true };
-			InitState							init_state_;
+			uint8_t								is_external_:1{ 0 };
+			uint8_t								is_transient_:1{ 1 };
+			uint8_t								is_output_ : 1{ 0 };
+			InitState							init_state_{ InitState::eUnkown };
 		};
 
-		//resource manage handle
-		using RtBufferHandle = std::pair<RtRenderResource<void>::Ptr, SmallVector<RtField> >;
-		using RtTextureHandle = std::pair<RtRenderResource<void>::Ptr, SmallVector<RtField> >;
+		using RtRenderTexture = RtRenderResource<>;
+		using RtRenderBuffer = RtRenderResource<>;
 
-		template <class ResourceHandle>
-		class RtRenderResourcePool
-		{
-		public:
-			void CollectAllResources();
-			void RegistResource(const RtRenderResource<ResourceHandle>& resource);
-			ResourceHandle GetResource(RtRenderResource<ResourceHandle>& resource);
-			void Clear(uint32_t curr_frame_index);
-		private:
-			void DoAliasingProcess();
-		private:
-			std::unordered_map<uint32_t, ResourceHandle>	resource_repo_;
-			//resource regist
-			Vector<RtRenderResource<ResourceHandle> >		resource_all_;
-			//resource map
-			std::unordered_map<RtField, uint32_t>			resource_map_;
-		};
-
-
-
-		/*begin every pass, deal resource's lift, new or del one*/
-		class RtTransiantResourceWatchDog
-		{
-		public:
-			void RegistResource();
-			//do the resource life time opt
-			void CollectAllResources();
-			void ExecutePass(const uint32_t pass_index);
-			~RtTransiantResourceWatchDog();
-		private:
-			std::unordered_map<uint32_t, RtRenderResource> transiants_;
-		};
-
-
-		class RtRenderResourceManager
-		{
-		public:
-			struct ResourceProxy
-			{
-
-			};
-			template<typename T>
-			struct ResourceData : public ResourceProxy
-			{
-				T* resource_{ nullptr };
-			};
-			ResourceProxy CreateOrGet();
-		private:
-			std::unordered_map<uint32_t, ResourceProxy>	resources_;
-		};
 	}
 }
 

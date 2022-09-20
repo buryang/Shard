@@ -10,9 +10,9 @@ namespace MetaInit
 		{
 		public:
 			Allocator() = default;
-			void* Alloc(std::size_t size);
+			[[nodiscard]] void* Alloc(std::size_t size);
 			template <typename T, typename... Args>
-			T* AllocNoDestruct(Args&&... args) {
+			[[nodiscard]] T* AllocNoDestruct(Args&&... args) {
 				auto ptr = AllocNoDestruct(sizeof(T));
 				return new(ptr)T(std::forward<Args>(args)...);
 			}

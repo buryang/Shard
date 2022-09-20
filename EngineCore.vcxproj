@@ -19,58 +19,103 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
+    <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
     <ClCompile Include="Renderer\RtRenderGraph.cpp" />
     <ClCompile Include="Renderer\RtRenderGraphBuilder.cpp" />
     <ClCompile Include="Renderer\RtRenderGraphExe.cpp" />
     <ClCompile Include="Renderer\RtRenderGraphPerfDebug.cpp" />
     <ClCompile Include="Renderer\RtRenderPass.cpp" />
+    <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
     <ClCompile Include="Renderer\RtRenderResources.cpp" />
-    <ClCompile Include="RHI\VulkanCmdContext.cpp" />
-    <ClCompile Include="RHI\VulkanFrameBuffer.cpp" />
-    <ClCompile Include="RHI\VulkanMemAllocator.cpp" />
-    <ClCompile Include="RHI\VulkanPrimitive.cpp" />
-    <ClCompile Include="RHI\VulkanRayTraceKHR.cpp" />
-    <ClCompile Include="RHI\VulkanRenderPass.cpp" />
-    <ClCompile Include="RHI\VulkanRenderPipeline.cpp" />
-    <ClCompile Include="RHI\VulkanRenderShader.cpp" />
-    <ClCompile Include="RHI\VulkanResource.cpp" />
-    <ClCompile Include="RHI\VulkanRHI.cpp" />
-    <ClCompile Include="RHI\VulkanStaticScene.cpp" />
-    <ClCompile Include="RHI\VulkanWindowSystem.cpp" />
+    <ClCompile Include="Renderer\RtRenderShader.cpp" />
+    <ClCompile Include="RHI\RHI.cpp" />
+    <ClCompile Include="RHI\RHIResourceHeap.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIContextVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourceAllocatorVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourceVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanCmdContext.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanFrameBuffer.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanMemAllocator.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanPrimitive.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRayTraceKHR.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderPass.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderPipeline.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRenderShader.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanResource.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRHI.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanRHIImpl.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanStaticScene.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanWindowSystem.cpp" />
+    <ClCompile Include="Runtime\MyToySimpleRenderer.cpp" />
+    <ClCompile Include="Runtime\RuntimeSceneRender.cpp" />
+    <ClCompile Include="Runtime\RuntimeShaderPermunation.cpp" />
+    <ClCompile Include="Runtime\RuntimeWorkData.cpp" />
+    <ClCompile Include="Runtime\RuntimeWorkIR.cpp" />
+    <ClCompile Include="Runtime\RuntimeWorkProcessor.cpp" />
     <ClCompile Include="Scene\Material.cpp" />
     <ClCompile Include="Scene\Mesh.cpp" />
     <ClCompile Include="Scene\Light.cpp" />
+    <ClCompile Include="Scene\GeometryProxy.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\SceneComponent.cpp" />
+    <ClCompile Include="Scene\Volumetric.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
+    <ClCompile Include="Utils\Memory.cpp" />
+    <ClCompile Include="Utils\SimpleJobSystem.cpp" />
+    <ClCompile Include="Utils\SimpleCoro.inl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Effect\EffectRayTracing.h" />
+    <ClInclude Include="Renderer\RtRenderBarrier.h" />
     <ClInclude Include="Renderer\RtRenderGraph.h" />
     <ClInclude Include="Renderer\RtRenderGraphBuilder.h" />
     <ClInclude Include="Renderer\RtRenderGraphExe.h" />
     <ClInclude Include="Renderer\RtRenderGraphPerfDebug.h" />
     <ClInclude Include="Renderer\RtRenderPass.h" />
+    <ClInclude Include="Renderer\RtRenderResourceAllocator.h" />
+    <ClInclude Include="Renderer\RtRenderResourceDefinitions.h" />
     <ClInclude Include="Renderer\RtRenderResources.h" />
+    <ClInclude Include="Renderer\RtRenderShader.h" />
+    <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="RHI\RHI.h" />
     <ClInclude Include="RHI\RHICommand.h" />
+    <ClInclude Include="RHI\RHIContext.h" />
     <ClInclude Include="RHI\RHIResource.h" />
-    <ClInclude Include="RHI\VulkanCmdContext.h" />
-    <ClInclude Include="RHI\VulkanFrameBuffer.h" />
-    <ClInclude Include="RHI\VulkanMemAllocator.h" />
-    <ClInclude Include="RHI\VulkanPrimitive.h" />
-    <ClInclude Include="RHI\VulkanRayTraceKHR.h" />
-    <ClInclude Include="RHI\VulkanRenderPass.h" />
-    <ClInclude Include="RHI\VulkanRenderPipeline.h" />
-    <ClInclude Include="RHI\VulkanRenderShader.h" />
-    <ClInclude Include="RHI\VulkanResource.h" />
-    <ClInclude Include="RHI\VulkanRHI.h" />
-    <ClInclude Include="RHI\VulkanStaticScene.h" />
-    <ClInclude Include="RHI\VulkanWindowSystem.h" />
-    <ClInclude Include="Scene\BaseGraphicsPass.h" />
-    <ClInclude Include="Scene\BaseScreenSpacePass.h" />
+    <ClInclude Include="RHI\RHIResourceHeap.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanCmdContext.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanFrameBuffer.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanMemAllocator.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanPrimitive.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRayTraceKHR.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderPass.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderPipeline.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRenderShader.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanResource.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanRHI.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanStaticScene.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
+    <ClInclude Include="RHI\RHIResourceAllocator.h" />
+    <ClInclude Include="Runtime\MyToySimpleRenderer.h" />
+    <ClInclude Include="Runtime\RuntimeSceneRender.h" />
+    <ClInclude Include="Runtime\RuntimeShaderPermunation.h" />
+    <ClInclude Include="Runtime\RuntimeWorkData.h" />
+    <ClInclude Include="Runtime\RuntimeWorkIR.h" />
+    <ClInclude Include="Runtime\RuntimeWorkProcessor.h" />
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\GeometrytProxy.h" />
+    <ClInclude Include="Scene\SceneComponent.h" />
+    <ClInclude Include="Utils\Algorithm.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
     <ClInclude Include="Utils\DirectedAcyclicGraph.h" />
+    <ClInclude Include="Utils\Handle.h" />
+    <ClInclude Include="Utils\Logger.h" />
+    <ClInclude Include="Utils\Memory.h" />
+    <ClInclude Include="Utils\SimpleCoro.h" />
+    <ClInclude Include="Utils\SimpleEntitySystem.h" />
+    <ClInclude Include="Utils\SimpleJobSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\frag_shader.frag">
@@ -84,7 +129,9 @@
     <None Include="Shaders\ray_trace.rgen" />
     <None Include="Shaders\ray_trace.rmiss" />
     <None Include="Shaders\shape_shader.vert" />
+    <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.inl" />
+    <None Include="Utils\SimpleEntitySystem.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -197,11 +244,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -216,11 +263,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

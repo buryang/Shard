@@ -12,6 +12,8 @@ namespace MetaInit
 	class MINIT_API SceneProxyHelper
 	{
 	public:
+		using Ptr = SceneProxyHelper*;
+		using SharedPtr = std::shared_ptr<SceneProxyHelper>;
 		using CurveList = Vector<Curve>;
 		using MeshList = Vector<Mesh>;
 		using MaterialList = Vector<Material>;
@@ -24,6 +26,7 @@ namespace MetaInit
 		Camera GetCamera() const;
 		SceneProxyHelper& AddLight(LightPtr light);
 		LightPtr GetLight() const;
+		//fixme how to manage scene data
 		SceneProxyHelper& AddMesh(Mesh&& mesh);
 		Mesh GetMesh() const;
 		SceneProxyHelper& AddMaterials(Material&& material);
@@ -33,6 +36,7 @@ namespace MetaInit
 	private:
 		//load post proc functions
 	private:
+		friend class MyToySimpleRenderer;
 		CameraList		cameras_;
 		Camera*			curr_camera_{nullptr};
 		MeshList		meshes_;

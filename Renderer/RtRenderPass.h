@@ -1,5 +1,7 @@
 #pragma once
 #include <unordered_set>
+#include "Utils/Handle.h"
+#include "Utils/SimpleEntitySystem.h"
 #include "Renderer/RtRenderGraph.h"
 #include "Renderer/RtRenderResources.h"
 #include "RHI/"
@@ -13,10 +15,6 @@ namespace MetaInit
 		class RtRendererPass
 		{
 		public:
-			using Ptr = std::shared_ptr<RtRendererPass>;
-			//like ue save handle 
-			using Handle = std::pair<Ptr, uint32_t>;
-
 			enum class EPipeLine : uint32_t
 			{
 				eNone			= 0x0,
@@ -27,54 +25,63 @@ namespace MetaInit
 
 			enum class EFlags : uint8_t
 			{
-				eNone	= 0,
-				eGFX	= 1,
-				eCompute	= 2,
-				eAsync		= 4,
-				eNerverCull	= 8,
+				eNone	= 0x0,
+				eGFX	= 0x1,
+				eCompute	= 0x2,
+				eAsync		= 0x4,
+				eCopy		= 0x8,
+				eNerverCull	= 0x10,
+				eNerverMerge = 0x20,
 			};
 
 			//how to bind resource and field FIXME
 			class RtPassParameters
 			{
 			public:
-				void AddField(RtField&& field);
-				RtField& operator[](const uint32_t index);
+				void AddField(const std::string& param_name, RtField&& field);
+				bool IsEmpty()const { return fields_.size()==0; }
+				RtField& operator[](const std::string& name);
 				template <typename Function>
 				void Enumerate(Function func) {
-					for (auto& p : fields_) {
+					for (auto& [k, p] : fields_) {
 						func(p);
 					}
 				}
 			private:
-				SmallVector<RtField>	fields_;
+				std::unordered_map<std::string, RtField>	fields_;
 			};
 			using Parameters = RtPassParameters;
 
-			explicit RtRendererPass(const std::string& name, const EPipeLine pipeline, uint32_t index);
+			explicit RtRendererPass(const std::string& name, EPipeLine pipeline, EFlags flags, uint32_t index);
 			virtual ~RtRendererPass();
 			virtual void Execute() = 0;
-			RtRendererPass& AddField(RtField::Ptr field);
+			RtRendererPass& AddField(RtField* field);
 			RtRendererPass& AddParameters(Parameters&& params);
 			bool IsOutput()const { return is_output_; }
 			bool IsAysnc()const { return is_async_; }
 			bool IsCullAble()const { return is_culling_able_; }
 			const std::string& GetName()const { return name_; }
 			EPipeLine GetPipeLine()const { return pipeline_; }
-
+			static EPipeLine* GetSupportPipeLines() {
+				static EPipeLine pipe_lines[] = { EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
+				return pipe_lines;
+			}
+			void IncrRef() { ++ref_count_; }
+			void DecrRef() { --ref_count_; }
 		private:
 			const std::string					name_;
 			const EPipeLine						pipeline_;
-			EFlags								flags_ = EFlags::eNone;
-			//const uint32_t					pass_id_;
-			//todo
-			std::unordered_set<Handle>			producers_;
-			std::unordered_set<Handle>			consumers_;
+			uint32_t							ref_count_{ 0 };
+			EFlags								flags_{ EFlags::eNone };
+			
+			std::unordered_map<RtFiled*, >
+			std::unordered_set<PassHandle>		producers_;
+			std::unordered_set<PassHandle>		consumers_;
 			Parameters							parameters_;
 
 			//render barrier
-			RtBarrierBatch::Ptr					barriers_prologue_;
-			RtBarrierBatch::Ptr					barriers_epilogure_;
+			RtBarrierBatch*						barriers_prologue_{ nullptr };
+			RtBarrierBatch*						barriers_epilogure_{ nullptr };
 			union
 			{
 				struct
@@ -98,19 +105,23 @@ namespace MetaInit
 		};
 
 		//lambda render pass
-		template <typename LAMBDA>
+		template <typename PARAM, typename LAMBDA>
 		class RtLambdaRendererPass : public RtRendererPass
 		{
 		public:
-			RtLambdaRendererPass(Lambda&& lamda);
+			using Parameters = PARAM;
+			RtLambdaRendererPass(const std::string& name, EFlags flags, 
+									const PARAM* params, LAMBDA&& lamda) : RtRendererPass(), params_(params),pass_(lambda_) {}
 			void Execute() override;
+			const Parameters* GetParameters() const { return params_; }
+			virtual ~RtLambdaRendererPass() {}
 		private:
 			LAMBDA& pass_;
+			const Paramerters* params_;
 		};
 
-		template<class GELE>
-		static inline GELE::Handle MakePair(GELE::Ptr ptr, uint32_t index) {
-			return std::make_pair<GELE::Ptr, uint32_t>(ptr, index);
-		}
+		template <typename LAMBDA>
+		using RtDummyRendererPass = RtLambdaRendererPass<void, [] {} > ;
+		using PassHandle = Utils::Handle<RtRendererPass>;
 	}
 }

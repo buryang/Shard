@@ -22,7 +22,9 @@
     <ClCompile Include="Test\main.cpp" />
     <ClCompile Include="Test\TestAssimpReader.cpp" />
     <ClCompile Include="Test\TestGltfReader.cpp" />
+    <ClCompile Include="Test\TestJobSystem.cpp" />
     <ClCompile Include="Test\TestMetaInitRender.cpp" />
+    <ClCompile Include="Test\TestRenderGraph.cpp" />
     <ClCompile Include="Test\TestVulkanAPI.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -165,7 +167,8 @@
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command> </Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

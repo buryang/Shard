@@ -40,10 +40,11 @@ namespace MetaInit
 			using Type = T;
 			using Handle = Handle<Type>;
 			ResourceManager(Allocator& alloc) : alloc_(alloc) {}
-			template<typename...Args>
-			Handle<T> Alloc(Args... args) {
-				T* ptr = alloc_.AllocNoDestruct(std::forward<Args>(args)...);
-				storage_.push_back(ptr);
+			template<typename DerivedType = Type, typename... Args>
+			requires std::is_convertible_v<DerivedType*, Type*>
+			Handle<T> Alloc(Args&&... args) {
+				auto* ptr = alloc_.AllocNoDestruct<DerivedType>(std::forward<Args>(args)...);
+				storage_.push_back(static_cast<Type*>(ptr));
 				generation_.push_back(1);
 				return { storage_.size()-1, 1 };
 			}
@@ -94,6 +95,7 @@ namespace MetaInit
 			Vector<uint8_t>		generation_;
 			Vector<uint32_t>	free_list_;
 		};
+
 	}
 }
 

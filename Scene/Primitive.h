@@ -4,6 +4,15 @@
 
 namespace MetaInit
 {
+
+	enum class InputTopoType :uint8_t
+	{
+		eLineList,
+		eLineStrip,
+		eTriangleList,
+		eTriangleStrip,
+	};
+
 	//copy from falcor
 	struct Mesh
 	{
@@ -218,12 +227,12 @@ namespace MetaInit
 	{
 		enum class AlphaMode : uint8_t
 		{
-			AOPAQUE,
-			AMASK,
-			ABLEND,
+			eOPAQUE = 0x00,
+			eMASK	= 0x01,
+			eBLEND	= 0x02,
 		};
 		using TexturePtr = Texture::Ptr;
-		AlphaMode alpha_mode_ = AlphaMode::AOPAQUE;
+		AlphaMode alpha_mode_ = AlphaMode::eOPAQUE;
 		bool double_sided_ = false;
 		float alpha_cutoff_ = 1.0f;
 		float metal_factor_ = 1.0f;
@@ -237,6 +246,28 @@ namespace MetaInit
 		TexturePtr normal_texture_;
 		TexturePtr occlusion_texture_;
 		TexturePtr emissive_texture_;
+	};
+
+	//todo material
+	struct CombinedMaterial
+	{
+		static constexpr uint32_t MAX_MATERIAL_LAYERS = 10;
+		Material layers_[MAX_MATERIAL_LAYERS];
+	};
+
+	struct Volumetric
+	{
+
+	};
+
+	struct VolumetricFog
+	{
+
+	};
+
+	struct VolumetricCloud
+	{
+
 	};
 
 }
