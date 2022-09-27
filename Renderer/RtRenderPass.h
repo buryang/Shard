@@ -2,9 +2,9 @@
 #include <unordered_set>
 #include "Utils/Handle.h"
 #include "Utils/SimpleEntitySystem.h"
+#include "Renderer/RtRenderBarrier.h"
 #include "Renderer/RtRenderGraph.h"
 #include "Renderer/RtRenderResources.h"
-#include "RHI/"
 
 namespace MetaInit
 {
@@ -15,12 +15,14 @@ namespace MetaInit
 		class RtRendererPass
 		{
 		public:
+			using Ptr = RtRendererPass*;
 			enum class EPipeLine : uint32_t
 			{
 				eNone			= 0x0,
 				eGraphics		= 0x1,
 				eAsyncCompute   = 0x2,
 				eAll			= eGraphics | eAsyncCompute,
+				eNum			= 0x4,
 			};
 
 			enum class EFlags : uint8_t
@@ -38,7 +40,7 @@ namespace MetaInit
 			class RtPassParameters
 			{
 			public:
-				void AddField(const std::string& param_name, RtField&& field);
+				RtPassParameters& AddField(const std::string& param_name, RtField&& field);
 				bool IsEmpty()const { return fields_.size()==0; }
 				RtField& operator[](const std::string& name);
 				template <typename Function>
@@ -55,15 +57,14 @@ namespace MetaInit
 			explicit RtRendererPass(const std::string& name, EPipeLine pipeline, EFlags flags, uint32_t index);
 			virtual ~RtRendererPass();
 			virtual void Execute() = 0;
-			RtRendererPass& AddField(RtField* field);
-			RtRendererPass& AddParameters(Parameters&& params);
+			RtRendererPass& SetParameters(Parameters&& params);
 			bool IsOutput()const { return is_output_; }
 			bool IsAysnc()const { return is_async_; }
 			bool IsCullAble()const { return is_culling_able_; }
 			const std::string& GetName()const { return name_; }
 			EPipeLine GetPipeLine()const { return pipeline_; }
-			static EPipeLine* GetSupportPipeLines() {
-				static EPipeLine pipe_lines[] = { EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
+			static std::array<EPipeLine, 2>& GetSupportPipeLines() {
+				static std::array<EPipeLine, 2> pipe_lines{ EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
 				return pipe_lines;
 			}
 			void IncrRef() { ++ref_count_; }
@@ -74,14 +75,13 @@ namespace MetaInit
 			uint32_t							ref_count_{ 0 };
 			EFlags								flags_{ EFlags::eNone };
 			
-			std::unordered_map<RtFiled*, >
 			std::unordered_set<PassHandle>		producers_;
 			std::unordered_set<PassHandle>		consumers_;
 			Parameters							parameters_;
 
 			//render barrier
-			RtBarrierBatch*						barriers_prologue_{ nullptr };
-			RtBarrierBatch*						barriers_epilogure_{ nullptr };
+			RtBarrierBatch::Ptr					barriers_prologue_{ nullptr };
+			RtBarrierBatch::Ptr					barriers_epilogure_{ nullptr };
 			union
 			{
 				struct

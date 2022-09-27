@@ -118,11 +118,12 @@
     <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
-    <ClCompile Include="RHI\RHIResourceHeap.cpp" />
+    <ClCompile Include="RHI\Vulkan\VulkanResourceHeap.cpp" />
     <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceAllocatorVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIContextVulkan.cpp" />
     <ClCompile Include="Renderer\RtRenderShader.cpp" />
+    <ClCompile Include="Renderer\RtRenderBarrier.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -228,7 +229,7 @@
     <ClInclude Include="RHI\Vulkan\VulkanStaticScene.h" />
     <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
     <ClInclude Include="Renderer\RtRenderResourceAllocator.h" />
-    <ClInclude Include="RHI\RHIResourceHeap.h" />
+    <ClInclude Include="RHI\Vulkan\VulkanResourceHeap.h" />
     <ClInclude Include="Renderer\RtRenderBarrier.h" />
     <ClInclude Include="RHI\RHIResourceAllocator.h" />
     <ClInclude Include="RHI\RHIContext.h" />

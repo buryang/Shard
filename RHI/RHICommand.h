@@ -1,10 +1,11 @@
 #pragma once
+#include "Utils/CommonUtils.h"
+#include "Renderer/RtRenderBarrier.h"
 
 namespace MetaInit
 {
 	namespace RHI
 	{
-
 		class RHIBarrier
 		{
 		public:
@@ -42,13 +43,22 @@ namespace MetaInit
 			virtual void SetRHI() = 0;
 			//build optimize command
 			virtual void Build() = 0;
+			template<class RHIHandle>
+			RHIHandle GetRHI()const;
 			//submit command
 			virtual void Submit() = 0;
 			virtual void Begin() = 0;
 			virtual void End() = 0;
 			virtual void SetPiplineState() = 0;
 			virtual Flags GetFlags() const { return Flags::eUnkown; }
-			void SetShader();
+			//common command context operations
+			void SetShaderRHI();
+			void SetBarrierBatch(Renderer::RtBarrierBatch& barriers);
+			template<typename ParamStruct>
+			void SetShaderParameters(uint32_t buffer_index, uint32_t base_index, ParamStruct& param) {
+				SetShaderParameters(buffer_index, base_index, sizeof(param), &param);
+			}
+			void SetShaderParameters(uint32_t buffer_index, uint32_t base_index, uint32_t bytes, const void* param_ptr);
 		};
 
 		class RHIGraphicsCommandContext : public RHICommandContext
@@ -77,9 +87,10 @@ namespace MetaInit
 				return GetFlags() == Flags::eAsyncCompute;
 			}
 			void Dispatch(vec3 dimensions);
-			void SetComputeShader();
 			void SetAsyncComputeBudget();
 			bool MergeAble(const RHIComputeComandContext& rhs) const;
+		private:
+			void SetComputeShader();
 		private:
 			bool is_async_{ false };
 		};

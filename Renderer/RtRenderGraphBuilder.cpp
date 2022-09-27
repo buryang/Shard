@@ -53,6 +53,8 @@ namespace MetaInit
 			for (auto& pass_handle : builder.command_list_) {
 				executor->InsertPass(pass_handle);
 			}
+
+			executor->is_compiled_ = true;
 			return executor;
 		}
 

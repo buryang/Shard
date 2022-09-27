@@ -29,6 +29,7 @@ namespace MetaInit
 			bool ValidateFinalizeGraph()const;
 		private:
 			RtRendererGraph&			graph_;
+			//sorted filtered passes
 			Vector<PassHandle>			command_list_;
 		};
 	}

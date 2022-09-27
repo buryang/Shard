@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "RHI/RHICommand.h"
 
 namespace MetaInit
 {
@@ -29,14 +30,26 @@ namespace MetaInit
 		class RtBarrierBatch
 		{
 		public:
-			void AddTransitionBarrier(RtTransitionBarrier&& transition);
-			void AddAliasingBarrier(RtAliasingBarrier&& aliasing);
-			void AddUAVBarrier(RtUAVBarrier&& uav);
+			using Ptr = RtBarrierBatch*;
+			FORCE_INLINE void AddTransitionBarrier(RtTransitionBarrier&& transition) {
+				transitions_.emplace_back(transition);
+			}
+			FORCE_INLINE void AddAliasingBarrier(RtAliasingBarrier&& aliasing) {
+				aliasing_.emplace_back(aliasing);
+			}
+			FORCE_INLINE void AddUAVBarrier(RtUAVBarrier&& uav) {
+				uavs_.emplace_back(uav);
+			}
+			FORCE_INLINE void AddDependencies(RtBarrierBatch::Ptr deps) {
+				dependencies_ = deps;
+			}
 			void Submit(RHI::RHICommandContext& context);
 		private:
-			SmallVector<RtTransitionBarrier> transitions_;
-			SmallVector<RtAliasingBarrier>	 aliasing_;
-			SmallVector<RtUAVBarrier>		uavs_;
+			SmallVector<RtTransitionBarrier>	transitions_;
+			SmallVector<RtAliasingBarrier>		aliasing_;
+			SmallVector<RtUAVBarrier>			uavs_;
+			//prev split barrier sync
+			RtBarrierBatch::Ptr					dependencies_{ nullptr };
 		};
 	}
 }

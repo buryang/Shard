@@ -1,9 +1,9 @@
 #pragma once
 #include <unordered_map>
-#include "Renderer/RtRenderResourceDefinitions.h"
 #include "Utils/CommonUtils.h"
 #include "Utils/Handle.h"
-#include "RHI/RHI.h"
+#include "RHI/RHIResource.h"
+#include "Renderer/RtRenderResourceDefinitions.h"
 
 namespace MetaInit
 {
@@ -46,7 +46,7 @@ namespace MetaInit
 				eInput,
 				eOutput,
 				eInternal,
-				eCulled, //filed deleted
+				eCulled, //field deleted
 				eNum,
 			};
 
@@ -142,8 +142,15 @@ namespace MetaInit
 			InitState							init_state_{ InitState::eUnkown };
 		};
 
-		using RtRenderTexture = RtRenderResource<>;
-		using RtRenderBuffer = RtRenderResource<>;
+		using RtRenderTexture = RtRenderResource<RHI::RHITexture>;
+		using RtRenderBuffer = RtRenderResource<RHI::RHIBuffer>;
+
+		static constexpr uint32_t MAX_RENDER_TARGET_ATTACHMENTS = 8;
+		ALIGN_AS(128) struct RtRenderTargets
+		{
+			RtRenderTexture	depth_stencil_;
+			SmallVector<RtRenderTexture, MAX_RENDER_TARGET_ATTACHMENTS>	color_attachments_;
+		};
 
 	}
 }

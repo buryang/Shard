@@ -8,13 +8,16 @@ namespace MetaInit
 		{
 		}
 
-		RtRendererPass& RtRendererPass::AddParameters(Parameters&& params)
+		RtRendererPass& RtRendererPass::SetParameters(Parameters&& params)
 		{
 			// TODO: 在此处插入 return 语句
+			return *this;
 		}
 
-		void RtRendererPass::RtPassParameters::AddField(RtField&& field)
+		RtRendererPass::RtPassParameters& RtRendererPass::RtPassParameters::AddField(RtField&& field)
 		{
+
+			return *this;
 		}
 
 		RtField& RtRendererPass::RtPassParameters::operator[](const uint32_t index)
