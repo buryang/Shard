@@ -4,26 +4,14 @@ namespace MetaInit
 {
 	namespace Renderer
 	{
-		RtRendererPass::RtRendererPass(const std::string& name, const EPipeLine pipeline, uint32_t index):name_(name), pipeline_(pipeline)
+		RtRendererPass::RtRendererPass(const String& name, const EPipeLine pipeline):name_(name), pipeline_(pipeline)
 		{
 		}
 
-		RtRendererPass& RtRendererPass::SetParameters(Parameters&& params)
+		RtRendererPass& RtRendererPass::SetScheduleContext(ScheduleContext&& context)
 		{
-			// TODO: 在此处插入 return 语句
-			return *this;
+			schedule_context_ = context;
 		}
 
-		RtRendererPass::RtPassParameters& RtRendererPass::RtPassParameters::AddField(RtField&& field)
-		{
-
-			return *this;
-		}
-
-		RtField& RtRendererPass::RtPassParameters::operator[](const uint32_t index)
-		{
-			assert(index < fields_.size());
-			return fields_[index];
-		}
 	}
 }

@@ -16,13 +16,12 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = RtRendererPass*;
-			enum class EPipeLine : uint32_t
+			enum class EPipeLine : uint8_t
 			{
 				eNone			= 0x0,
-				eGraphics		= 0x1,
+				eGraphics		= 0x1
 				eAsyncCompute   = 0x2,
-				eAll			= eGraphics | eAsyncCompute,
-				eNum			= 0x4,
+				eNum			= 0x3,
 			};
 
 			enum class EFlags : uint8_t
@@ -37,12 +36,20 @@ namespace MetaInit
 			};
 
 			//how to bind resource and field FIXME
-			class RtPassParameters
+			class RtScheduleContext
 			{
 			public:
-				RtPassParameters& AddField(const std::string& param_name, RtField&& field);
+				RtScheduleContext& AddField(const std::string& param_name, RtField&& field);
 				bool IsEmpty()const { return fields_.size()==0; }
-				RtField& operator[](const std::string& name);
+				RtField& operator[](const String& name) {
+					if (fields_.find(name)==fields_.end()) {
+						//todo
+					}
+					return fields_[name];
+				}
+				Map<String, RtField>& GetFields() {
+					return fields_;
+				}
 				template <typename Function>
 				void Enumerate(Function func) {
 					for (auto& [k, p] : fields_) {
@@ -50,23 +57,24 @@ namespace MetaInit
 					}
 				}
 			private:
-				std::unordered_map<std::string, RtField>	fields_;
+				Map<String, RtField>	fields_;
 			};
-			using Parameters = RtPassParameters;
+			using ScheduleContext = RtScheduleContext;
 
-			explicit RtRendererPass(const std::string& name, EPipeLine pipeline, EFlags flags, uint32_t index);
+			explicit RtRendererPass(const String& name, EPipeLine pipeline, EFlags flags);
 			virtual ~RtRendererPass();
 			virtual void Execute() = 0;
-			RtRendererPass& SetParameters(Parameters&& params);
+			RtRendererPass& SetScheduleContext(ScheduleContext&& context);
 			bool IsOutput()const { return is_output_; }
 			bool IsAysnc()const { return is_async_; }
 			bool IsCullAble()const { return is_culling_able_; }
 			const std::string& GetName()const { return name_; }
 			EPipeLine GetPipeLine()const { return pipeline_; }
-			static std::array<EPipeLine, 2>& GetSupportPipeLines() {
-				static std::array<EPipeLine, 2> pipe_lines{ EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
+			static SmallVector<EPipeLine, 2, false>& GetSupportPipeLines() {
+				static SmallVector<EPipeLine, 2, false> pipe_lines{ EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
 				return pipe_lines;
 			}
+			RtBarrierBatch::Ptr GetOrCreatePrologureBarrier(Allocator* alloc);
 			void IncrRef() { ++ref_count_; }
 			void DecrRef() { --ref_count_; }
 		private:
@@ -77,7 +85,7 @@ namespace MetaInit
 			
 			std::unordered_set<PassHandle>		producers_;
 			std::unordered_set<PassHandle>		consumers_;
-			Parameters							parameters_;
+			ScheduleContext						schedule_context_;
 
 			//render barrier
 			RtBarrierBatch::Ptr					barriers_prologue_{ nullptr };

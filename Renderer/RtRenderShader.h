@@ -22,6 +22,19 @@ namespace MetaInit::Renderer
 	class MINIT_API RtRenderShader
 	{
 	public:
+		enum class Frequency :uint16_t
+		{
+			eVertex,
+			eHull,//tessellation control
+			eGeometry,
+			eFrag,
+			eCompute,
+			eRayGen,
+			eRayAnyHit,
+			eRayCloseHit,
+			eRayMiss,
+			eNum,
+		};
 		struct ShaderParam
 		{
 			virtual ~ShaderParam() {}
@@ -30,6 +43,7 @@ namespace MetaInit::Renderer
 		static const RtRendererShaderParamBindings& GetShaderBindings() {
 			return bindings_;
 		}
+		virtual Frequency GetShaderFrequency()const=0;
 	protected:
 		static RtRendererShaderParamBindings bindings_;
 	};
@@ -43,11 +57,17 @@ namespace MetaInit::Renderer
 	class MINIT_API RtRenderShaderParametersMeta
 	{
 	public:
-		class Element
+		struct Element
 		{
-
+			uint16_t	buffer_index_{ 0 };
+			uint16_t	base_index_{ 0 };
+			uint16_t	byte_offset_{ 0 };
+			//type
 		};
 		const Element& operator[](uint32_t index)const;
+		FORCE_INLINE uint32_t ParameterCount()const {
+			return members_.size();
+		}
 		void AddElement(Element&& element);
 	private:
 		SmallVector<Element>	members_;

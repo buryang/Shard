@@ -1,6 +1,5 @@
 #pragma once
 
-
 //shader parameter define macros
 #define BEGIN_SHADER_PARAMETER_STRUCT(T, Name, PREFIX, ...) \
 PREFIX class T {											\	
@@ -12,7 +11,7 @@ template <uint32_t index> class InternalLinkType {\
 
 
 #define END_SHADER_PARAMETER_STRUCT() \
-private: static RtRenderShaderParametersMeta meta_info_;
+private: static RtRenderShaderParametersMeta meta_info_; \
 };
 
 //generate parameter struct glsl file

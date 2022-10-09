@@ -17,8 +17,8 @@ namespace MetaInit
 				bool	aync_enable_{ false };
 				bool	culling_passes_{ false };
 				bool	res_aliasing_enable_{ false };
-			}Params;
-			static RtRenderGraphExecutor::Ptr Build(RtRendererGraph& graph, const Params& param);
+			}BuildParameters;
+			static RtRenderGraphExecutor::Ptr Build(RtRendererGraph& graph, const BuildParameters& param);
 		private:
 			RtRenderGraphBuilder(RtRendererGraph& graph);
 			void CullingNoUsePasses();
@@ -28,9 +28,7 @@ namespace MetaInit
 			void AddResourceTransition();
 			bool ValidateFinalizeGraph()const;
 		private:
-			RtRendererGraph&			graph_;
-			//sorted filtered passes
-			Vector<PassHandle>			command_list_;
+			RtRendererGraph&	graph_;
 		};
 	}
 }

@@ -14,12 +14,32 @@ namespace MetaInit
 
 		struct RtTransitionBarrier
 		{
+			xxx resource_;
+			xxx prev_access_;
+			xxx next_access_;
+			yyy flags_;
+			uint32_t mip_index_;
+			uint32_t array_index_;
+			uint32_t plane_index_;
+			FORCE_INLINE bool operator==(const RtTransitionBarrier& rhs) const {
+				return resource_ == rhs.resource_ &&
+					prev_access_ == rhs.prev_access_ &&
+					next_access_ == rhs.next_access_ &&
+					flags_ == rhs.flags_ &&
+					mip_index_ == rhs.mip_index_ &&
+					array_index_ == rhs.array_index_ &&
+					plane_index_ == rhs.plane_index_;
+			}
+			FORCE_INLINE bool operator!=(const RtTransitionBarrier& rhs) const {
+				return !(*this == rhs);
+			}
 
 		};
 
 		struct RtAliasingBarrier
 		{
 
+			yyy flags_;
 		};
 
 		struct RtUAVBarrier
