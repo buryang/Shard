@@ -24,7 +24,7 @@ namespace MetaInit
 		public:
 			using Ptr = RtRenderGraphExecutor*;
 			using SharedPtr = std::shared_ptr<RtRenderGraphExecutor>;
-			using CallBack = std::function<void(RtRenderGraphExecutor& executor, PassHandle handle)>;
+			using CallBack = std::function<void(RtRenderGraphExecutor& executor)>;
 			struct _CommandContext
 			{
 				RHI::RHICommandContext*		rhi_{ nullptr };
@@ -41,7 +41,7 @@ namespace MetaInit
 			TextureHandle GetOrCreateTexture(const RtField& field);
 			BufferHandle GetOrCreateBuffer(const RtField& field);
 			//binding external resource to executor
-			RtRenderGraphExecutor& RegistExternalResource(const std::string& field_name, RtRenderResource::Ptr resource);
+			RtRenderGraphExecutor& RegistExternalResource(const String& field_name, RtRenderResource::Ptr resource);
 			//whether executor ready for draw
 			bool IsReady()const;
 		private:
@@ -49,33 +49,38 @@ namespace MetaInit
 			//queue extracted output resource 
 			RtRenderGraphExecutor& QueueExtractedTexture(RtField& field, RtRenderTexture::Ptr& texture);
 			RtRenderGraphExecutor& QueueExtractedBuffer(RtField& field, RtRenderBuffer::Ptr& buffer);
+			template<class T, typename... Args>
+			T* AllocNoDestruct(Args&&... args) {
+				auto result = alloc_->AllocNoDestruct(args);
+				return result;
+			}
 			RtRenderGraphExecutor() = default;
 			DISALLOW_COPY_AND_ASSIGN(RtRenderGraphExecutor);
 		private:
 			friend class RtRenderGraphBuilder;
 			friend class RtFieldResourcePlanner;
-			bool							is_compiled_{ false };
-			Map<PassHandle, RtRendererPass>	passes_;
-			Utils::Allocator*				allocator_{nullptr};
+			using PassData = std::pair<PassHandle, RtRendererPass>;
+			bool	is_compiled_{ false };
+			Vector<PassData>	passes_;
+			Utils::Allocator*	allocator_{nullptr};
 			Map<PassHandle, SmallVector<CallBack>>	pre_watch_dogs_;
 			Map<PassHandle, SmallVector<CallBack>>	post_watch_dogs_;
 			Map<String, TextureHandle>	texture_map_;
 			Map<String, BufferHandle>	buffer_map_;
 		};
 
-		void GatherPassResources(RtRenderGraphExecutor& executor, PassHandle hande);
-
 		//here my idea: combin all shared edge resource together, and do resource plan
 		class RtFieldResourcePlanner
 		{
 		public:
+			RtFieldResourcePlanner() = default;
 			void DoResourcePlan(RtRenderGraphExecutor& executor);
 			void AppendProducer(RtField& field, PassHandle pass);
 			void ApeendConsumer(RtField& field, PassHandle pass);
 		private:
-			void AddTransition(RtRenderGraphExecutor& executor, PassHandle pass, const RtField& prev, const RtField& next);
-			void AddTransition(RtRenderGraphExecutor& executor, PassHandle pass, bool is_producer, 
-								const RtField::SubTextureField& prev, const RtField::SubTextureField& next);
+			void DoTexturePlan(RtRenderGraphExecutor& executor);
+			void DoBufferPlan(RtRenderGraphExecutor& executor);
+			//void AddTransition(RtRenderGraphExecutor& executor, RtField::TextureSubField& prev, RtField)
 		private:
 			SmallVector<FieldNode, 2>	producers_;
 			SmallVector<FieldNode, 2>	consumers_;

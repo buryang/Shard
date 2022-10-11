@@ -22,7 +22,7 @@ namespace MetaInit
 			DISALLOW_COPY_AND_ASSIGN(RuntimeShaderMapSingleton);
 			RuntimeShaderMapSingleton() = default;
 		private:
-			std::unordered_map<>	shader_map_;
+			Map<>	shader_map_;
 		};
 	}
 }

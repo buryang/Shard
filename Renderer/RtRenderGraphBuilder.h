@@ -12,23 +12,20 @@ namespace MetaInit
 		class MINIT_API RtRenderGraphBuilder
 		{
 		public:
-			typedef struct _BuildParams
+			struct BuildConfig
 			{
 				bool	aync_enable_{ false };
 				bool	culling_passes_{ false };
 				bool	res_aliasing_enable_{ false };
-			}BuildParameters;
-			static RtRenderGraphExecutor::Ptr Build(RtRendererGraph& graph, const BuildParameters& param);
+			};
+			static RtRenderGraphExecutor::SharedPtr Compile(RtRendererGraph& graph, const BuildConfig& param);
 		private:
-			RtRenderGraphBuilder(RtRendererGraph& graph);
-			void CullingNoUsePasses();
-			void AddAssistPasses();
-			void AnalysisResourceUsage();
+			DISALLOW_COPY_AND_ASSIGN(RtRenderGraphBuilder);
+			void CullingNoUsePasses(RtRendererGraph& graph);
+			void AnalysisResourceUsage(const RtRendererGraph& graph, RtRenderGraphExecutor::SharedPtr executor);
 			//build resource barrier
-			void AddResourceTransition();
-			bool ValidateFinalizeGraph()const;
-		private:
-			RtRendererGraph&	graph_;
+			void AddResourceTransition(RtRenderGraphExecutor::SharedPtr executor);
+			bool ValidateFinalizeGraph(const RtRendererGraph& graph);
 		};
 	}
 }

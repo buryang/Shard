@@ -1,34 +1,51 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/RHICommand.h"
+#include "Renderer/RtRenderResources.h"
 
 namespace MetaInit
 {
 	namespace Renderer
 	{
 		//for vulkan barrier need stage information
-		enum class PipelineStageFlags
+		enum class EPipelineStageFlags
 		{
-			eUnkown = 0x0,
+			eUnkown = 0,
+			eTopOfPipe = 1 << 0,
+			eDrawIndirect = 1 << 1,
+			eVertexInput = 1 << 2,
+			eShaderVertex = 1 << 3,
+			eShaderTControl = 1 << 4,
+			eShaderTEval = 1 << 5,
+			eShaderGeometry = 1 << 6,
+			eShaderFrag = 1 << 7,
+			eShaderCompute = 1 << 8,
+			eAllGFX = 1 << 9,
+			eAllCommand = 1 << 10,
+			eBuildAS = 1 << 11,
+			eRayTrace = 1 << 12,
+			eBottomOfPipe = 1 << 13,
 		};
 
 		struct RtTransitionBarrier
 		{
-			xxx resource_;
-			xxx prev_access_;
-			xxx next_access_;
-			yyy flags_;
-			uint32_t mip_index_;
-			uint32_t array_index_;
-			uint32_t plane_index_;
+			RtRenderResource::Ptr	resource_;
+			RtField::EAccessFlags	prev_access_;
+			RtField::EAccessFlags	next_access_;
+			EPipelineStageFlags	prev_stage_;
+			EPipelineStageFlags	next_stage_;
+			union
+			{
+				TextureSubRange		texture_sub_range_;
+				BufferSubRange		buffer_sub_range_;
+			};
 			FORCE_INLINE bool operator==(const RtTransitionBarrier& rhs) const {
 				return resource_ == rhs.resource_ &&
 					prev_access_ == rhs.prev_access_ &&
 					next_access_ == rhs.next_access_ &&
-					flags_ == rhs.flags_ &&
-					mip_index_ == rhs.mip_index_ &&
-					array_index_ == rhs.array_index_ &&
-					plane_index_ == rhs.plane_index_;
+					prev_stage_ == rhs.prev_stage_ &&
+					next_stage_ == rhs.next_stage_ &&
+					sub_range_ = rhs.sub_range_;
 			}
 			FORCE_INLINE bool operator!=(const RtTransitionBarrier& rhs) const {
 				return !(*this == rhs);
@@ -45,6 +62,8 @@ namespace MetaInit
 		struct RtUAVBarrier
 		{
 			//vulkan just clear global cache
+			RtRenderResource::Ptr	resource_;
+			TextureSubRangeIndex	sub_range_;
 		};
 
 		class RtBarrierBatch

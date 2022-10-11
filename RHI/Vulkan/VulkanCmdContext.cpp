@@ -233,7 +233,7 @@ namespace MetaInit
 		vkCmdDrawIndexedIndirect(handle_, buffer.Get(), static_cast<VkDeviceSize>(offset), draw_count, stride);
 	}
 
-	void VulkanCmdBuffer::TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
+	void VulkanCmdBuffer::TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
 	{
 		/*
 		vkCmdTraceRaysKHR(buffer_, ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RGEN)],

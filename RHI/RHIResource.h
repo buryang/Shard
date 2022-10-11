@@ -49,6 +49,7 @@ namespace MetaInit
 		class RHITexture : public RHIResource
 		{
 		public:
+			using Ptr = RHITexture*;
 			RHITexture(const RHITextureDesc& desc) :desc_(desc) {}
 			void SetRHI() override;
 			void Release() override;
@@ -66,13 +67,19 @@ namespace MetaInit
 		{
 			enum class Type : uint8_t
 			{
-
+				eUniform = 0x1,
+				eRawBuffer = 0x2,
+				eStructedBuffer = 0x4,
+				eUniformStructed = eUniform | eStructedBuffer,
 			};
+			Type		type_;
+			uint32_t	size_;
 		};
 
 		class RHIBuffer : public RHIResource
 		{
 		public:
+			using Ptr = RHIBuffer*;
 			RHIBuffer(const RHIBufferDesc& desc) :desc_(desc) {}
 			void SetRHI() override;
 			void Release() override;
@@ -84,6 +91,11 @@ namespace MetaInit
 		private:
 			const RHIBufferDesc& desc_;
 			void* rhi_;
+		};
+
+		struct RHIAccelerateDesc
+		{
+
 		};
 
 		class RHIAccelerate : public RHIResource
@@ -108,7 +120,7 @@ namespace MetaInit
 
 		struct RHITextureSRVDesc
 		{
-			RHITexture* texture_;
+			RHITexture::Ptr	texture_{ nullptr };
 			uint32_t	mip_start_ : 16;
 			uint32_t	mip_levels_ : 16;
 		};
@@ -121,7 +133,7 @@ namespace MetaInit
 
 		struct RHITextureUAVDesc
 		{
-			RHITexture* texture_;
+			RHITexture::Ptr texture_;
 		};
 
 		class RHITextureUAV : public RHIResource

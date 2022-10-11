@@ -120,7 +120,7 @@ namespace MetaInit
 		}
 
 		template<typename NodeHandle, typename EdgeHandle>
-		inline DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node* DirectedAcyclicGraph<NodeHandle, EdgeHandle>::GetNode(uint32_t node_index)
+		inline DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node& DirectedAcyclicGraph<NodeHandle, EdgeHandle>::GetNode(uint32_t node_index)
 		{
 			if (nodes_.find(node_index) != nodes_.end())
 			{
@@ -130,7 +130,7 @@ namespace MetaInit
 		}
 
 		template<typename NodeHandle, typename EdgeHandle>
-		inline DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Edge* DirectedAcyclicGraph<NodeHandle, EdgeHandle>::GetEdge(uint32_t edge_index)
+		inline DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Edge& DirectedAcyclicGraph<NodeHandle, EdgeHandle>::GetEdge(uint32_t edge_index)
 		{
 			if (edges_.find(edge_index) != edges_.end())
 			{
@@ -153,8 +153,8 @@ namespace MetaInit
 		}
 
 		template<typename NodeHandle, typename EdgeHandle>
-		inline bool DirectedAcyclicGraph<NodeHandle, EdgeHandle>::IsConnected(const DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node* lhs, 
-																				const DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node* rhs) const
+		inline bool DirectedAcyclicGraph<NodeHandle, EdgeHandle>::IsConnected(const DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node& lhs, 
+																				const DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node& rhs) const
 		{
 			DirectGraphVisitor<BFSSearch<DirectedAcyclicGraph<NodeHandle, EdgeHandle>::Node>, NodeHandle, EdgeHandle> visitor(*this, lhs);
 
@@ -183,7 +183,7 @@ namespace MetaInit
 		}
 
 		template<template<typename> typename Method, class Graph>
-		inline Node* DirectGraphVisitor<Method, Graph>::Next()
+		inline Node& DirectGraphVisitor<Method, Graph>::Next()
 		{
 			//context stack logic
 			if (container_.empty())

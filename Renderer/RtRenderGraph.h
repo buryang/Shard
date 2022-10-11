@@ -9,10 +9,10 @@ namespace MetaInit
 	{
 		class RtRendererPass;
 		class RtField;
-		class RtRenderResourceBridge;
+		class RtRenderFieldBridge;
 		static constexpr const uint32_t INVALID_INDEX = -1;
 
-		class MINIT_API RtRendererGraph : public Utils::DirectedAcyclicGraph<RtRendererPass, RtRenderResourceBridge>
+		class MINIT_API RtRendererGraph : public Utils::DirectedAcyclicGraph<RtRendererPass, RtRenderFieldBridge>
 		{
 		public:
 			using ParentType = Utils::DirectedAcyclicGraph<RtRendererPass, RtRenderResourceBridge>;
@@ -47,17 +47,21 @@ namespace MetaInit
 
 		};
 
-		class RtRenderResourceBridge
+		/*manage every resource field liftetime*/
+		class RtRenderFieldBridge
 		{
 		public:
-			using Ptr = RtRenderResourceBridge*;
-			RtRenderResourceBridge(RtField& src, RtField& dst) :src_(src), dst_(dst) {
+			using Ptr = RtRenderFieldBridge*;
+			RtRenderFieldBridge(RtField& src, RtField& dst) :src_(src), dst_(dst) {
 				dst_.ParentName(src_.GetName());
+				src_.InCrRef(); dst_.InCrRef();
 			}
-			~RtRenderResourceBridge() {
+			~RtRenderFieldBridge() {
 				dst_.ParentName("");
+				src_.DecrRef(); dst_.DecrRef();
 			}
 		private:
+			DISALLOW_COPY_AND_ASSIGN(RtRenderFieldBridge);
 			RtField& src_;
 			RtField& dst_;
 		};

@@ -43,29 +43,10 @@ namespace MetaInit
 			}
 		};
 
-		enum class TexelFormat :uint8_t
-		{
-			eTexelUnkown = 0x0,
-			eTexelR8U = 0x1,
-			eTexelR8S = 0x2,
-			//fixme norm and int different
-			eTexelR8G8B8U = 0x3,
-			eTexelR8G8B8S = 0x4,
-			eTexelR8G8B8A8U = 0x5,
-			eTexelR8G8B8A8S = 0x6,
-			eTexelA2R10G10B10U = 0x7,
-			eTexelA2R10G10B10S = 0x8,
-
-			//compression formats
-			eTexelBC4UB = 0x12,
-			eTexelBC4SB = 0x13,
-
-		};
-
 		//front for vulkan image dx texture desc
 		struct RtTextureCreateDesc
 		{
-			TexelFormat	format_;
+			P       	format_;
 			vec3		extent_;
 			uint32_t	array_size_;
 			uint32_t	flags_;

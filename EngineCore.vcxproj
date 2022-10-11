@@ -30,6 +30,7 @@
     <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
     <ClCompile Include="Renderer\RtRenderResources.cpp" />
     <ClCompile Include="Renderer\RtRenderShader.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanResourceHeap.cpp" />
     <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
@@ -47,7 +48,6 @@
     <ClCompile Include="RHI\Vulkan\VulkanResource.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanRHI.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanRHIImpl.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanStaticScene.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanWindowSystem.cpp" />
     <ClCompile Include="Runtime\MyToySimpleRenderer.cpp" />
     <ClCompile Include="Runtime\RuntimeSceneRender.cpp" />
@@ -68,6 +68,7 @@
     <ClCompile Include="Utils\SimpleCoro.inl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Core\PixelInfo.h" />
     <ClInclude Include="Effect\EffectRayTracing.h" />
     <ClInclude Include="Renderer\RtRenderBarrier.h" />
     <ClInclude Include="Renderer\RtRenderGraph.h" />
@@ -79,6 +80,7 @@
     <ClInclude Include="Renderer\RtRenderResourceDefinitions.h" />
     <ClInclude Include="Renderer\RtRenderResources.h" />
     <ClInclude Include="Renderer\RtRenderShader.h" />
+    <ClInclude Include="Renderer\RtRenderShaderFactory.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="RHI\RHI.h" />
     <ClInclude Include="RHI\RHICommand.h" />
@@ -95,7 +97,6 @@
     <ClInclude Include="RHI\Vulkan\VulkanRenderShader.h" />
     <ClInclude Include="RHI\Vulkan\VulkanResource.h" />
     <ClInclude Include="RHI\Vulkan\VulkanRHI.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanStaticScene.h" />
     <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
     <ClInclude Include="RHI\RHIResourceAllocator.h" />
     <ClInclude Include="Runtime\MyToySimpleRenderer.h" />
@@ -119,17 +120,8 @@
     <ClInclude Include="Utils\SimpleJobSystem.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="Shaders\frag_shader.frag">
-      <FileType>Document</FileType>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="Renderer\RtRenderResources.inl" />
-    <None Include="Shaders\ray_trace.defi" />
-    <None Include="Shaders\ray_trace.rchit" />
-    <None Include="Shaders\ray_trace.rgen" />
-    <None Include="Shaders\ray_trace.rmiss" />
-    <None Include="Shaders\shape_shader.vert" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.inl" />
     <None Include="Utils\SimpleEntitySystem.cpp" />

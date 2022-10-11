@@ -95,7 +95,7 @@ namespace MetaInit
 		void DrawIndirect(const Primitive::VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 		void DrawIndexed(uint32_t first_instance, uint32_t instance_count, uint32_t vertex_offset, uint32_t first_index, uint32_t index_count);
 		void DrawIndexedIndirect(const Primitive::VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
-		void TraceRay(std::unordered_map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
+		void TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
 		void Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size);
 		void Copy(Primitive::VulkanImage& dst, Primitive::VulkanBuffer& src);
 		void Resolve(Primitive::VulkanImage& dst, Primitive::VulkanImage& src);
@@ -103,6 +103,12 @@ namespace MetaInit
 		void Reset();
 		void Barrier(Primitive::VulkanImage& image, Primitive::EResourceState new_state);
 		void Barrier(Primitive::VulkanBuffer& buffer, Primitive::EResourceState new_state);
+		void BeginRenderPass();
+		void EndRenderPass();
+		void UpdateTopLevel();
+		void UPdateBottomLevel();
+		void UpdateShaderTable();
+		void RayTrace();
 		VkCommandBuffer Get() { return handle_; }
 	private:
 		DISALLOW_COPY_AND_ASSIGN(VulkanCmdBuffer);

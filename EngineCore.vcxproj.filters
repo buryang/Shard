@@ -113,7 +113,6 @@
     <ClCompile Include="RHI\Vulkan\VulkanResource.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanRHI.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanRHIImpl.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanStaticScene.cpp" />
     <ClCompile Include="RHI\Vulkan\VulkanWindowSystem.cpp" />
     <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceVulkan.cpp" />
@@ -124,6 +123,7 @@
     <ClCompile Include="RHI\Vulkan\RHIContextVulkan.cpp" />
     <ClCompile Include="Renderer\RtRenderShader.cpp" />
     <ClCompile Include="Renderer\RtRenderBarrier.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -226,7 +226,6 @@
     <ClInclude Include="RHI\Vulkan\VulkanRenderShader.h" />
     <ClInclude Include="RHI\Vulkan\VulkanResource.h" />
     <ClInclude Include="RHI\Vulkan\VulkanRHI.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanStaticScene.h" />
     <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
     <ClInclude Include="Renderer\RtRenderResourceAllocator.h" />
     <ClInclude Include="RHI\Vulkan\VulkanResourceHeap.h" />
@@ -235,28 +234,10 @@
     <ClInclude Include="RHI\RHIContext.h" />
     <ClInclude Include="Renderer\RtRenderShader.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
+    <ClInclude Include="Renderer\RtRenderShaderFactory.h" />
+    <ClInclude Include="Core\PixelInfo.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="Shaders\frag_shader.frag">
-      <Filter>Shaders</Filter>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\shape_shader.vert">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\ray_trace.rchit">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\ray_trace.defi">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\ray_trace.rmiss">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\ray_trace.rgen">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Renderer\RtRenderResources.inl">
       <Filter>Renderer</Filter>
     </None>
@@ -269,5 +250,6 @@
     <None Include="Utils\SimpleEntitySystem.cpp">
       <Filter>Utils</Filter>
     </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

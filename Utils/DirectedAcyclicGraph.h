@@ -11,7 +11,7 @@ namespace MetaInit
 		{
 		public:
 			using Handle = NodeHandle;
-			//shuold not be so mush node 
+			//shuold not be so much node 
 			enum class Flags : uint32_t
 			{
 				eValid			= 0x0,
@@ -71,12 +71,12 @@ namespace MetaInit
 			void RemoveEdge(const uint32_t index);
 			void AddNode(NodeHandle&& node);
 			void RemoveNode(const uint32_t node_index);
-			Node* GetNode(uint32_t node_index);
-			Edge* GetEdge(uint32_t edge_index);
+			Node& GetNode(uint32_t node_index);
+			Edge& GetEdge(uint32_t edge_index);
 			//check whether this's valid acyclic graph
 			bool IsValid() const;
 			//check whether two node is connect
-			bool IsConnected(const Node* lhs, const Node* rhs) const;
+			bool IsConnected(const Node& lhs, const Node& rhs) const;
 			//delete no used node and edge
 			void Truncate();
 		private:
@@ -85,8 +85,8 @@ namespace MetaInit
 			DISALLOW_COPY_AND_ASSIGN(DirectedAcyclicGraph);
 		private:
 			Allocator*					allocator_{ nullptr };
-			std::map<uint32_t, Node*>	nodes_;
-			std::map<uint32_t, Edge*>	edges_;
+			Map<uint32_t, Node>			nodes_;
+			Map<uint32_t, Edge>			edges_;
 			SmallVector<uint32_t>		root_;
 			SmallVector<uint32_t>		end_;
 			uint32_t					curr_node_index_{ 0 };

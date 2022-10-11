@@ -6,22 +6,65 @@ namespace MetaInit
 	namespace Renderer
 	{
 
-		void RtRenderGraphBuilder::AnalysisResourceUsage()
+		void RtRenderGraphBuilder::AnalysisResourceUsage(const RtRendererGraph& graph, RtRenderGraphExecutor::Ptr executor)
 		{
+			/*all resource field manager buffer*/
+			Map<String, RtFieldResourcePlanner> resource_planers;
+
+			for (auto& [pass_handle, pass] : executor->passes_) {
+				auto& fields = pass.GetSchduleContext().GetFields();
+				for (auto& [_, field] : fields) {
+					/*render graph do not dist external/unreferenced resource*/
+					if (field.IsExternal()||!field.IsReferenced()) {
+						continue;
+					}
+					auto& parent_name = field.GetParentName();
+					if (resource_planers.find(parent_name) == resource_planers.end()) {
+						resource_planers.insert(eastl::make_pair(parent_name, RtFieldResourcePlanner()));
+					}
+
+					auto& planner = resource_planers[parent_name];
+					if (field.IsOutput()) {
+						planner.AppendProducer(field, pass_handle);
+					}
+					else
+					{
+						planner.ApeendConsumer(field, pass_handle);
+					}
+				}
+			}
+
+			//do all resource planer work
+			for (auto& [_, planner] : resource_planers) {
+				planner.DoResourcePlan(*executor);
+			}
+
 		}
 
-		void RtRenderGraphBuilder::AddAssistPasses()
+		void RtRenderGraphBuilder::AddResourceTransition(RtRenderGraphExecutor::Ptr executor)
 		{
+			for () {
+				executor->InsertCallBack();
+			}
 		}
 
-		void RtRenderGraphBuilder::AddResourceTransition()
+		void RtRenderGraphBuilder::AddResourceTransition(RtRenderGraphExecutor::SharedPtr executor)
 		{
+			for (auto& [pass_handle, pass] : executor->passes_) {
+				//insert prologure pass barrier
+				executor->InsertCallBack(pass_handle, [](auto& executor) {
+
+					}, false);
+				//insert epilogure pass barrier
+				executor->InsertCallBack(pass_handle, &](auto& executor){
+				}, true);
+			}
 		}
 
-		bool RtRenderGraphBuilder::ValidateFinalizeGraph() const
+		bool RtRenderGraphBuilder::ValidateFinalizeGraph(const RtRendererGraph& graph)
 		{
 			//first of check whether a direct acyclic graph
-			if(!graph_.IsValid())
+			if(!graph.IsValid())
 			{
 				return false;
 			}
@@ -29,7 +72,7 @@ namespace MetaInit
 			return true;
 		}
 
-		RtRenderGraphExecutor::Ptr RtRenderGraphBuilder::Build(RtRendererGraph& graph, const Params& param)
+		RtRenderGraphExecutor::Ptr RtRenderGraphBuilder::Compile(RtRendererGraph& graph, const RtRendererGraph::BuildConfig& param)
 		{
 			RtRenderGraphBuilder builder(graph);
 
@@ -48,26 +91,24 @@ namespace MetaInit
 			//3.valid the finalize graph
 			builder.ValidateFinalizeGraph();
 			//last step copy execute list as ascend ordered
-			RtRenderGraphExecutor::Ptr executor(new RtRenderGraphExecutor);
+			RtRenderGraphExecutor::SharedPtr executor(new RtRenderGraphExecutor);
 			std::sort(builder.command_list_.begin(), builder.command_list_.end());
 			for (auto& pass_handle : builder.command_list_) {
 				executor->InsertPass(pass_handle);
 			}
 
+			//4. do resource analysis
+			builder.AnalysisResourceUsage(graph_, executor);
+
 			executor->is_compiled_ = true;
 			return executor;
 		}
 
-		RtRenderGraphBuilder::RtRenderGraphBuilder(RtRendererGraph& graph):graph_(graph)
-		{
-
-		}
-
-		void RtRenderGraphBuilder::CullingNoUsePasses()
+		void RtRenderGraphBuilder::CullingNoUsePasses(RtRendererGraph& graph)
 		{
 			//track outputs related passes
-			for (auto n = 0; n < graph_.OutputNum(); ++n) {
-				Utils::DirectGraphVisitor<Utils::DFSSearch, decltype(graph_)> visitor(graph_, );
+			for (auto n = 0; n < graph.OutputNum(); ++n) {
+				Utils::DirectGraphVisitor<Utils::DFSSearch, decltype(graph)> visitor(graph, );
 				while (true) {
 					auto pass_node = visitor.Next();
 					if (nullptr == pass_node) {

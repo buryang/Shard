@@ -13,20 +13,16 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "folly/FBVector.h"
-#include "folly/FBString.h"
-#include "folly/small_vector.h"
-#include "folly/memory.h"
-#include "folly/futures/Future.h"
-#include "folly/hash/Hash.h"
-#include "absl/types/span.h"
-#include "absl/hash/hash.h"
-#include "absl/types/optional.h"
+#include "eastl/vector.h"
+#include "eastl/fixed_vector.h"
+#include "eastl/hash_map.h"
+#include "eastl/fixed_hash_map.h"
+#include "eastl/hash_set.h"
+#include "eastl/list.h"
+#include "eastl/span.h"
+#include "eastl/optional.h"
+#include "eastl/string.h"
 #include <memory>
-#include <vector>
-#include <set>
-#include <array>
-#include <map>
 #include <algorithm>
 #include <assert.h>
 
@@ -55,53 +51,52 @@ namespace MetaInit {
 	using bvec4 = glm::bvec4;
 
 	template<typename T>
-	using Vector = folly::fbvector<T>;
-	template<typename T, int reverse_size=16>
-	using SmallVector = folly::small_vector<T, reverse_size>;
+	using Vector = eastl::vector<T>;
+	template<typename T, uint32_t reverse_size=16, bool overflow=true>
+	using SmallVector = eastl::fixed_vector<T, reverse_size, overflow>;
+	template<typename Key, typename Val>
+	using Map = eastl::hash_map<Key, Val>;
+	template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
+	using SmallMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
+	template<typename Val>
+	using Set = eastl::hash_set<Val>;
 
 	template<typename T>
-	using List = std::list<T>;
+	using List = eastl::list<T>;
 
 	template<typename T>
-	using Span = absl::Span<T>;
+	using Span = eastl::span<T>;
 
 	template<typename T>
-	using Optional = absl::optional<T>;
+	using Optional = eastl::optional<T>;
 
-	using String = folly::fbstring;
+	using String = eastl::string;
 	
 	//multi thread 
+	/*
 	template<typename T>
 	using Future = folly::Future<T>;
 
 	template<typename T>
 	using Promise = folly::Promise<T>;
-
+	*/
 }
 
 namespace MetaInit::Utils {
 
-	//range for helper function
-	class Range
-	{
-	public:
-		Range(uint32_t begin, uint32_t end) :begin_(begin), end_(end) {
-			assert(end_ > begin_ && begin_ >= 0);
-		}
-		template<typename LAMBDA>
-		void For(LAMBDA&& lambda)const {
-			for (auto n = begin_; n < end_; ++n) {
-				lambda(n);
-			}
-		}
-	private:
-		const uint32_t	begin_{ 0 };
-		const uint32_t	end_{ 0 };
-	};
-
 	template <typename Enum>
 	bool HasAnyFlags(Enum flags, Enum to_check) {
 		return std::underlying_type_t<Enum>(flags) & std::underlying_type_t<Enum>(to_check);
+	}
+	template <typename Enum>
+	Enum LogicAndFlags(Enum lhs, Enum rhs) {
+		auto res = std::underlying_type_t<Enum>(lhs) & std::underlying_type_t<Enum>(rhs);
+		return static_cast<Enum>(res);
+	}
+	template <typename Enum>
+	Enum LogicOrFlags(Enum lhs, Enum rhs) {
+		auto res = std::underlying_type_t<Enum>(lhs) | std::underlying_type_t<Enum>(rhs);
+		return static_cast<Enum>(res);
 	}
 
 	template<class Atomic=std::atomic_bool>

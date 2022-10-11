@@ -102,7 +102,7 @@ namespace MetaInit
 		protected:
 			Allocator*	allocator_{ nullptr };
 			uint32_t	component_identity_;
-			std::unordered_map<Entity, uint32_t>	id_map_;
+			Map<Entity, uint32_t>	id_map_;
 		};
 
 		template<typename Component>
@@ -245,7 +245,7 @@ namespace MetaInit
 			}
 		protected:
 			float curr_time_{ 0 };
-			std::unordered_map<uint32_t, SmallVector<MessageHandler>> message_handlers_;
+			Map<uint32_t, SmallVector<MessageHandler>> message_handlers_;
 			std::priority_queue<Message, Vector<Message>, std::less<Message>> message_queue_;
 		};
 
@@ -368,7 +368,7 @@ namespace MetaInit
 			}
 		private:
 			EntityManager entity_manager_;
-			std::unordered_map<std::type_index, ComponentInterface*> components_data_;
+			Map<std::type_index, ComponentInterface*> components_data_;
 			struct Dummy {};
 			template<typename System>
 			requires has_update_func<System>::value
@@ -387,17 +387,17 @@ namespace MetaInit
 				template<uint32_t index>
 				ComponentInterface* Get() { return components_data_[index]; }
 				template <uint32_t index>
-				void Fill(std::unordered_map<std::type_index, ComponentInterface*>& components) {
+				void Fill(Map<std::type_index, ComponentInterface*>& components) {
 					return;
 				}
 				template <uint32_t index, typename T, typename... Ts>
-				void Fill(std::unordered_map<std::type_index, ComponentInterface*>& components) {
+				void Fill(Map<std::type_index, ComponentInterface*>& components) {
 					components_data_[index] = components[typeid(T)];
 					Fill<index + 1, Ts...>(components);
 				}
 			};
 
-			std::unordered_map<std::type_index, Dummy*> systems_;
+			Map<std::type_index, Dummy*> systems_;
 		};
 	}
 }

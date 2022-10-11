@@ -70,7 +70,7 @@ namespace MetaInit
 		DISALLOW_COPY_AND_ASSIGN(DescriptorPoolManager);
 		DescriptorPool::Ptr GetPool(uint32_t hash);
 	private:
-		std::unordered_map<uint32_t, DescriptorPool::Ptr>	pools_;
+		Map<uint32_t, DescriptorPool::Ptr>	pools_;
 	};
 
 	//name from dxr
@@ -160,7 +160,7 @@ namespace MetaInit
 	private:
 		VulkanDevice::Ptr				device_;
 		VkDescriptorSet					handle_{ VK_NULL_HANDLE };
-		using DescLut = std::unordered_map<std::string, uint32_t>;
+		using DescLut = Map<std::string, uint32_t>;
 		DescLut							desc_lut_;
 		Vector<VkWriteDescriptorSet>	write_cache_;
 		bool							read_only_ = false;

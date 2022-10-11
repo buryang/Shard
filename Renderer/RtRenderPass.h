@@ -1,5 +1,4 @@
 #pragma once
-#include <unordered_set>
 #include "Utils/Handle.h"
 #include "Utils/SimpleEntitySystem.h"
 #include "Renderer/RtRenderBarrier.h"
@@ -8,9 +7,11 @@
 
 namespace MetaInit
 {
+	namespace Utils {
+		class Allocator;
+	}
 	namespace Renderer
 	{
-
 		//frame graph render pass
 		class RtRendererPass
 		{
@@ -19,7 +20,7 @@ namespace MetaInit
 			enum class EPipeLine : uint8_t
 			{
 				eNone			= 0x0,
-				eGraphics		= 0x1
+				eGraphics		= 0x1,
 				eAsyncCompute   = 0x2,
 				eNum			= 0x3,
 			};
@@ -39,7 +40,7 @@ namespace MetaInit
 			class RtScheduleContext
 			{
 			public:
-				RtScheduleContext& AddField(const std::string& param_name, RtField&& field);
+				RtScheduleContext& AddField(RtField&& field);
 				bool IsEmpty()const { return fields_.size()==0; }
 				RtField& operator[](const String& name) {
 					if (fields_.find(name)==fields_.end()) {
@@ -47,12 +48,18 @@ namespace MetaInit
 					}
 					return fields_[name];
 				}
-				Map<String, RtField>& GetFields() {
+				const RtField& operator[](const String& name) const {
+					if (fields_.find(name) == fields_.end()) {
+						//todo
+					}
+					return fields_[name];
+				}
+				Map<String, RtField>& operator()(void) {
 					return fields_;
 				}
 				template <typename Function>
 				void Enumerate(Function func) {
-					for (auto& [k, p] : fields_) {
+					for (auto& [_, p] : fields_) {
 						func(p);
 					}
 				}
@@ -63,49 +70,53 @@ namespace MetaInit
 
 			explicit RtRendererPass(const String& name, EPipeLine pipeline, EFlags flags);
 			virtual ~RtRendererPass();
-			virtual void Execute() = 0;
+			virtual void Execute(RHI::RHICommandContext* context) = 0;
+			/*setup some essential prepare work*/
+			void PreExecute();
 			RtRendererPass& SetScheduleContext(ScheduleContext&& context);
-			bool IsOutput()const { return is_output_; }
-			bool IsAysnc()const { return is_async_; }
-			bool IsCullAble()const { return is_culling_able_; }
-			const std::string& GetName()const { return name_; }
-			EPipeLine GetPipeLine()const { return pipeline_; }
+			FORCE_INLINE ScheduleContext& GetSchduleContext() { return schedule_context_; }
+			FORCE_INLINE RtField& GetField(const String& field_name) { return schedule_context_[field_name]; }
+			FORCE_INLINE bool IsOutput()const { return is_output_; }
+			FORCE_INLINE bool IsAysnc()const { return is_async_; }
+			FORCE_INLINE bool IsCullAble()const { return is_culling_able_; }
+			FORCE_INLINE const String GetName()const { return name_; }
+			FORCE_INLINE EPipeLine GetPipeLine()const { return pipeline_; }
 			static SmallVector<EPipeLine, 2, false>& GetSupportPipeLines() {
 				static SmallVector<EPipeLine, 2, false> pipe_lines{ EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
 				return pipe_lines;
 			}
-			RtBarrierBatch::Ptr GetOrCreatePrologureBarrier(Allocator* alloc);
-			void IncrRef() { ++ref_count_; }
-			void DecrRef() { --ref_count_; }
+			RtBarrierBatch::Ptr GetOrCreatePrologureBarrier(Utils::Allocator* alloc);
+			RtBarrierBatch::Ptr GetOrCreateEpilogureBarrier(Utils::Allocator* alloc);
+			FORCE_INLINE void IncrRef() { ++ref_count_; }
+			FORCE_INLINE void DecrRef() { --ref_count_; }
 		private:
-			const std::string					name_;
-			const EPipeLine						pipeline_;
-			uint32_t							ref_count_{ 0 };
-			EFlags								flags_{ EFlags::eNone };
-			
-			std::unordered_set<PassHandle>		producers_;
-			std::unordered_set<PassHandle>		consumers_;
-			ScheduleContext						schedule_context_;
+			const String	name_;
+			const EPipeLine	pipeline_;
+			uint32_t	ref_count_{ 0 };
+			EFlags	flags_{ EFlags::eNone };
+			Set<PassHandle>	producers_;
+			Set<PassHandle>	consumers_;
+			ScheduleContext	schedule_context_;
 
 			//render barrier
-			RtBarrierBatch::Ptr					barriers_prologue_{ nullptr };
-			RtBarrierBatch::Ptr					barriers_epilogure_{ nullptr };
+			RtBarrierBatch::Ptr	barriers_prologue_{ nullptr };
+			RtBarrierBatch::Ptr	barriers_epilogure_{ nullptr };
 			union
 			{
 				struct
 				{
 					//whether in a async task queue
-					uint8_t								is_async_ : 1;
+					uint8_t	is_async_ : 1;
 					//generate/wait sync fence for follow pass
 					//whether gfx fork/join	
-					uint8_t								is_gfx_fork_ : 1;
-					uint8_t								is_gfx_join_ : 1;
+					uint8_t	is_gfx_fork_ : 1;
+					uint8_t	is_gfx_join_ : 1;
 					//whether async compute fork/join
-					uint8_t								is_compute_begin_ : 1;
-					uint8_t								is_compute_end_ : 1;
+					uint8_t	is_compute_begin_ : 1;
+					uint8_t	is_compute_end_ : 1;
 					//culling able
-					uint8_t								is_culling_able_ : 1;
-					uint8_t								is_output_ : 1;
+					uint8_t	is_culling_able_ : 1;
+					uint8_t	is_output_ : 1;
 				};
 				uint8_t	pack_bits_{ 0 };
 			};
@@ -113,23 +124,20 @@ namespace MetaInit
 		};
 
 		//lambda render pass
-		template <typename PARAM, typename LAMBDA>
+		template <typename LAMBDA>
 		class RtLambdaRendererPass : public RtRendererPass
 		{
 		public:
-			using Parameters = PARAM;
-			RtLambdaRendererPass(const std::string& name, EFlags flags, 
-									const PARAM* params, LAMBDA&& lamda) : RtRendererPass(), params_(params),pass_(lambda_) {}
-			void Execute() override;
+			RtLambdaRendererPass(const String& name, EPipeLine pipe, EFlags flags, LAMBDA&& lamda) : RtRendererPass(name, pipe, flags), draw_bat_(lambda_) {}
+			void Execute(RHI::RHICommandContext::Ptr context) override {
+				draw_bat_(context);
+			}
 			const Parameters* GetParameters() const { return params_; }
 			virtual ~RtLambdaRendererPass() {}
 		private:
-			LAMBDA& pass_;
-			const Paramerters* params_;
+			LAMBDA draw_bat_;
 		};
 
-		template <typename LAMBDA>
-		using RtDummyRendererPass = RtLambdaRendererPass<void, [] {} > ;
 		using PassHandle = Utils::Handle<RtRendererPass>;
 	}
 }

@@ -83,7 +83,7 @@ namespace MetaInit
 		VkPipelineCache								pipeline_cache_{ VK_NULL_HANDLE };//todo 
 		VulkanCmdPoolManager						pool_manager_;
 		//pair<family_index, handle>
-		std::unordered_map<EQueueType, Vector<uint32_t> >	queue_families_;
+		Map<EQueueType, Vector<uint32_t> >	queue_families_;
 		Vector<Vector<int> >								queue_inuse_;
 		std::mutex											mutex_;
 	};
