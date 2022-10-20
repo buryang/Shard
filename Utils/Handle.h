@@ -42,13 +42,14 @@ namespace MetaInit
 			ResourceManager(Allocator& alloc) : alloc_(alloc) {}
 			template<typename DerivedType = Type, typename... Args>
 			requires std::is_convertible_v<DerivedType*, Type*>
-			Handle<T> Alloc(Args&&... args) {
+			Handle Alloc(Args&&... args) {
 				auto* ptr = alloc_.AllocNoDestruct<DerivedType>(std::forward<Args>(args)...);
 				storage_.push_back(static_cast<Type*>(ptr));
 				generation_.push_back(1);
 				return { storage_.size()-1, 1 };
 			}
-			Handle<T> Insert(T* data) {
+			//FIXME
+			Handle Insert(T* data) {
 				auto index = GetFreeHandle();
 				T* ptr = nullptr;
 				if (index != -1) {
@@ -60,17 +61,18 @@ namespace MetaInit
 					return Alloc(data);
 			}
 			//FIXME
-			Type* Get(Handle<T> handle) {
+			Type* Get(Handle handle) {
 				if (IsValid(handle)) {
 					return storage_[handle];
 				}
 				return nullptr;
 			}
-			void Free(Handle<T> handle) {
+			void Free(Handle handle) {
 				generation_[handle.Index()]++;
 				free_list_.push_back(handle.Index());
+				storage_[handle]->~T();//FIXME
 			}
-			bool IsValid(Handle<T> handle) {
+			bool IsValid(Handle handle) {
 				return handle.IsValid() && generation_[uint32_t(handle)] == handle.Generation();
 			}
 		private:
@@ -85,7 +87,7 @@ namespace MetaInit
 					return index;
 				}
 			}
-			void StoreGeneration(Handle<T> handle) {
+			void StoreGeneration(Handle handle) {
 				generation[handle.Index()] = handle.Generation();
 			}
 		private:

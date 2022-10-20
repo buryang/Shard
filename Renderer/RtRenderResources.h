@@ -54,8 +54,27 @@ namespace MetaInit
 			uint32_t GetSubRangeIndexCount()const {
 				return mips_ * layers_ * planes_;
 			}
+			bool IsSubRangeIndexIncluded(const TextureSubRangeIndex& index)const {
+				if (index.mip_ < base_mip_ || index.mip_ > base_mip_ + mips_) {
+					return false;
+				}
+				if (index.layer_ < base_layer_ || index.layer_ > base_layer_ + layers_) {
+					return false;
+				}
+				if (index.plane_ < base_plane_ || index.plane_ > base_plane_ + planes_) {
+					return false;
+				}
+				return true;
+			}
+			uint32_t GetSubRangeIndexLocation(const TextureSubRangeIndex& index)const {
+				if (!IsSubRangeIndexIncluded(index)) {
+					return -1;
+				}
+				return index.mip_ - base_mip_ + (index.layer_ - base_layer_) * mips_ +
+					(index.plane_ - base_plane_) * mips_ * planes_;
+			}
 			template<typename LAMBDA>
-			//requires std::declval<LAMBDA>(TextureSubRangeIndex())
+			requires std::is_invocable_v<LAMBDA, const TextureSubRangeIndex&>
 			void For(LAMBDA&& lambda)const {
 				for (auto pl = base_plane_; pl < base_plane_ + planes_; ++pl) {
 					for (auto lay = base_layer_; lay < base_layer_ + layers_; ++lay) {
@@ -105,8 +124,11 @@ namespace MetaInit
 				eDSV = 1 << 11,
 				ePresent = 1 << 12,
 				eExternal = 1 << 13,
-				eReadOnly = eVertexBuffer | eIndexBuffer | eIndirectArgs | eTransferSrc | eSRV,
-				eWriteOnly = eRTV | eUAV | eTransferDst,
+				eReadOnly = eVertexBuffer | eIndexBuffer | eIndirectArgs | eTransferSrc | eSRV | eDSVRead,
+				eReadAble = eReadOnly | eUAV,
+				eWriteOnly = eRTV | eTransferDst | eDSVWrite,
+				eWriteAble = eWriteOnly | eUAV,
+				eNonUAV = ~eUAV,
 			};
 
 			enum class EUsage :uint8_t
@@ -124,20 +146,29 @@ namespace MetaInit
 			};
 
 			static bool IsSubFieldMergeAllowed(const TextureSubField& lhs, const TextureSubField& rhs) {
+				if (lhs.access_ == rhs.access_) {
+					return true;
+				}
 				auto union_access = Utils::LogicOrFlags(lhs.access_, rhs.access_);
-				if (Utils::HasAnyFlags(union_access, EAccessFlags::eReadOnly)
-					&& Utils::HasAnyFlags(union_access, EAccessFlags::eWriteOnly) {
+				if (Utils::HasAnyFlags(lhs.access_, EAccessFlags::eReadOnly)
+					&& Utils::HasAnyFlags(rhs.access_, EAccessFlags::eWriteAble)) {
 					return false;
 				}
-				if () {
-					//todo
+				if (Utils::HasAnyFlags(lhs.access_, EAccessFlags::eWriteOnly)
+					&& Utils::HasAnyFlags(rhs.access_, EAccessFlags::eReadAble)) {
+					return false;
+				}
+				//FIXME
+				if (Utils::HasAnyFlags(union_access, EAccessFlags::eUAV) &&
+					Utils::HasAnyFlags(union_access, EAccessFlags::eNonUAV)) {
+					return false;
 				}
 				return true;
 			}
 
 			//fixme check pipeline outside function
 			static bool IsSubFieldTransitionNeeded(const TextureSubField& prev, const TextureSubField& next) {
-				if (prev.access_ != next.access_) {
+				if (prev.access_ != next.access_||IsSubFieldMergeAllowed(prev, next)) {
 					return true;
 				}
 				if (Utils::HasAnyFlags(next.access_, EAccessFlags::eUAV)) {
@@ -177,7 +208,9 @@ namespace MetaInit
 				ref_count_ -= count;
 				return ref_count_;
 			}
-			friend bool operator==(const RtField& lhs, const RtField& rhs);
+			friend bool operator==(const RtField& lhs, const RtField& rhs) {
+				return std::memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+			}
 			friend bool operator!=(const RtField& lhs, const RtField& rhs) { return !(lhs == rhs); }
 		private:
 			friend class RtRendererPass;
@@ -187,9 +220,9 @@ namespace MetaInit
 			EType	type_;
 			EUsage	usage_{ EUsage::eUnkown };
 			EPixFormat	pix_fmt_{ EPixFormat::eUnkown };
-			mutable ref_count_{ 1 };
+			mutable uint32_t	ref_count_{ 1 };
 			//which stage of pass use this rtfield
-			PipelineStageFlags	stage_{ PipelineStageFlags::eStageUnkown };
+			EPipelineStageFlags	stage_{ EPipelineStageFlags::eStageUnkown };
 			//user force it tobe transiant
 			bool	force_transiant_{ false };
 			uint32_t	sample_count_{ 1 };
@@ -260,11 +293,12 @@ namespace MetaInit
 
 		using RtRenderTexture = TRtRenderResource<RHI::RHITexture>;
 		using RtRenderBuffer = TRtRenderResource<RHI::RHIBuffer>;
-		using TextureHandle = Utils::Handle<RtRenderTexture>;
-		using BufferHandle = Utils::Handle<RtRenderBuffer>;
-
+		template<class Allocator=Utils::Allocator>
+		using TextureRepo = Utils::ResourceManager<Allocator, RtRenderTexture>;
+		template<class Allocator=Utils::Allocator>
+		using BufferRepo = Utils::ResourceManager<Allocator, RtRenderBuffer>;
 		static constexpr uint32_t MAX_RENDER_TARGET_ATTACHMENTS = 8;
-		ALIGN_AS(128) struct RtRenderTargets
+		struct ALIGN_AS(128) RtRenderFrameBuffer
 		{
 			RtRenderTexture	depth_stencil_;
 			SmallVector<RtRenderTexture, MAX_RENDER_TARGET_ATTACHMENTS>	color_attachments_;

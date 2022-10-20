@@ -28,8 +28,8 @@ namespace MetaInit
 			}
 		private:
 			//no multithread 
-			uint32_t	 ref_count_{ 0 };
-			bool		 dedicated_mem_{ false };
+			mutable uint32_t	ref_count_{ 0 };
+			bool	dedicated_mem_{ false };
 		};
 
 
@@ -46,7 +46,7 @@ namespace MetaInit
 			uint32_t	plane_;
 		};
 
-		class RHITexture : public RHIResource
+		class RHITexture final: public RHIResource
 		{
 		public:
 			using Ptr = RHITexture*;
@@ -76,7 +76,7 @@ namespace MetaInit
 			uint32_t	size_;
 		};
 
-		class RHIBuffer : public RHIResource
+		class RHIBuffer final : public RHIResource
 		{
 		public:
 			using Ptr = RHIBuffer*;
@@ -98,7 +98,7 @@ namespace MetaInit
 
 		};
 
-		class RHIAccelerate : public RHIResource
+		class RHIAccelerate final : public RHIResource
 		{
 		public:
 			enum class Type : uint8_t
@@ -121,11 +121,11 @@ namespace MetaInit
 		struct RHITextureSRVDesc
 		{
 			RHITexture::Ptr	texture_{ nullptr };
-			uint32_t	mip_start_ : 16;
-			uint32_t	mip_levels_ : 16;
+			EPixFormat	format_{ EPixFormat::eUnkown };
+			TextureSubRange range_;
 		};
 
-		class RHITextureSRV : public RHIResource
+		class RHITextureSRV final : public RHIResource
 		{
 		public:
 			RHITextureSRV(const RHITextureSRVDesc& desc);
@@ -133,10 +133,12 @@ namespace MetaInit
 
 		struct RHITextureUAVDesc
 		{
-			RHITexture::Ptr texture_;
+			RHITexture::Ptr	texture_;
+			EPixFormat	format_{ EPixFormat::eUnkown };
+			uint32_t mip_{ 0 };
 		};
 
-		class RHITextureUAV : public RHIResource
+		class RHITextureUAV final : public RHIResource
 		{
 		public:
 			RHITextureUAV(const RHITextureUAVDesc& desc);

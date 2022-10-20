@@ -25,6 +25,8 @@ namespace MetaInit
 			using Ptr = RtRenderGraphExecutor*;
 			using SharedPtr = std::shared_ptr<RtRenderGraphExecutor>;
 			using CallBack = std::function<void(RtRenderGraphExecutor& executor)>;
+			using TextureHandle = TextureRepo<>::Handle;
+			using BufferHandle = BufferRepo<>::Handle;
 			struct _CommandContext
 			{
 				RHI::RHICommandContext*		rhi_{ nullptr };
@@ -38,6 +40,8 @@ namespace MetaInit
 			//regist resource collection and barrier batch as callback
 			void InsertCallBack(PassHandle time, CallBack&& call, bool is_post=false);
 			const RtRendererPass& GetRenderPass(PassHandle handle) const;
+			RtRenderTexture::Ptr GetRenderTexture(TextureHandle handle);
+			RtRenderBuffer::Ptr GetRenderBuffer(BufferHandle handle);
 			TextureHandle GetOrCreateTexture(const RtField& field);
 			BufferHandle GetOrCreateBuffer(const RtField& field);
 			//binding external resource to executor
@@ -54,7 +58,7 @@ namespace MetaInit
 				auto result = alloc_->AllocNoDestruct(args);
 				return result;
 			}
-			RtRenderGraphExecutor() = default;
+			RtRenderGraphExecutor(Utils::Allocator* alloc);
 			DISALLOW_COPY_AND_ASSIGN(RtRenderGraphExecutor);
 		private:
 			friend class RtRenderGraphBuilder;
@@ -65,10 +69,14 @@ namespace MetaInit
 			Utils::Allocator*	allocator_{nullptr};
 			Map<PassHandle, SmallVector<CallBack>>	pre_watch_dogs_;
 			Map<PassHandle, SmallVector<CallBack>>	post_watch_dogs_;
+			TextureRepo<>	texture_repo_;
+			BufferRepo<>	buffer_repo_;
 			Map<String, TextureHandle>	texture_map_;
 			Map<String, BufferHandle>	buffer_map_;
+			
 		};
 
+		class TextureSubFieldState;
 		//here my idea: combin all shared edge resource together, and do resource plan
 		class RtFieldResourcePlanner
 		{
@@ -80,7 +88,7 @@ namespace MetaInit
 		private:
 			void DoTexturePlan(RtRenderGraphExecutor& executor);
 			void DoBufferPlan(RtRenderGraphExecutor& executor);
-			//void AddTransition(RtRenderGraphExecutor& executor, RtField::TextureSubField& prev, RtField)
+			void AddTransition(RtRenderGraphExecutor& executor, TextureSubFieldState& state_before, TextureSubFieldState state_after);
 		private:
 			SmallVector<FieldNode, 2>	producers_;
 			SmallVector<FieldNode, 2>	consumers_;

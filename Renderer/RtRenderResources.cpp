@@ -4,26 +4,34 @@ namespace MetaInit
 {
 	namespace Renderer
 	{
-		RtField& RtField::StageFlags(PipelineStageFlags stage)
+		RtField& RtField::StageFlags(EPipelineStageFlags stage)
 		{
 			stage_ = stage;
 			return *this;
 		}
+
 		RtField& RtField::ForceTransiant()
 		{
 			force_transiant_ = true;
 			return *this;
 		}
+
 		const String& RtField::GetName() const
 		{
 			return name_;
 		}
+
 		const String& RtField::GetParentName() const
 		{
 			return parent_name_;
 		}
+
 		bool RtField::IsConnectAble(const RtField& other) const
 		{
+			/*only ouput field connect to other input one*/
+			if (!IsOutput() || other.IsOutput()) {
+				return false;
+			}
 			if (type_ != other.type_ || layout_ != other.layout_) {
 				return false;
 			}
@@ -55,3 +63,4 @@ namespace MetaInit
 
 	}
 }
+

@@ -33,7 +33,6 @@ namespace MetaInit
 				eAsync		= 0x4,
 				eCopy		= 0x8,
 				eNerverCull	= 0x10,
-				eNerverMerge = 0x20,
 			};
 
 			//how to bind resource and field FIXME
@@ -43,16 +42,16 @@ namespace MetaInit
 				RtScheduleContext& AddField(RtField&& field);
 				bool IsEmpty()const { return fields_.size()==0; }
 				RtField& operator[](const String& name) {
-					if (fields_.find(name)==fields_.end()) {
-						//todo
+					if (auto iter = fields_.find(name); iter != fields_.end()) {
+						return iter->second;
 					}
-					return fields_[name];
+					//todo error
 				}
 				const RtField& operator[](const String& name) const {
-					if (fields_.find(name) == fields_.end()) {
-						//todo
+					if (auto iter = fields_.find(name); iter != fields_.end()) {
+						return iter->second;
 					}
-					return fields_[name];
+					//todo error
 				}
 				Map<String, RtField>& operator()(void) {
 					return fields_;
@@ -78,6 +77,7 @@ namespace MetaInit
 			FORCE_INLINE RtField& GetField(const String& field_name) { return schedule_context_[field_name]; }
 			FORCE_INLINE bool IsOutput()const { return is_output_; }
 			FORCE_INLINE bool IsAysnc()const { return is_async_; }
+			FORCE_INLINE bool IsFeildsEmpty()const { return schedule_context_.IsEmpty(); }
 			FORCE_INLINE bool IsCullAble()const { return is_culling_able_; }
 			FORCE_INLINE const String GetName()const { return name_; }
 			FORCE_INLINE EPipeLine GetPipeLine()const { return pipeline_; }
@@ -125,6 +125,7 @@ namespace MetaInit
 
 		//lambda render pass
 		template <typename LAMBDA>
+		requires std::is_invocable_v<LAMBDA, RHI::RHICommandContext::Ptr>
 		class RtLambdaRendererPass : public RtRendererPass
 		{
 		public:
@@ -132,7 +133,6 @@ namespace MetaInit
 			void Execute(RHI::RHICommandContext::Ptr context) override {
 				draw_bat_(context);
 			}
-			const Parameters* GetParameters() const { return params_; }
 			virtual ~RtLambdaRendererPass() {}
 		private:
 			LAMBDA draw_bat_;

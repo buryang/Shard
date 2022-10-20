@@ -19,6 +19,8 @@
 #include "eastl/fixed_hash_map.h"
 #include "eastl/hash_set.h"
 #include "eastl/list.h"
+#include "eastl/queue.h"
+#include "eastl/stack.h"
 #include "eastl/span.h"
 #include "eastl/optional.h"
 #include "eastl/string.h"
@@ -60,6 +62,11 @@ namespace MetaInit {
 	using SmallMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
 	template<typename Val>
 	using Set = eastl::hash_set<Val>;
+	template<typename T>
+	using Queue = eastl::queue<T>;
+	template<typename T>
+	using Stack = eastl::stack<T>;
+
 
 	template<typename T>
 	using List = eastl::list<T>;
@@ -86,7 +93,7 @@ namespace MetaInit::Utils {
 
 	template <typename Enum>
 	bool HasAnyFlags(Enum flags, Enum to_check) {
-		return std::underlying_type_t<Enum>(flags) & std::underlying_type_t<Enum>(to_check);
+		return std::underlying_type_t<Enum>(flags) & std::underlying_type_t<Enum>(to_check) != 0;
 	}
 	template <typename Enum>
 	Enum LogicAndFlags(Enum lhs, Enum rhs) {

@@ -102,28 +102,29 @@
     <ClCompile Include="Utils\SimpleCoro.inl">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\Vulkan\VulkanCmdContext.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanFrameBuffer.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanMemAllocator.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanPrimitive.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRayTraceKHR.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRenderPass.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRenderPipeline.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRenderShader.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanResource.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRHI.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanRHIImpl.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanWindowSystem.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanCmdContext.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanFrameBuffer.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanMemAllocator.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanPrimitive.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRayTraceKHR.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRenderPass.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRenderPipeline.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRenderShader.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanResource.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRHI.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanRHIImpl.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanWindowSystem.cpp" />
     <ClCompile Include="Renderer\RtRenderResourceAllocator.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
-    <ClCompile Include="RHI\Vulkan\VulkanResourceHeap.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanResourceHeap.cpp" />
     <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceAllocatorVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIContextVulkan.cpp" />
     <ClCompile Include="Renderer\RtRenderShader.cpp" />
     <ClCompile Include="Renderer\RtRenderBarrier.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderFactory.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIVulkanSync.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -216,19 +217,19 @@
     <ClInclude Include="Renderer\RtRenderResourceDefinitions.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="RHI\Vulkan\VulkanCmdContext.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanFrameBuffer.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanMemAllocator.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanPrimitive.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanRayTraceKHR.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanRenderPass.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanRenderPipeline.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanRenderShader.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanResource.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanRHI.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanWindowSystem.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanCmdContext.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanFrameBuffer.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanMemAllocator.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanPrimitive.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanRayTraceKHR.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanRenderPass.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanRenderPipeline.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanRenderShader.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanResource.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanRHI.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanWindowSystem.h" />
     <ClInclude Include="Renderer\RtRenderResourceAllocator.h" />
-    <ClInclude Include="RHI\Vulkan\VulkanResourceHeap.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanResourceHeap.h" />
     <ClInclude Include="Renderer\RtRenderBarrier.h" />
     <ClInclude Include="RHI\RHIResourceAllocator.h" />
     <ClInclude Include="RHI\RHIContext.h" />
@@ -236,12 +237,13 @@
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="Renderer\RtRenderShaderFactory.h" />
     <ClInclude Include="Core\PixelInfo.h" />
+    <ClInclude Include="RHI\RHISync.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">
       <Filter>Renderer</Filter>
     </None>
-    <None Include="Utils\DirectedAcyclicGraph.inl">
+    <None Include="Utils\DirectedAcyclicGraph.cpp">
       <Filter>Utils</Filter>
     </None>
     <None Include="Utils\Algorithm.inl">

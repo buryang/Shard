@@ -32,30 +32,24 @@ namespace MetaInit
 			RtRenderResource::Ptr	resource_;
 			RtField::EAccessFlags	prev_access_;
 			RtField::EAccessFlags	next_access_;
-			EPipelineStageFlags	prev_stage_;
-			EPipelineStageFlags	next_stage_;
+			EPipelineStageFlags	prev_stage_{ EPipelineStageFlags::eUnkown };
+			EPipelineStageFlags	next_stage_{ EPipelineStageFlags::eUnkown };
 			union
 			{
 				TextureSubRange		texture_sub_range_;
 				BufferSubRange		buffer_sub_range_;
 			};
 			FORCE_INLINE bool operator==(const RtTransitionBarrier& rhs) const {
-				return resource_ == rhs.resource_ &&
-					prev_access_ == rhs.prev_access_ &&
-					next_access_ == rhs.next_access_ &&
-					prev_stage_ == rhs.prev_stage_ &&
-					next_stage_ == rhs.next_stage_ &&
-					sub_range_ = rhs.sub_range_;
+				return std::memcmp(this, &rhs, sizeof(*this))==0;
 			}
 			FORCE_INLINE bool operator!=(const RtTransitionBarrier& rhs) const {
 				return !(*this == rhs);
 			}
-
 		};
 
 		struct RtAliasingBarrier
 		{
-
+			RtRenderResource::Ptr	resource_;
 			yyy flags_;
 		};
 
@@ -63,7 +57,7 @@ namespace MetaInit
 		{
 			//vulkan just clear global cache
 			RtRenderResource::Ptr	resource_;
-			TextureSubRangeIndex	sub_range_;
+			TextureSubRange	sub_range_;
 		};
 
 		class RtBarrierBatch
@@ -80,7 +74,7 @@ namespace MetaInit
 				uavs_.emplace_back(uav);
 			}
 			FORCE_INLINE void AddDependencies(RtBarrierBatch::Ptr deps) {
-				dependencies_ = deps;
+				dependencies_.insert(deps);
 			}
 			void Submit(RHI::RHICommandContext& context);
 		private:
@@ -88,7 +82,7 @@ namespace MetaInit
 			SmallVector<RtAliasingBarrier>		aliasing_;
 			SmallVector<RtUAVBarrier>			uavs_;
 			//prev split barrier sync
-			RtBarrierBatch::Ptr					dependencies_{ nullptr };
+			Set<RtBarrierBatch::Ptr>			dependencies_{ nullptr };
 		};
 	}
 }
