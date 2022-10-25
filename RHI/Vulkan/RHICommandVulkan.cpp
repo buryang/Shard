@@ -4,13 +4,8 @@ namespace MetaInit::RHI {
 
 	using namespace Vulkan;
 	using CommandType = RHICommandPacketInterface::ECommandType;
-	RHICommandContext::Ptr RHICommandContext::Create()
-	{
-		auto context = new RHICommandContextVulkan;
-		return context;
-	}
 
-	Vulkan::RHICommandContextVulkan::RHICommandContextVulkan()
+	RHICommandContextVulkan::RHICommandContextVulkan()
 	{
 
 	}

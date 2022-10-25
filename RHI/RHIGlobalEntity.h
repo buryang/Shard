@@ -5,7 +5,17 @@
 
 namespace MetaInit::RHI
 {
-	enum class RHIFeatureLevel :uint8_t
+	enum class RHIBackEnd : uint8_t
+	{
+		eNone,
+		eVulkan, //now only support vulkan
+	};
+
+	static inline bool IsBackEndSupported(RHIBackEnd back_end) {
+		return back_end == RHIBackEnd::eVulkan;
+	}
+
+	enum class RHIFeatureLevel : uint8_t
 	{
 		eS3_1,
 		eSM5,
@@ -18,9 +28,12 @@ namespace MetaInit::RHI
 	{
 	public:
 		using Ptr = RHIGlobalEntity*;
-		static Ptr Instance();
-		void Init(RHIFeatureLevel feature_level);
-		void UnInit();
+		using CreateFunc = std::function<Ptr(void)>;
+		static Ptr Instance(RHIBackEnd back_end);
+		static bool RegistCreateFunc(RHIBackEnd back_end, CreateFunc&& func);
+		virtual ~RHIGlobalEntity() {}
+		virtual void Init(RHIFeatureLevel feature_level);
+		virtual void UnInit();
 		virtual void CreateGFXPipelineState();
 		virtual void CreateComputePipelineState();
 		virtual void CreateSampler();
@@ -31,6 +44,7 @@ namespace MetaInit::RHI
 		virtual RHIResource::Ptr CreateUAV();
 		virtual RHIResource::Ptr CreateSRV();
 		virtual RHIResource::Ptr CreateRayTracingAccelerateStruct();
+		virtual RHICommandContext::Ptr CreateCommandBuffer();
 		//calculate resource video memory size
 		virtual size_t ComputeMemorySize(RHIResource::Ptr res) const;
 		virtual void SetViewPoint();
@@ -39,5 +53,10 @@ namespace MetaInit::RHI
 	private:
 		RHIGlobalEntity() = default;
 		DISALLOW_COPY_AND_ASSIGN(RHIGlobalEntity);
+	private:
+		static Map<RHIBackEnd, CreateFunc> create_func_repo_;
 	};
+
+#define RegistGlobalEntity(name, back_end, creat_func) \
+static constexpr bool xxx_##name##_created = RHIGlobalEntity::RegistCreateFunc(back_end, create_func);
 }

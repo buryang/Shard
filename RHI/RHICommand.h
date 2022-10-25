@@ -19,7 +19,6 @@ namespace MetaInit
 				eNum,
 			};
 			using Ptr = RHICommandContext*;
-			static Ptr Create();
 			//enqueue command sequeues
 			virtual void Enqueue(const RHICommandPacketInterface::Ptr cmd) = 0;
 			//submit command

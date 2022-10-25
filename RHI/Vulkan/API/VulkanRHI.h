@@ -20,14 +20,15 @@ namespace MetaInit
 	class MINIT_API VulkanInstance
 	{
 	public:
-		using Ptr = std::shared_ptr<VulkanInstance>;
-		static Ptr Create(const VkInstanceCreateInfo& params);
-		VkInstance Get() { return handle_; }
+		using SharedPtr = std::shared_ptr<VulkanInstance>;
+		using Handle = VkInstance;
+		static SharedPtr Create(const VkInstanceCreateInfo& params);
+		Handle Get() { return handle_; }
 		~VulkanInstance() { vkDestroyInstance(handle_, g_host_alloc); }
 	private:
-		VkInstance						handle_ = VK_NULL_HANDLE;
+		VkInstance	handle_{ VK_NULL_HANDLE };
 		Vector<VkExtensionProperties>	extensions_;
-		VkPipelineCache					pipeline_cache_{ VK_NULL_HANDLE };
+		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };
 	};
 
 	//todo alloc queue, and do swapchain init check
@@ -76,16 +77,16 @@ namespace MetaInit
 		DISALLOW_COPY_AND_ASSIGN(VulkanDevice);
 		void Init();
 	private:
-		VkDevice									handle_{ VK_NULL_HANDLE };
-		VkPhysicalDevice							phy_devices_{ VK_NULL_HANDLE };
-		VkPhysicalDeviceProperties					device_prop_;
-		VkDeviceCreateInfo							device_info_;
-		VkPipelineCache								pipeline_cache_{ VK_NULL_HANDLE };//todo 
-		VulkanCmdPoolManager						pool_manager_;
+		VkDevice	handle_{ VK_NULL_HANDLE };
+		VkPhysicalDevice	phy_devices_{ VK_NULL_HANDLE };
+		VkPhysicalDeviceProperties	device_prop_;
+		VkDeviceCreateInfo	device_info_;
+		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };//todo 
+		VulkanCmdPoolManager	pool_manager_;
 		//pair<family_index, handle>
 		Map<EQueueType, Vector<uint32_t> >	queue_families_;
-		Vector<Vector<int> >								queue_inuse_;
-		std::mutex											mutex_;
+		Vector<Vector<int> >	queue_inuse_;
+		std::mutex	mutex_;
 	};
 
 	class VulkanCmdBuffer;
