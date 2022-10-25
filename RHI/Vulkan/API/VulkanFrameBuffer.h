@@ -9,19 +9,21 @@ namespace MetaInit
 	class MINIT_API VulkanFrameBuffer
 	{
 	public:
-		typedef struct _VulkanFrameBufferDesc
+		struct _VulkanFrameBufferDesc
 		{
 			struct Attachment
 			{
 				Primitive::VulkanImageView image_view_;
 			};
-			Vector<Attachment>		color_attachs_;
-			Attachment				depth_attach_;
-			uint32_t				width_;
-			uint32_t				height_;
-			uint32_t				layers_;
-			uint32_t				flags_{ 0 };
-		}Desc;
+			SmallVector<Attachment>	color_attachs_;
+			Attachment	depth_attach_;
+			uint32_t	width_;
+			uint32_t	height_;
+			uint32_t	layers_;
+			uint32_t	flags_{ 0 };
+		};
+		using Desc = _VulkanFrameBufferDesc;
+		using Ptr = VulkanFrameBuffer*;
 		VulkanFrameBuffer(VulkanDevice::Ptr device, VulkanRenderPass::Ptr render_pass, const Desc& desc);
 		~VulkanFrameBuffer();
 		VkFramebuffer Get() { return handle_; }

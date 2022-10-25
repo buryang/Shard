@@ -1,36 +1,16 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Renderer/RtRenderBarrier.h"
+#include "RHI/RHICommandIR.h"
 
 namespace MetaInit
 {
 	namespace RHI
 	{
-		class RHIBarrier
+		class MINIT_API RHICommandContext
 		{
 		public:
-			enum class EType : uint8_t
-			{
-				eTransition,
-				eAliasing,
-				//not know what vulkan uav barrier is
-				//d3d between two acess both read or write
-				eUAV,
-			};
-
-			enum class EFlags : uint32_t
-			{
-
-			};
-		private:
-
-
-		};
-
-		class RHICommandContext
-		{
-		public:
-			enum class Flags {
+			enum class EFlags {
 				eUnkown,
 				eGraphics,
 				eCompute,
@@ -39,61 +19,22 @@ namespace MetaInit
 				eNum,
 			};
 			using Ptr = RHICommandContext*;
-			RHICommandContext() = default;
-			virtual void SetRHI() = 0;
-			//build optimize command
-			virtual void Build() = 0;
-			template<class RHIHandle>
-			RHIHandle GetRHI()const;
+			static Ptr Create();
+			//enqueue command sequeues
+			virtual void Enqueue(const RHICommandPacketInterface::Ptr cmd) = 0;
 			//submit command
 			virtual void Submit() = 0;
-			virtual void Begin() = 0;
-			virtual void End() = 0;
-			virtual void SetPiplineState() = 0;
-			virtual Flags GetFlags() const { return Flags::eUnkown; }
-			//common command context operations
-			void SetShaderRHI();
-			void SetBarrierBatch(Renderer::RtBarrierBatch& barriers);
-			template<typename ParamStruct>
-			void SetShaderParameters(uint32_t buffer_index, uint32_t base_index, ParamStruct& param) {
-				SetShaderParameters(buffer_index, base_index, sizeof(param), &param);
+			virtual ~RHICommandContext() {}
+			EFlags GetFlags() const {
+				return EFlags::eUnkown;
 			}
-			void SetShaderParameters(uint32_t buffer_index, uint32_t base_index, uint32_t bytes, const void* param_ptr);
-		};
-
-		class RHIGraphicsCommandContext : public RHICommandContext
-		{
-		public:
-			void SetRHI() override;
-			void Build() override;
-			void Submit() override;
-			Flags GetFlags() const override {
-				return Flags::eGraphics;
+			void SetFlags(EFlags flags){
+				flags_ = flags;
 			}
-			bool MergeAble(const RHIGraphicsCommandContext& rhs) const;
 		private:
-		};
-
-		class RHIComputeComandContext : public RHICommandContext
-		{
-		public:
-			void SetRHI() override;
-			void Build() override;
-			void Submit() override;
-			Flags GetFlags() const override {
-				return is_async_ ? Flags::eAsyncCompute : Flags::eCompute;
-			}
-			bool IsAsync() const {
-				return GetFlags() == Flags::eAsyncCompute;
-			}
-			void Dispatch(vec3 dimensions);
-			void SetAsyncComputeBudget();
-			bool MergeAble(const RHIComputeComandContext& rhs) const;
+			DISALLOW_COPY_AND_ASSIGN(RHICommandContext);
 		private:
-			void SetComputeShader();
-		private:
-			bool is_async_{ false };
+			EFlags flags_{ EFlags::eUnkown };
 		};
-
 	}
 }

@@ -34,7 +34,7 @@ namespace MetaInit
 		class VulkanImage
 		{
 		public:
-			using Ptr = std::shared_ptr<VulkanImage>;
+			using Ptr = VulkanImage*;
 			explicit VulkanImage(VulkanDevice::Ptr device, Image&& image, const VkImageCreateInfo& create_info, bool gen_mips=false);
 			explicit VulkanImage(VulkanDevice::Ptr device, VulkanBuffer::Ptr buffer, bool gen_mips=false);
 			explicit VulkanImage(VulkanDevice::Ptr device, const VkImageCreateInfo& create_info);
@@ -87,6 +87,35 @@ namespace MetaInit
 			VkFormat				format_;
 			VkImageViewType			view_type_;
 			VkImageSubresourceRange	sub_res_range_;
+		};
+		
+		class VulkanImageFilterFactory
+		{
+		public:
+			using Key = VkSamplerCreateInfo;
+			using Val = VkImageFilter;
+			static VulkanImageFilterFactory& Instance() {
+				static VulkanImageFilterFactory factory;
+				return factory;
+			}
+			Val GetOrCreateFilter(const Key& desc, Utils::Allocator* alloc = nullptr) {
+				if (auto iter = filter_repo_.find(desc); iter != filter_repo_.end()) {
+					return iter->second;
+				}
+				Val filter = VK_NULL_HANDLE;
+				auto ret = vkCreateSampler(&desc, alloc, &filter);
+				if (VK_SUCCESS != ret) {
+					//fix deal with error
+				}
+				filter_repo_[desc] = filter;
+				return filter;
+			}
+		private:
+		private:
+			VulkanImageFilterFactory() = default;
+			DISALLOW_COPY_AND_ASSIGN(VulkanImageFilterFactory);
+		private:
+			Map<Key, Val>	filter_repo_;
 		};
 
 		class VulkanSampler

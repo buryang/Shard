@@ -122,7 +122,7 @@ namespace MetaInit
 		{
 			RHITexture::Ptr	texture_{ nullptr };
 			EPixFormat	format_{ EPixFormat::eUnkown };
-			TextureSubRange range_;
+			Renderer::TextureSubRange	range_;
 		};
 
 		class RHITextureSRV final : public RHIResource

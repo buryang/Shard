@@ -1,4 +1,5 @@
 #include "RHI/RHISync.h"
+#include "RHI/Vulkan/API/"
 
 namespace MetaInit::RHI {
 
@@ -22,6 +23,9 @@ namespace MetaInit::RHI {
 			return src_pipeline_ != dst_pipeline_;
 		}
 	};
+
+	//alignment of vulkan transition info
+	constexpr uint32_t ALIGN_TRANSITION_INFO_SIZE = std::alignment_of(VulkanTransitionInfo);
 
 	static FORCE_INLINE VkAccessFlags TransRtFieldAccessToVulkanAccess() {
 		return 0;

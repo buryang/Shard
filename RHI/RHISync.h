@@ -5,8 +5,8 @@
 
 namespace MetaInit::RHI {
 	/*max buffer size for transition info*/
-	static constexpr uint32_t MAX_TRANSITION_INFO_SIZE = 1024;
-	static constexpr uint32_t ALIGN_TRANSITION_INFO_SIZE = 128;
+	static constexpr uint32_t MAX_TRANSITION_INFO_SIZE = 128;
+	extern constexpr uint32_t __declspec(selectany) ALIGN_TRANSITION_INFO_SIZE = -1; //FIXME
 	struct RHITransitionInfo {
 		using Ptr = RHITransitionInfo*;
 		template<typename MetaType>

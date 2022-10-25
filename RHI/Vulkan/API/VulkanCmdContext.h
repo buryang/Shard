@@ -44,25 +44,16 @@ namespace MetaInit
 		EState						state_{ EState::eIdle };
 	};
 
-	typedef struct VulkanBarrierInfo
-	{
-		VkPipelineStageFlags			src_stage_flags_;
-		VkPipelineStageFlags			dst_stage_flags_;
-		VkDependencyFlags				depend_flags_;
-		Vector<VkMemoryBarrier>			mem_barrier_;
-		Vector<VkBufferMemoryBarrier>	buffer_barrier_;
-		Vector<VkImageMemoryBarrier>	image_barrier_;
-	}VulkanBarrierInfo;
-
 	class VulkanRenderPass;
 	class VulkanBuffer;
 	class VulkanCmdBuffer
 	{
 	public:
 		using Ptr = std::unique_ptr<VulkanCmdBuffer>;
+		using Handle = VkCommandBuffer;
 		static Ptr Create(VulkanCmdPool::Ptr cmd_pool);
 		~VulkanCmdBuffer();
-		VkCommandBuffer Get()const{
+		Handle Get(){
 			return handle_;
 		}
 		/*cmd buffer type*/
@@ -137,10 +128,10 @@ namespace MetaInit
 		~VulkanCmdPoolManager() = default;
 	private:
 		using PoolList = Vector<VulkanCmdPool::Ptr>;
-		PoolList						pools_;
-		VulkanDevice::Ptr				device_;
-		bool							is_inited_ = false;
-		std::mutex						mutex_;
+		PoolList	pools_;
+		VulkanDevice::Ptr	device_;
+		bool	is_inited_ = false;
+		std::mutex	mutex_;
 	};
 
 }
