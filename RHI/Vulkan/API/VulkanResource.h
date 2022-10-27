@@ -59,7 +59,7 @@ namespace MetaInit
 		VulkanDevice::Ptr			device_;
 		uint32_t					alloc_size_ = 0;//size allocated from curr pool
 		uint32_t					pool_size_;
-		std::mutex					pool_mutex_;
+		eastl::mutex					pool_mutex_;
 	};
 
 	class DescriptorPoolManager

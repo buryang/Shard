@@ -356,7 +356,7 @@ namespace MetaInit
 	VulkanCmdPool::Ptr VulkanCmdPoolManager::GetIdlePool(uint32_t family_index)
 	{
 		VulkanCmdPool::Ptr pool_ptr;
-		std::lock_guard<std::mutex> lock(mutex_);
+		std::lock_guard<eastl::mutex> lock(mutex_);
 		{
 			auto check_pool = [&](const VulkanCmdPool::Ptr pool) {
 				return pool->FamilyIndex() == family_index && pool->State() == VulkanCmdPool::EState::eIdle;
@@ -386,7 +386,7 @@ namespace MetaInit
 
 	void VulkanCmdPoolManager::Init(VulkanDevice::Ptr device)
 	{
-		std::lock_guard<std::mutex> lock(read_mutex_);
+		std::lock_guard<eastl::mutex> lock(read_mutex_);
 		if (!is_inited_) {
 			device_ = device;
 			is_inited_ = true;

@@ -2,8 +2,9 @@
 
 namespace MetaInit::RHI
 {
-	RHIGlobalEntity::Ptr RHIGlobalEntity::Instance(RHIBackEnd back_end)
+	RHIGlobalEntity::Ptr RHIGlobalEntity::Instance()
 	{
+		auto back_end = static_cast<RHIBackEnd>(GET_PARAM_TYPE_VAL(UINT, RHI_ENTITY_BACKEND));
 		auto iter = create_func_repo_.find(back_end);
 		if (!IsBackEndSupported(back_end) || iter == create_func_repo_.end()) {
 			return nullptr;

@@ -131,7 +131,7 @@ namespace MetaInit
 		PoolList	pools_;
 		VulkanDevice::Ptr	device_;
 		bool	is_inited_ = false;
-		std::mutex	mutex_;
+		eastl::mutex	mutex_;
 	};
 
 }

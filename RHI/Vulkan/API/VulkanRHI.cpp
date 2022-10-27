@@ -88,7 +88,7 @@ namespace MetaInit
 		for(const auto findex:family_index)
 		{
 			auto& inuse = queue_inuse_[findex];
-			std::lock_guard<std::mutex> inuse_lock(mutex_);
+			std::lock_guard<eastl::mutex> inuse_lock(mutex_);
 			auto iter = std::find(inuse.begin(), inuse.end(), 0);
 			if (iter != inuse.end())
 			{
@@ -108,7 +108,7 @@ namespace MetaInit
 			if (ret)
 			{
 				auto& inuse = queue_inuse_[findex];
-				std::lock_guard<std::mutex> inuse_lock(mutex_);
+				std::lock_guard<eastl::mutex> inuse_lock(mutex_);
 				auto iter = std::find(inuse.begin(), inuse.end(), 0);
 				if (inuse.end() != iter)
 				{
@@ -125,7 +125,7 @@ namespace MetaInit
 
 	void VulkanDevice::ReleaseQueue(VulkanQueue::Ptr queue)
 	{
-		std::lock_guard<std::mutex> queue_lock(mutex_);
+		std::lock_guard<eastl::mutex> queue_lock(mutex_);
 		queue_inuse_[queue->GetFamilyIndex()][queue->GetIndex()] = 0;
 	}
 

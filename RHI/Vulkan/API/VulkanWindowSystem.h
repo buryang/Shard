@@ -57,6 +57,6 @@ namespace MetaInit
 		GLFWwindow*						window_{ nullptr };
 		uint32_t						acquire_index_ = -1;
 		//critical section resouce here
-		std::mutex						mutex_;
+		eastl::mutex						mutex_;
 	};
 }

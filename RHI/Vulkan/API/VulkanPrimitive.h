@@ -1,9 +1,6 @@
 #pragma once
 #include <memory>
 #include "RHI/Vulkan/API/VulkanRHI.h"
-#include "RHI/VulkanFrameGraph.h"
-#include "Scene/Primitive.h"
-
 
 namespace MetaInit
 {

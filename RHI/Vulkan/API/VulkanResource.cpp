@@ -169,7 +169,7 @@ namespace MetaInit
 			throw std::runtime_error("alloc desc set failed");
 		};
 		
-		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
 
 		if (curr_ == VK_NULL_HANDLE)
 		{
@@ -203,7 +203,7 @@ namespace MetaInit
 			throw std::runtime_error("alloc desc set failed");
 		};
 
-		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
 		if (curr_ == VK_NULL_HANDLE)
 		{
 			UpdateCurrPool();

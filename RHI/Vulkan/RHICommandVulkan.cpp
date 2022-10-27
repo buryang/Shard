@@ -5,7 +5,7 @@ namespace MetaInit::RHI {
 	using namespace Vulkan;
 	using CommandType = RHICommandPacketInterface::ECommandType;
 
-	RHICommandContextVulkan::RHICommandContextVulkan()
+	RHICommandContextVulkan::RHICommandContextVulkan():RHICommandContext(EFlags::eGraphics)
 	{
 
 	}
