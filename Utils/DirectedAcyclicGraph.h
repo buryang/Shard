@@ -77,11 +77,11 @@ namespace MetaInit
 			template<typename Method>
 			friend class DirectGraphVisitor;
 			DISALLOW_COPY_AND_ASSIGN(DirectedAcyclicGraph);
-		protected:
-			CallBack add_edge_ = [](auto) {};
-			CallBack add_node_ = [](auto) {};
-			CallBack rm_edge_ = [](auto) {};
-			CallBack rm_node_ = [](auto) {};
+		protected://ugly code 
+			CallBack add_edge_clk_{ [](auto) {} };
+			CallBack add_node_clk_{ [](auto) {} };
+			CallBack rm_edge_clk_{ [](auto) {} };
+			CallBack rm_node_clk_{ [](auto) {} };
 		private:
 			Map<uint32_t, Node>	nodes_;
 			Map<uint32_t, Edge>	edges_;

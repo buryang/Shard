@@ -1,102 +1,100 @@
-#include "RHI/VulkanCmdContext.h"
-#include "RHI/VulkanRenderPass.h"
-#include "RHI/VulkanRayTraceKHR.h"
-#include "RHI/VulkanPrimitive.h"
+#include "RHI/Vulkan/API/VulkanCmdContext.h"
+#include "RHI/Vulkan/API/VulkanRenderPass.h"
+#include "RHI/Vulkan/API/VulkanRayTraceKHR.h"
+#include "RHI/Vulkan/API/VulkanResource.h"
 
 namespace MetaInit
 {
-	using namespace Primitive;
 	/*copy from falcor*/
-	static inline VkPipelineStageFlags ResourceStateToStageFlags(Primitive::EResourceState state, bool is_src)
+	static inline VkPipelineStageFlags ResourceStateToStageFlags(EResourceState state, bool is_src)
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::eUndefined:
-		case Primitive::EResourceState::ePreInitialized:
-		case Primitive::EResourceState::eCommon:
+		case EResourceState::eUndefined:
+		case EResourceState::ePreInitialized:
+		case EResourceState::eCommon:
 			return is_src ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT : (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-		case Primitive::EResourceState::eCopySrc:
-		case Primitive::EResourceState::eCopyDst:
-		case Primitive::EResourceState::eResolveSrc:
-		case Primitive::EResourceState::eResolveDst:
+		case EResourceState::eCopySrc:
+		case EResourceState::eCopyDst:
+		case EResourceState::eResolveSrc:
+		case EResourceState::eResolveDst:
 			return VK_PIPELINE_STAGE_TRANSFER_BIT;
-		case Primitive::EResourceState::eRenderTarget:
+		case EResourceState::eRenderTarget:
 			return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		default:
-			throw std::invalid_argument("image state not supported now");
+			PLOG(ERROR) << "image state not supported now";
 		}
 	}
 
-	static inline VkImageLayout ResourceStateToImageLayout(Primitive::EResourceState state)
+	static inline VkImageLayout ResourceStateToImageLayout(EResourceState state)
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::eUndefined:
+		case EResourceState::eUndefined:
 			return VK_IMAGE_LAYOUT_UNDEFINED;
-		case Primitive::EResourceState::ePreInitialized:
+		case EResourceState::ePreInitialized:
 			return VK_IMAGE_LAYOUT_PREINITIALIZED;
-		case Primitive::EResourceState::eCommon:
-		case Primitive::EResourceState::eUnorderedAccess:
+		case EResourceState::eCommon:
+		case EResourceState::eUnorderedAccess:
 			return VK_IMAGE_LAYOUT_GENERAL;
-		case Primitive::EResourceState::eRenderTarget:
+		case EResourceState::eRenderTarget:
 			return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		case Primitive::EResourceState::eDepthStencil:
+		case EResourceState::eDepthStencil:
 			return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		case Primitive::EResourceState::eResolveSrc:
-		case Primitive::EResourceState::eCopySrc:
+		case EResourceState::eResolveSrc:
+		case EResourceState::eCopySrc:
 			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		case Primitive::EResourceState::eResolveDst:
-		case Primitive::EResourceState::eCopyDst:
+		case EResourceState::eResolveDst:
+		case EResourceState::eCopyDst:
 			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		case Primitive::EResourceState::eShaderResource:
+		case EResourceState::eShaderResource:
 			return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		case Primitive::EResourceState::ePresent:
+		case EResourceState::ePresent:
 			return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		default:
-			throw std::invalid_argument("resource state not supported by image layout transform");
+			PLOG(ERROR)<<"resource state not supported by image layout transform";
 		}
 	}
 
-	static inline VkAccessFlags ResourceStateToAccessFlags(Primitive::EResourceState state)
+	static inline VkAccessFlags ResourceStateToAccessFlags(EResourceState state)
 	{
 		switch (state)
 		{
-		case Primitive::EResourceState::eUndefined:
-		case Primitive::EResourceState::eCommon:
-		case Primitive::EResourceState::ePreInitialized:
-		case Primitive::EResourceState::ePresent:
+		case EResourceState::eUndefined:
+		case EResourceState::eCommon:
+		case EResourceState::ePreInitialized:
+		case EResourceState::ePresent:
 			return static_cast<VkAccessFlags>(0);
-		case Primitive::EResourceState::eVertexBuffer:
+		case EResourceState::eVertexBuffer:
 			return VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-		case Primitive::EResourceState::eIndexBuffer:
+		case EResourceState::eIndexBuffer:
 			return VK_ACCESS_INDEX_READ_BIT;
-		case Primitive::EResourceState::eShaderResource:
+		case EResourceState::eShaderResource:
 			return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-		case Primitive::EResourceState::eResolveSrc:
-		case Primitive::EResourceState::eCopySrc:
+		case EResourceState::eResolveSrc:
+		case EResourceState::eCopySrc:
 			return VK_ACCESS_TRANSFER_READ_BIT;
-		case Primitive::EResourceState::eResolveDst:
-		case Primitive::EResourceState::eCopyDst:
+		case EResourceState::eResolveDst:
+		case EResourceState::eCopyDst:
 			return VK_ACCESS_TRANSFER_WRITE_BIT;
-		case Primitive::EResourceState::eIndirectArgs:
+		case EResourceState::eIndirectArgs:
 			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-		case Primitive::EResourceState::eUnorderedAccess:
+		case EResourceState::eUnorderedAccess:
 			return VK_ACCESS_SHADER_WRITE_BIT;
-		case Primitive::EResourceState::eRenderTarget:
+		case EResourceState::eRenderTarget:
 			return VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		case Primitive::EResourceState::eDepthStencil:
+		case EResourceState::eDepthStencil:
 			return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		default:
-			throw std::invalid_argument("resource state not supported by access flags transform");
+			PLOG(ERROR) <<"vulkan resource state not supported by access flags transform" << std::endl;
 		}
 	}
 
-	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count)
+	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count=1)
 	{
 		VkCommandBufferAllocateInfo alloc_info;
 		memset(&alloc_info, sizeof(VkCommandBufferAllocateInfo), 1);
 		alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		alloc_info.pNext = VK_NULL_HANDLE;
 		alloc_info.commandPool = pool;
 		alloc_info.level = level;
 		alloc_info.commandBufferCount = buffer_count;
@@ -124,14 +122,11 @@ namespace MetaInit
 		return pool_info;
 	}
 
-	VulkanCmdPool::VulkanCmdPool(VulkanDevice::Ptr device, VkCommandPoolCreateFlags flags, uint32_t family_index):device_(device), family_index_(family_index)
+	VulkanCmdPool::VulkanCmdPool(VkCommandPoolCreateFlags flags, uint32_t family_index):family_index_(family_index)
 	{
 		auto create_info = MakeCommandPoolCreateInfo(flags, family_index);
-		auto ret = vkCreateCommandPool(device_->Get(), &create_info, g_host_alloc, &pool_);
-		if (VK_SUCCESS != ret)
-		{
-			throw std::runtime_error("create command pool failed");
-		}
+		auto ret = vkCreateCommandPool(GetGlobalDevice(), &create_info, g_host_alloc, &pool_);
+		PCHECK(VK_SUCCESS == ret) << "vulkan create command pool failed" << std::endl;
 	}
 
 	bool VulkanCmdPool::IsFull() const
@@ -141,26 +136,26 @@ namespace MetaInit
 
 	void VulkanCmdPool::Reset()
 	{
-		vkResetCommandPool(device_->Get(), pool_, 0); //VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT, not release resource
+		vkResetCommandPool(GetGlobalDevice(), handle_, 0); //VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT, not release resource
 		state_ = EState::eIdle;
 	}
 
 	VulkanCmdPool::~VulkanCmdPool()
 	{
-		if (VK_NULL_HANDLE != pool_)
+		if (VK_NULL_HANDLE != handle_)
 		{
-			vkDestroyCommandPool(device_->Get(), pool_, g_host_alloc);
+			vkDestroyCommandPool(GetGlobalDevice(), handle_, g_host_alloc);
 		}
 	}
 
-	VulkanCmdBuffer::Ptr VulkanCmdBuffer::Create(VulkanCmdPool::Ptr cmd_pool)
+	VulkanCmdBuffer::SharedPtr VulkanCmdBuffer::Create(VulkanCmdPool::SharedPtr cmd_pool)
 	{
-		VulkanCmdBuffer::Ptr cmd_ptr(new VulkanCmdBuffer(cmd_pool));
+		VulkanCmdBuffer::SharedPtr cmd_ptr(new VulkanCmdBuffer(cmd_pool));
 		VkFenceCreateInfo fence_info{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		fence_info.pNext = VK_NULL_HANDLE;
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		auto ret = vkCreateFence(cmd_pool->GetDevice()->Get(), &fence_info, g_host_alloc, &cmd_ptr->fence_);
-		assert(ret == VK_SUCCESS && "create fence failed");
+		auto ret = vkCreateFence(GetGlobalDevice(), &fence_info, g_host_alloc, &cmd_ptr->fence_);
+		PCHECK(ret == VK_SUCCESS) << "create fence failed";
 		return cmd_ptr;
 	}
 
@@ -169,7 +164,7 @@ namespace MetaInit
 		if (VK_NULL_HANDLE != handle_)
 		{
 			Reset();
-			vkDestroyFence(pool_->GetDevice()->Get(), fence_, g_host_alloc);
+			vkDestroyFence(GetGlobalDevice(), fence_, g_host_alloc);
 		}
 	}
 
@@ -205,9 +200,9 @@ namespace MetaInit
 		vkCmdDispatch(handle_, group_size.x, group_size.y, group_size.z);
 	}
 
-	void VulkanCmdBuffer::DispatchIndirect(Primitive::VulkanBuffer& buffer, const VkDeviceSize offset)
+	void VulkanCmdBuffer::DispatchIndirect( VulkanBuffer& buffer, const VkDeviceSize offset)
 	{
-		Barrier(buffer, Primitive::EResourceState::eIndirectArgs);
+		Barrier(buffer, EResourceState::eIndirectArgs);
 		vkCmdDispatchIndirect(handle_, buffer.Get(), offset);
 	}
 
@@ -244,10 +239,10 @@ namespace MetaInit
 		*/
 	}
 
-	void VulkanCmdBuffer::Copy(Primitive::VulkanBuffer& dst, uint32_t dst_offset, Primitive::VulkanBuffer& src, uint32_t src_offset, uint32_t size)
+	void VulkanCmdBuffer::Copy( VulkanBuffer& dst, uint32_t dst_offset,  VulkanBuffer& src, uint32_t src_offset, uint32_t size)
 	{
-		Barrier(src, Primitive::EResourceState::eCopySrc);
-		Barrier(dst, Primitive::EResourceState::eCopyDst);
+		Barrier(src, EResourceState::eCopySrc);
+		Barrier(dst, EResourceState::eCopyDst);
 		
 		VkBufferCopy buffer_region{};
 		buffer_region.dstOffset = dst_offset;
@@ -256,16 +251,16 @@ namespace MetaInit
 		vkCmdCopyBuffer(handle_, src.Get(), dst.Get(), 1, &buffer_region);
 	}
 
-	void VulkanCmdBuffer::Copy(Primitive::VulkanImage& dst, Primitive::VulkanBuffer& src)
+	void VulkanCmdBuffer::Copy( VulkanImage& dst,  VulkanBuffer& src)
 	{
-		Barrier(src, Primitive::EResourceState::eCopySrc);
-		Barrier(dst, Primitive::EResourceState::eCopyDst);
+		Barrier(src, EResourceState::eCopySrc);
+		Barrier(dst, EResourceState::eCopyDst);
 
 		VkBufferImageCopy image_region{};
 		vkCmdCopyBufferToImage(handle_, src.Get(), dst.Get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_region);
 	}
 
-	void VulkanCmdBuffer::Resolve(Primitive::VulkanImage& dst, Primitive::VulkanImage& src)
+	void VulkanCmdBuffer::Resolve( VulkanImage& dst,  VulkanImage& src)
 	{
 		VkImageSubresourceRange src_range, dst_range;
 		//todo 
@@ -292,15 +287,23 @@ namespace MetaInit
 
 	void VulkanCmdBuffer::Reset()
 	{ 
-		if (state_ == EState::eExecutable)//FIXME
-		{
-			auto nano_seconds = 33 * 1000 * 1000LL;//copy from ue5
-			vkWaitForFences(pool_->GetDevice()->Get(), 1, &fence_, true, nano_seconds);
+		/* 
+			VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT allows any command buffer allocated from a
+			pool to be individually reset to the initial state; either by calling vkResetCommandBuffer, or via
+			the implicit reset when calling vkBeginCommandBuffer.If this flag is not set on a pool, then
+			vkResetCommandBuffer must not be called for any command buffer allocated from that pool.
+		*/
+		if (parent_->GetFlags() == VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT) {
+			if (state_ == EState::eExecutable)//FIXME
+			{
+				auto nano_seconds = 33 * 1000 * 1000LL;//copy from ue5
+				vkWaitForFences(GetGlobalDevice(), 1, &fence_, true, nano_seconds);
+			}
+			vkResetCommandBuffer(handle_, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 		}
-		vkResetCommandBuffer(handle_, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	}
 
-	void VulkanCmdBuffer::Barrier(Primitive::VulkanImage& image, Primitive::EResourceState new_state)
+	void VulkanCmdBuffer::Barrier( VulkanImage& image, EResourceState new_state)
 	{
 		VulkanBarrierInfo barrier_info{};
 		barrier_info.src_stage_flags_ = ResourceStateToStageFlags(image.GetState(), true);
@@ -320,7 +323,7 @@ namespace MetaInit
 		image.SetState(new_state);
 	}
 
-	void VulkanCmdBuffer::Barrier(Primitive::VulkanBuffer& buffer, Primitive::EResourceState new_state)
+	void VulkanCmdBuffer::Barrier( VulkanBuffer& buffer, EResourceState new_state)
 	{
 		VulkanBarrierInfo barrier_info{};
 		barrier_info.src_stage_flags_ = ResourceStateToStageFlags(buffer.GetState(), true);
@@ -333,47 +336,52 @@ namespace MetaInit
 
 	//barriers need to be batched as aggressively as possible
 	//https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples
-	void VulkanCmdBuffer::Barrier(const VulkanBarrierInfo& barrier_info)
+	void VulkanCmdBuffer::Barrier(const RHI::VulkanTransitionInfo& barrier_info)
 	{
-		vkCmdPipelineBarrier(handle_, barrier_info.src_stage_flags_, barrier_info.dst_stage_flags_, barrier_info.depend_flags_,
-			barrier_info.mem_barrier_.size(), barrier_info.mem_barrier_.size() > 0 ? barrier_info.mem_barrier_.data() : nullptr,
+		vkCmdPipelineBarrier(handle_, barrier_info.src_mask_, barrier_info.dst_mask_, barrier_info.depend_flags_,
+			barrier_info, barrier_info.mem_barrier_.size() > 0 ? barrier_info.mem_barrier_.data() : nullptr,
 			barrier_info.buffer_barrier_.size(), barrier_info.buffer_barrier_.size() > 0 ? barrier_info.buffer_barrier_.data() : nullptr,
-			barrier_info.image_barrier_.size(), barrier_info.image_barrier_.size() > 0 ? barrier_info.image_barrier_.data() : nullptr);
+			barrier_info.image_barriers_.size(), barrier_info.image_barriers_.size() > 0 ? barrier_info.image_barriers_.data() : nullptr);
 	}
 
-	VulkanCmdBuffer::VulkanCmdBuffer(VulkanCmdPool::Ptr cmd_pool):pool_(cmd_pool)
+	VulkanCmdBuffer::VulkanCmdBuffer(VulkanCmdPool::SharedPtr cmd_pool):parent_(cmd_pool)
 	{
 		//first to support primary command
-		auto& cmd_info = MakeCommandBufferAllocateInfo(pool_->Get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-		auto ret = vkAllocateCommandBuffers(pool_->GetDevice()->Get(), &cmd_info, &handle_);
-		if(VK_SUCCESS != ret)
-		{
-			throw std::runtime_error("alloc command buffer failed");
-		}
+		auto& cmd_info = MakeCommandBufferAllocateInfo(cmd_pool->Get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		auto ret = vkAllocateCommandBuffers(GetGlobalDevice(), parent_->Get(), &handle_);
+		PCHECK(VK_SUCCESS != ret) << "alloc command buffer failed";
 		state_ = EState::eInitial;
 	}
 
-	VulkanCmdPool::Ptr VulkanCmdPoolManager::GetIdlePool(uint32_t family_index)
+	VulkanCmdPool::SharedPtr VulkanCmdPoolManager::GetIdlePool(VkCommandPoolCreateFlags flags, uint32_t family_index)
 	{
-		VulkanCmdPool::Ptr pool_ptr;
-		std::lock_guard<eastl::mutex> lock(mutex_);
+		VulkanCmdPool::SharedPtr pool_ptr;
+		std::lock_guard<std::mutex> lock(mutex_);
 		{
-			auto check_pool = [&](const VulkanCmdPool::Ptr pool) {
-				return pool->FamilyIndex() == family_index && pool->State() == VulkanCmdPool::EState::eIdle;
+			auto check_pool = [&](const auto pool)->bool {
+				return pool->State() == VulkanCmdPool::EState::eIdle;
 			};
-			
-			auto iter = std::find_if(pools_.begin(), pools_.end(), check_pool);
-			if (pools_.end() == iter)
+
+			uint64_t key = (static_cast<uint32_t>(flags) << 32) | family_index;
+			if (auto iter = pools_.find(key); iter != pools_.end())
 			{
-				pool_ptr = std::make_shared<VulkanCmdPool>(new VulkanCmdPool(device_, 0, family_index));
-				pools_.push_back(pool_ptr);
+				auto family_pools = iter->second;
+				auto pool_iter = eastl::find_if(family_pools.begin(), family_pools.end(), check_pool);
+				if (pool_iter != family_pools.end()) {
+					pool_ptr = *pool_iter;
+				}
+				else
+				{
+					pool_ptr.reset(new VulkanCmdPool(flags, family_index));
+					pools_[key].push_back(pool_ptr);
+				}
 			}
 			else
 			{
-				pool_ptr = *iter;
+				pool_ptr.reset(new VulkanCmdPool(flags, family_index));
+				pools_[key].push_back(pool_ptr);
 			}
 			pool_ptr->SetState(VulkanCmdPool::EState::eUsing);
-
 		}
 		return pool_ptr;
 	}
@@ -383,14 +391,4 @@ namespace MetaInit
 		static VulkanCmdPoolManager pool_manager;
 		return pool_manager;
 	}
-
-	void VulkanCmdPoolManager::Init(VulkanDevice::Ptr device)
-	{
-		std::lock_guard<eastl::mutex> lock(read_mutex_);
-		if (!is_inited_) {
-			device_ = device;
-			is_inited_ = true;
-		}
-	}
-
 }

@@ -46,7 +46,7 @@ namespace MetaInit
 		//front for vulkan image dx texture desc
 		struct RtTextureCreateDesc
 		{
-			P       	format_;
+			PixelFormat	format_;
 			vec3		extent_;
 			uint32_t	array_size_;
 			uint32_t	flags_;

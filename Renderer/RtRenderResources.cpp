@@ -10,9 +10,15 @@ namespace MetaInit
 			return *this;
 		}
 
+		RtField& RtField::CrossQueue(bool value)
+		{
+			is_cross_queue_ = value;
+			return *this;
+		}
+
 		RtField& RtField::ForceTransiant()
 		{
-			force_transiant_ = true;
+			is_transiant_ = true;
 			return *this;
 		}
 
@@ -24,6 +30,11 @@ namespace MetaInit
 		const String& RtField::GetParentName() const
 		{
 			return parent_name_;
+		}
+
+		EPixFormat RtField::GetPixFormat() const
+		{
+			return pix_fmt_;
 		}
 
 		bool RtField::IsConnectAble(const RtField& other) const

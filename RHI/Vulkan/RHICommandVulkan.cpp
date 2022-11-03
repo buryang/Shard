@@ -21,10 +21,21 @@ namespace MetaInit::RHI {
 		case CommandType::eSetViewPoint:
 			break;
 		default:
-			//deal with error
+			PLOG(ERROR) << "not supprted command type" << static_cast<uint32_t>(cmd->Type()) << std::endl;
 		}
 		++cmd_count_;
 		return;
+	}
+
+	void Vulkan::RHICommandContextVulkan::Submit()
+	{
+		VulkanQueue::EQueueType queue_type{ VulkanQueue::EQueueType::eAllIn };
+		if (GET_PARAM_TYPE_VAL(BOOL, DEVICE_ASYNC_COMPUTE) && GetFlags() == EFlags::eAsyncCompute) {
+			queue_type = VulkanQueue::EQueueType::eNonGFX;
+		}
+		auto queue_ptr = VulkanQueue::Create(queue_type);
+		queue_ptr->Submit(rhi_handle_, wait_semaphore_, signal_semaphore_);
+		LOG(INFO) << "processed " << cmd_count_ << " commands";
 	}
 
 	void Vulkan::RHICommandContextVulkan::SetStreamSource(uint32_t stream_index, uint32_t offset)

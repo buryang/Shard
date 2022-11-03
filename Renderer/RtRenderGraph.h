@@ -19,6 +19,7 @@ namespace MetaInit
 			RtRendererGraph();
 			void AddPass(RtRendererPass::Ptr pass, const String& pass_name);
 			void RemovePass(const String& pass_name);
+			//src field included in producer, dst field included in consumer
 			void ConnectPass(PassHandle producer, PassHandle consumer, RtField& src, RtField& dst);
 			void DisConnectPass(RtField& src, RtField& dst);
 			uint32_t PassNum()const { return pass_to_index_.size(); }

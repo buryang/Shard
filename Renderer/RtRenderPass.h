@@ -12,19 +12,19 @@ namespace MetaInit
 	}
 	namespace Renderer
 	{
+		enum class EPipeLine : uint8_t
+		{
+			eNone = 0x0,
+			eGraphics = 0x1,
+			eAsyncCompute = 0x2,
+			eNum = 0x3,
+		};
+
 		//frame graph render pass
 		class RtRendererPass
 		{
 		public:
 			using Ptr = RtRendererPass*;
-			enum class EPipeLine : uint8_t
-			{
-				eNone			= 0x0,
-				eGraphics		= 0x1,
-				eAsyncCompute   = 0x2,
-				eNum			= 0x3,
-			};
-
 			enum class EFlags : uint8_t
 			{
 				eNone	= 0x0,

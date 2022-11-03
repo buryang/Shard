@@ -13,6 +13,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "glog/logging.h"
 #include "eastl/vector.h"
 #include "eastl/fixed_vector.h"
 #include "eastl/hash_map.h"
@@ -24,9 +25,13 @@
 #include "eastl/span.h"
 #include "eastl/optional.h"
 #include "eastl/string.h"
+#include "eastl/bitset.h"
+#include "eastl/bitvector.h"
+#include "eastl/internal/thread_support.h"
 #include <memory>
 #include <algorithm>
 #include <assert.h>
+
 
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
@@ -66,10 +71,11 @@ namespace MetaInit {
 	using Queue = eastl::queue<T>;
 	template<typename T>
 	using Stack = eastl::stack<T>;
-
-
 	template<typename T>
 	using List = eastl::list<T>;
+	template<size_t N>
+	using BitSet = eastl::bitset<N>;
+	using BitVector = eastl::bitvector<>;
 
 	template<typename T>
 	using Span = eastl::span<T>;
@@ -92,18 +98,24 @@ namespace MetaInit {
 namespace MetaInit::Utils {
 
 	template <typename Enum>
-	bool HasAnyFlags(Enum flags, Enum to_check) {
+	constexpr bool HasAnyFlags(Enum flags, Enum to_check) {
 		return std::underlying_type_t<Enum>(flags) & std::underlying_type_t<Enum>(to_check) != 0;
 	}
 	template <typename Enum>
-	Enum LogicAndFlags(Enum lhs, Enum rhs) {
+	constexpr Enum LogicAndFlags(Enum lhs, Enum rhs) {
 		auto res = std::underlying_type_t<Enum>(lhs) & std::underlying_type_t<Enum>(rhs);
 		return static_cast<Enum>(res);
 	}
 	template <typename Enum>
-	Enum LogicOrFlags(Enum lhs, Enum rhs) {
+	constexpr Enum LogicOrFlags(Enum lhs, Enum rhs) {
 		auto res = std::underlying_type_t<Enum>(lhs) | std::underlying_type_t<Enum>(rhs);
 		return static_cast<Enum>(res);
+	}
+
+	template<typename T>
+	requires std::is_integral<T>::value
+	static inline constexpr T Align(T val, T alignment) {
+		return val & (~(alignment - 1));
 	}
 
 	template<class Atomic=std::atomic_bool>

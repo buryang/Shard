@@ -6,10 +6,10 @@ namespace MetaInit
 	{
 		RtRendererGraph::RtRendererGraph():pass_manager_(nullptr), edge_manager_(nullptr)
 		{
-			rm_node_ = [&, this](auto node_index) {
+			rm_node_clk_ = [&, this](auto node_index) {
 				pass_manager_.Free(node_index);
 			};
-			rm_edge_ = [&, this](auto edge_index) {
+			rm_edge_clk_ = [&, this](auto edge_index) {
 				edge_manager_.Free(edge_index);
 			};
 		}
@@ -22,7 +22,7 @@ namespace MetaInit
 			}
 			else
 			{
-				//deal with error
+				LOG(FATAL) << __FUNCTION__ << ":failed to add pass<" << pass_name.c_str() << ">" << std::endl;
 			}
 		}
 		void RtRendererGraph::RemovePass(const String& pass_name)

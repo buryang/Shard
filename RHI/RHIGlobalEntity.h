@@ -25,7 +25,7 @@ namespace MetaInit::RHI
 	};
 
 	///global entity parameters
-	REGIST_PARAM_TYPE(UINT, RHI_ENTITY_BACKEND, RHIBackEnd::eVulkan);
+	REGIST_PARAM_TYPE(UINT, RHI_ENTITY_BACKEND, ERHIBackEnd::eVulkan);
 	REGIST_PARAM_TYPE(UINT, RHI_FEATURE_LEVEL, ERHIFeatureLevel::eSM5);
 	REGIST_PARAM_TYPE(BOOL, RHI_ASYNC_COMPUTE, false);
 
@@ -36,7 +36,7 @@ namespace MetaInit::RHI
 		using Ptr = RHIGlobalEntity*;
 		using CreateFunc = std::function<Ptr(void)>;
 		static Ptr Instance();
-		static bool RegistCreateFunc(RHIBackEnd back_end, CreateFunc&& func);
+		static bool RegistCreateFunc(ERHIBackEnd back_end, CreateFunc&& func);
 		virtual ~RHIGlobalEntity() {}
 		virtual void Init();
 		virtual void UnInit();
@@ -60,10 +60,10 @@ namespace MetaInit::RHI
 		RHIGlobalEntity() = default;
 		DISALLOW_COPY_AND_ASSIGN(RHIGlobalEntity);
 	private:
-		static Map<RHIBackEnd, CreateFunc> create_func_repo_;
+		static Map<ERHIBackEnd, CreateFunc> create_func_repo_;
 	};
 
 //regist global entity create func at compile time
 #define REGIST_GLOBAL_ENTITY(name, back_end, creat_func) \
-static constexpr bool xxx_##name##_created = RHIGlobalEntity::RegistCreateFunc(back_end, create_func);
+static constexpr bool gxxx_##name##_created = RHIGlobalEntity::RegistCreateFunc(back_end, create_func);
 }

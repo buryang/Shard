@@ -10,6 +10,30 @@ namespace MetaInit
 {
 	namespace Renderer
 	{
+		//resource access/usage flags
+		enum class EAccessFlags : uint64_t
+		{
+			eNone = 0,
+			eIndirectArgs = 1 << 0,
+			eIndexBuffer = 1 << 1,
+			eVertexBuffer = 1 << 2,
+			eTransferSrc = 1 << 3,
+			eTransferDst = 1 << 4,
+			eDSVRead = 1 << 5,
+			eDSVWrite = 1 << 6,
+			eSRV = 1 << 8,
+			eRTV = 1 << 9,
+			eUAV = 1 << 10,
+			eDSV = 1 << 11,
+			ePresent = 1 << 12,
+			eExternal = 1 << 13,
+			eReadOnly = eVertexBuffer | eIndexBuffer | eIndirectArgs | eTransferSrc | eSRV | eDSVRead,
+			eReadAble = eReadOnly | eUAV,
+			eWriteOnly = eRTV | eTransferDst | eDSVWrite,
+			eWriteAble = eWriteOnly | eUAV,
+			eNonUAV = ~eUAV,
+		};
+
 		/*buffer use texturelayout width to represent size*/
 		struct TextureLayout {
 			uint32_t	width_{ 0 };
@@ -18,10 +42,10 @@ namespace MetaInit
 			uint32_t	mip_slices_{ 1 };
 			uint32_t	array_slices_{ 1 };
 			uint32_t	plane_slices_{ 1 };
-			bool operator==(const TextureLayout& rhs)const {
+			FORCE_INLINE bool operator==(const TextureLayout& rhs)const {
 				return !std::memcmp(this, &rhs, sizeof(*this));
 			}
-			bool operator!=(const TextureLayout& rhs)const {
+			FORCE_INLINE bool operator!=(const TextureLayout& rhs)const {
 				return !(*this == rhs);
 			}
 		};
@@ -108,29 +132,6 @@ namespace MetaInit
 				eNum,
 			};
 
-			enum class EAccessFlags : uint64_t
-			{
-				eNone = 0,
-				eIndirectArgs = 1 << 0,
-				eIndexBuffer = 1 << 1,
-				eVertexBuffer = 1 << 2,
-				eTransferSrc = 1 << 3,
-				eTransferDst = 1 << 4,
-				eDSVRead = 1 << 5,
-				eDSVWrite = 1 << 6,
-				eSRV = 1 << 8,
-				eRTV = 1 << 9,
-				eUAV = 1 << 10,
-				eDSV = 1 << 11,
-				ePresent = 1 << 12,
-				eExternal = 1 << 13,
-				eReadOnly = eVertexBuffer | eIndexBuffer | eIndirectArgs | eTransferSrc | eSRV | eDSVRead,
-				eReadAble = eReadOnly | eUAV,
-				eWriteOnly = eRTV | eTransferDst | eDSVWrite,
-				eWriteAble = eWriteOnly | eUAV,
-				eNonUAV = ~eUAV,
-			};
-
 			enum class EUsage :uint8_t
 			{
 				eUnkown	= 0x0,
@@ -183,6 +184,7 @@ namespace MetaInit
 			bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
 			bool IsExtract()const { return usage_ == EUsage::eExtracted; }
 			bool IsReferenced()const { return ref_count_ > 1; }
+			bool IsCrossQueue()const { return is_cross_queue_; }
 			bool IsTransiant()const;
 			RtField& Name(const String& name);
 			RtField& ParentName(const String& name);
@@ -193,6 +195,8 @@ namespace MetaInit
 			RtField& ArraySlices(const uint32_t array_slices);
 			RtField& PlaneSlices(const uint32_t plane_slices);
 			RtField& StageFlags(EPipelineStageFlags stage);
+			//use with asyc compute and gfx queue
+			RtField& CrossQueue(bool value);
 			RtField& ForceTransiant();
 			EType GetType()const;
 			const String& GetName()const;
@@ -200,6 +204,7 @@ namespace MetaInit
 			const TextureLayout& GetLayout()const;
 			const TextureSubField& GetSubField()const;
 			const TextureSubRange& GetSubRange()const;
+			EPixFormat GetPixFormat()const;
 			uint32_t InCrRef(uint32_t count=1) { 
 				ref_count_ += count;
 				return ref_count_;
@@ -222,9 +227,10 @@ namespace MetaInit
 			EPixFormat	pix_fmt_{ EPixFormat::eUnkown };
 			mutable uint32_t	ref_count_{ 1 };
 			//which stage of pass use this rtfield
-			EPipelineStageFlags	stage_{ EPipelineStageFlags::eStageUnkown };
+			EPipelineStageFlags	stage_{ EPipelineStageFlags::eUnkown };
 			//user force it tobe transiant
-			bool	force_transiant_{ false };
+			bool	is_transiant_{ false };
+			bool	is_cross_queue_{ false };
 			uint32_t	sample_count_{ 1 };
 			TextureLayout	layout_;
 			union {

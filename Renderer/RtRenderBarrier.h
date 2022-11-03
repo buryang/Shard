@@ -30,8 +30,8 @@ namespace MetaInit
 		struct RtTransitionBarrier
 		{
 			RtRenderResource::Ptr	resource_;
-			RtField::EAccessFlags	prev_access_;
-			RtField::EAccessFlags	next_access_;
+			EAccessFlags	prev_access_;
+			EAccessFlags	next_access_;
 			EPipelineStageFlags	prev_stage_{ EPipelineStageFlags::eUnkown };
 			EPipelineStageFlags	next_stage_{ EPipelineStageFlags::eUnkown };
 			union
@@ -60,9 +60,8 @@ namespace MetaInit
 			TextureSubRange	sub_range_;
 		};
 
-		class RtBarrierBatch
+		struct RtBarrierBatch
 		{
-		public:
 			using Ptr = RtBarrierBatch*;
 			FORCE_INLINE void AddTransitionBarrier(RtTransitionBarrier&& transition) {
 				transitions_.emplace_back(transition);
@@ -76,8 +75,6 @@ namespace MetaInit
 			FORCE_INLINE void AddDependencies(RtBarrierBatch::Ptr deps) {
 				dependencies_.insert(deps);
 			}
-			void Submit(RHI::RHICommandContext& context);
-		private:
 			SmallVector<RtTransitionBarrier>	transitions_;
 			SmallVector<RtAliasingBarrier>		aliasing_;
 			SmallVector<RtUAVBarrier>			uavs_;

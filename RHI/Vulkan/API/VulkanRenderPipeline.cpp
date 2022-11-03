@@ -173,9 +173,9 @@ namespace MetaInit
 		vkCmdBindDescriptorSets(cmd_buffer.Get(), bind_point, layout_, 0, bind_sets.size(), bind_sets.data(), 0, nullptr);
 	}
 
-	DescriptorSetsWrapper& VulkanRenderPipeline::operator[](const std::string& set_name)
+	VulkanDescriptorSet& VulkanRenderPipeline::operator[](const std::string& set_name)
 	{
-		auto iter = std::find_if(descs_.begin(), descs_.end(), [&](DescriptorSetsWrapper& pred) {return pred.Name() == set_name;});
+		auto iter = std::find_if(descs_.begin(), descs_.end(), [&](VulkanDescriptorSet& pred) {return pred.Name() == set_name;});
 		if (descs_.end() != iter)
 		{
 			return *iter;

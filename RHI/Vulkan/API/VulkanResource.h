@@ -1,184 +1,171 @@
 #pragma once
-#include "RHI/VulkanRHI.h"
-#include "RHI/VulkanPrimitive.h"
-#include <unordered_map>
-#include <list>
-#include <mutex>
+#include "RHI/Vulkan/API/VulkanRHI.h"
+#include "RHI/Vulkan/API/VulkanCmdContext.h"
 
-//https://stackoverflow.com/questions/48867995/how-to-correctly-use-decriptor-sets-for-multiple-interleaving-buffers
 namespace MetaInit
 {
-	/*functions to make create informations for resource related structure*/
-	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
-	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo);
-	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size, 
-											const SmallVector<uint32_t>& family_indices=SmallVector<uint32_t>());
-	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
-													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
-	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
-											VkSamplerAddressMode address_modeu, VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew);
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count);
-	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
-																		const SmallVector<VkDescriptorSetLayoutBinding>& bindings);
-	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets, 
-															const SmallVector<VkDescriptorPoolSize>& pool_size);
-
-
-	class DescriptorPool
+	/*resource state*/
+	enum class EResourceState : uint32_t
 	{
-	public:
-		typedef struct _PoolDesc
-		{
-			uint32_t	set_size_;
-			struct DescCount
-			{
-				uint32_t	desc_type_;
-				uint32_t	desc_count_;
-			};
-			//Vector<DescCount> desc_count_;
-		}Desc;
-		using Ptr = std::shared_ptr<DescriptorPool>;
-		DescriptorPool() = default;
-		explicit DescriptorPool(VulkanDevice::Ptr device, const Desc& desc);
-		DISALLOW_COPY_AND_ASSIGN(DescriptorPool);
-		void Init(VulkanDevice::Ptr device, const Desc& desc);
-		void UnInit();
-		VkDescriptorSet CreateDescriptorSet(VkDescriptorSetLayout layout);
-		Vector<VkDescriptorSet> CreateDescriptorSets(const Vector<VkDescriptorSetLayout>& layouts);
-		void Reset();
-		~DescriptorPool() { UnInit(); }
-	private:
-		bool CanAllocate(VkDescriptorSetLayout layout)const;
-		void UpdateCurrPool();
-	private:
-		friend class DescriptorPoolManager;
-		using List = std::list<VkDescriptorPool>;
-		List available_;
-		List used_;
-		VkDescriptorPool			curr_{ VK_NULL_HANDLE };
-		VulkanDevice::Ptr			device_;
-		uint32_t					alloc_size_ = 0;//size allocated from curr pool
-		uint32_t					pool_size_;
-		eastl::mutex					pool_mutex_;
+		eUndefined,
+		ePreInitialized,
+		eCommon,
+		eVertexBuffer,
+		eIndexBuffer,
+		eUnorderedAccess,
+		eDepthStencil,
+		eShaderResource,
+		ePresent,
+		eCopyDst,
+		eCopySrc,
+		eResolveSrc,
+		eResolveDst,
+		eIndirectArgs,
+		eRenderTarget,
 	};
 
-	class DescriptorPoolManager
+	class VulkanBuffer;
+	class VulkanImageView;
+	class VulkanImage
 	{
 	public:
-		using Ptr = std::shared_ptr<DescriptorPoolManager>;
-		DescriptorPoolManager() = default;
-		DISALLOW_COPY_AND_ASSIGN(DescriptorPoolManager);
-		DescriptorPool::Ptr GetPool(uint32_t hash);
+		using Ptr = VulkanImage*;
+		using SharedPtr = eastl::shared_ptr<VulkanImage>;
+		explicit VulkanImage(const VkImageCreateInfo& create_info);
+		~VulkanImage();
+		VkImage Get();
+		VkFormat GetFormat()const;
+		VkSampleCountFlagBits GetSampleCount()const;
+		EResourceState GetState()const;
+		uint32_t GetLevels()const;
+		uint32_t GetLayers()const;
+		VulkanImage& SetState(EResourceState new_state);
+		VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
+		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, SharedPtr image);
+		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, VulkanBuffer::SharedPtr buffer);
 	private:
-		Map<uint32_t, DescriptorPool::Ptr>	pools_;
+		void GenerateMipMap(VulkanCmdBuffer::SharedPtr cmd_buffer);
+		void UploadData(VulkanCmdBuffer::SharedPtr cmd_buffer);
+		void DownloadData(VulkanCmdBuffer::SharedPtr cmd_buffer);
+	private:
+		friend class VulkanImageView;
+		VkImage					handle_{VK_NULL_HANDLE};
+		VkExtent3D				dims_;
+		VkFormat				format_;
+		EResourceState			state_{ EResourceState::eUndefined };
+		uint32_t				mips_;
+		uint32_t				layers_;
 	};
 
-	//name from dxr
-	class RootSignature
+	class VulkanImageView
 	{
 	public:
-		struct ConstantRangeDesc
-		{
-			uint32_t		flags_;
-			uint32_t		offset_;
-			uint32_t		size_;
-			bool isValid()const;
-		};
-
-		struct DescriptorSetDesc
-		{
-			struct DescriptorBindDesc
-			{
-				uint32_t			binding_		= 0;
-				uint32_t			desc_type_		= VK_DESCRIPTOR_TYPE_SAMPLER;
-				//desc count > 0 for desccriptor indexing
-				uint32_t			desc_count_		= 1;
-				uint32_t			stage_flags_	= VK_SHADER_STAGE_ALL;
-				std::string			binding_name_;
-				//the sampler objects must not be destroyed before the final 
-				//use of the set layout and any descriptor poolsand sets created using it
-				VkSampler			sampler = VK_NULL_HANDLE;
-				bool IsSamplerMutable()const {
-					return !((desc_type_ == VK_DESCRIPTOR_TYPE_SAMPLER || desc_type_ == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-								&& sampler != VK_NULL_HANDLE);
-				}
-			};
-			Vector<DescriptorBindDesc>	bindings_;
-			std::string					set_name_;
-			uint32_t Size()const { return bindings_.size(); }
-		};
-		void AddSet(DescriptorSetDesc& desc_set);
-		void AddConstRange(ConstantRangeDesc& const_range);
-		uint32_t GetNumConstants()const { return consts_.size(); }
-		uint32_t GetNumDescriptorSets()const { return desc_sets_.size(); }
-		const ConstantRangeDesc& GetConstantDesc(uint32_t index)const {
-			return consts_[index];
+		VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t level,
+							uint32_t layer, uint32_t mip_levels, uint32_t array_layers);
+		VkImageSubresourceRange GetSubResourceRange()const { return sub_res_range_; }
+		~VulkanImageView();
+		VkImageView	Get();
+		VkFormat Format()const { return format_; }
+		VkImageViewType ViewType()const { return view_type_; }
+		operator VulkanImage::Ptr(){ return image_; }
+	private:
+		VulkanImage::Ptr		image_;
+		VkImageView				handle_{ VK_NULL_HANDLE };
+		VkFormat				format_;
+		VkImageViewType			view_type_;
+		VkImageSubresourceRange	sub_res_range_;
+	};
+		
+	class VulkanImageSamplerFactory
+	{
+	public:
+		using Key = VkSamplerCreateInfo;
+		using Val = VkSampler;
+		static VulkanImageSamplerFactory& Instance() {
+			static VulkanImageSamplerFactory factory;
+			return factory;
 		}
-		const DescriptorSetDesc& GetDescriptorSetDesc(uint32_t index)const {
-			return desc_sets_[index];
+		~VulkanImageSamplerFactory() {
+			for (auto& [_, sampler] : sampler_repo_) {
+				vkDestroySampler(nullptr, sampler, g_host_alloc);
+			}
+		}
+		Val GetOrCreateSampler(VulkanDevice::SharedPtr device, const Key& desc) {
+			if (auto iter = sampler_repo_.find(desc); iter != sampler_repo_.end()) {
+				return iter->second;
+			}
+			Val filter = VK_NULL_HANDLE;
+			auto ret = vkCreateSampler(device->Get(), &desc, g_host_alloc, &filter);
+			CHECK(VK_SUCCESS == ret) << __FUNCTION__ << " : create sampler failed" << std::endl;
+			sampler_repo_[desc] = filter;
+			return filter;
 		}
 	private:
-		Vector<ConstantRangeDesc>		consts_;
-		Vector<DescriptorSetDesc>		desc_sets_;
+		VulkanImageSamplerFactory() = default;
+		DISALLOW_COPY_AND_ASSIGN(VulkanImageSamplerFactory);
+	private:
+		Map<Key, Val>	sampler_repo_;
 	};
 
-	class VulkanCmdBuffer;
-	class VulkanAttachment;
-	class DescriptorSetsWrapper
+
+	class VulkanBuffer
 	{
 	public:
-		struct PseudoDescriptor
-		{
-			PseudoDescriptor(DescriptorSetsWrapper* wrapper, uint32_t binding) :wrapper_(wrapper), desc_binding_(binding) {}
-			void operator=(const Primitive::VulkanImage& image);
-			void operator=(const Primitive::VulkanSampler& sampler);
-			void operator=(const Primitive::VulkanBuffer& buffer);
-			void operator=(const Primitive::VulkanBufferView& buffer_view);
-			void operator=(const VulkanAttachment& attach);
-			DescriptorSetsWrapper* wrapper_ = nullptr;
-			uint32_t desc_binding_ = 0;
-		};
-		PseudoDescriptor operator[](std::string& desc_name);
-		void Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle);
-		void BeginUpdates();
-		void EndUpdates();
-		void UnInit();
-		const std::string& Name()const { return name_; }
-		VkDescriptorSet Get()const { return handle_; }
-		DescriptorSetsWrapper() = default;
-		DISALLOW_COPY_AND_ASSIGN(DescriptorSetsWrapper);
-		//descriptor pool to manage resource release
-		~DescriptorSetsWrapper() = default;
+		using Handle = VkBuffer;
+		using SharedPtr = eastl ::shared_ptr<VulkanBuffer>;
+		explicit VulkanBuffer(const VkBufferCreateInfo& create_info);
+		~VulkanBuffer();
+		Handle Get()const;
+		VkDeviceSize GetSize()const;
+		EResourceState GetState()const;
+		VulkanBuffer& SetState(EResourceState new_state);
+		void* Map() const;
+		VulkanBuffer& Unmap();
+		VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);
+		VulkanBuffer& Flush()const;
+		VulkanBuffer& Clear(uint32_t data);
+		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, VulkanImage::SharedPtr image);
+		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, SharedPtr buffer);
+		bool IsStage()const;
 	private:
-		//configure descriptor 
-		void UpdateImage(const Primitive::VulkanImage& image, uint32_t binding);
-		void UpdateSampler(const Primitive::VulkanSampler& sampler, uint32_t binding);
-		void UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset);
-		void UpdateBufferView(const Primitive::VulkanBufferView& buffer_view, uint32_t binding);
-		void UpdateInAttachment(const VulkanAttachment& attach, uint32_t binding);
-		void UpdateAccelerationStructure(void*, uint32_t binding);
-	private:
-		VulkanDevice::Ptr				device_;
-		VkDescriptorSet					handle_{ VK_NULL_HANDLE };
-		using DescLut = Map<std::string, uint32_t>;
-		DescLut							desc_lut_;
-		Vector<VkWriteDescriptorSet>	write_cache_;
-		bool							read_only_ = false;
-		std::string						name_;
-		//descriptor set write data container
-		struct DescriptorInfoDetail
-		{
-			union
-			{
-				VkDescriptorBufferInfo	buffer_info_;
-				VkDescriptorImageInfo	image_info_;
-				//WriteDescriptorSetAccelerationStructureKHR acc_info_;
-			};
-		};
-		Vector<DescriptorInfoDetail>	desc_infos_;
+		friend class VulkanBufferView;
+		friend class VulkanImage;
+		bool	mapped_{ false };
+		Handle	handle_{ VK_NULL_HANDLE };
+		//VkBuffer	stage_buffer_{ VK_NULL_HANDLE };
+		VkBufferCreateInfo	prop_info_;
+		EResourceState	state_{ EResourceState::eUndefined };
 	};
 
+	class VulkanBufferView
+	{
+	public:
+		using Handle = VkBufferView;
+		explicit VulkanBufferView(VulkanBuffer::SharedPtr buffer, VkBufferViewCreateFlags flags,
+									VkFormat format, uint32_t offset, uint32_t range);
+		~VulkanBufferView();
+		Handle Get();
+		operator VulkanBuffer::SharedPtr() { return buffer_; }
+	private:
+		VulkanBuffer::SharedPtr	buffer_;
+		Handle	handle_{ VK_NULL_HANDLE };
+	};
 
-
-
+	class VulkanVertexAttributes
+	{
+	public:
+		enum ETopology
+		{
+			ePoint,
+			eLine,
+			eTriangle,
+			ePatch,
+		};
+		VulkanVertexAttributes();
+		VulkanBuffer::SharedPtr GetVertex();
+		VulkanBuffer::SharedPtr GetIndex();
+	private:
+		VulkanBuffer::SharedPtr	vertex_;
+		VulkanBuffer::SharedPtr	index_;
+	};
 }

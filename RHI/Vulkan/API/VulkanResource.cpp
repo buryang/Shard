@@ -1,456 +1,481 @@
-#include "RHI/VulkanResource.h"
-#include "RHI/VulkanCmdContext.h"
-#include "RHI/VulkanRenderPass.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
+#include "RHI/Vulkan/API/VulkanCmdContext.h"
+#include "RHI/Vulkan/API/VulkanResource.h"
+#include "RHI/Vulkan/API/VulkanDescriptor.h"
+#include "Scene/Primitive.h"
 
 namespace MetaInit
 {
-	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
+	static inline VkAccessFlags GetAccessMaskForLayout(VkImageLayout layout)
 	{
-		VkImageCreateInfo image_info{};
-		memset(&image_info, 0, sizeof(image_info));
-		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		image_info.flags = flags;
-		image_info.format = format;
-		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		//not support cubemap now
-		image_info.arrayLayers = 1;
-		image_info.mipLevels = 1;
-		return image_info;
-	}
-
-	static inline VkImageViewType GetImageViewType(VkImageType image_type)
-	{
-		switch (image_type)
+		switch (layout)
 		{
-		case VK_IMAGE_TYPE_1D:
-			return VK_IMAGE_VIEW_TYPE_1D;
-		case VK_IMAGE_TYPE_2D:
-			return VK_IMAGE_VIEW_TYPE_2D;
+		#define LAYOUT_CASE(type, flags) case type: return VkAccessFlags(flags);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT)
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_MEMORY_READ_BIT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT, VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_NONE_KHR);
+		LAYOUT_CASE(VK_IMAGE_LAYOUT_UNDEFINED, VK_ACCESS_NONE_KHR);
+		#undef LAYOUT_CASE
 		default:
-			throw std::invalid_argument("not supported image view type");
+			PLOG(ERROR) << "not supported layout type for access";
 		}
 	}
 
-	static inline VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, VkImageViewType view_type)
+	static VkPipelineStageFlags GetShaderStageMask(VkImageLayout layout)
 	{
-		VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		view_info.flags = flags;
-		view_info.pNext = VK_NULL_HANDLE;
-		view_info.viewType = view_type;
-		return view_info;
-	}
-
-	static inline VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size,
-															const SmallVector<uint32_t>& family_indices)
-	{
-		VkBufferCreateInfo buffer_info{};
-		memset(&buffer_info, 0, sizeof(buffer_info));
-		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buffer_info.flags = flags;
-		buffer_info.pNext = VK_NULL_HANDLE;
-		buffer_info.size = size;
-		if ( !family_indices.empty())
+		switch (layout)
 		{
-			buffer_info.queueFamilyIndexCount = family_indices.size();
-			buffer_info.pQueueFamilyIndices = family_indices.data();
+		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+			return VK_PIPELINE_STAGE_TRANSFER_BIT;
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+			return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+			return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+			return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		case VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT:
+			return VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT;
+		case VK_IMAGE_LAYOUT_GENERAL:
+		case VK_IMAGE_LAYOUT_UNDEFINED:
+			return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		default:
+			PLOG(ERROR) << "not supported layout type for shader";
 		}
-		return buffer_info;
 	}
 
-	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
-		VkFormat format, VkDeviceSize offset, VkDeviceSize range)
+	VulkanImage::VulkanImage(VulkanDevice::SharedPtr device, Image&& image, const VkImageCreateInfo& create_info):device_(device), 
+								size_({image.size_.x, image.size_.y, image.size_.z}), prop_info_(create_info), format_(create_info.format)
 	{
-		VkBufferViewCreateInfo view_info{};
-		memset(&view_info, 0, sizeof(view_info));
-		view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-		view_info.flags = flags;
-		view_info.buffer = buffer;
-		view_info.format = format;
-		view_info.offset = offset;
-		view_info.range = range;
-		return view_info;
+		prop_info_.imageType = TransImageType(image.type_);
+		prop_info_.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+		auto ret = vkCreateImage(nullptr, &prop_info_, nullptr, &handle_);
+		assert(ret == VK_SUCCESS && "create vulkan image handle failed");
+
+		//create memory
+		VkMemoryRequirements mem_reqs;
+		auto& device = graph_->GetDevice();
+		auto& allocator = graph_->GetMemAllocator();
+		vkGetImageMemoryRequirements(device->Get(), handle_, &mem_reqs);
+		//FIXME
+		VMAAllocation allocation;
+		vmaAllocateMemoryForImage(allocator->Get(), handle_, &mem_reqs, nullptr, &allocation.allocation_, nullptr);
+		vmaBindImageMemory(allocator->Get(), allocation.allocation_, handle_);
+
+		UploadData();
 	}
 
-	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, 
-												VkSamplerMipmapMode mipmap_mode, VkSamplerAddressMode address_modeu, 
-												VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew)
+	VulkanImage::VulkanImage(VulkanDevice::Ptr device, VulkanBuffer::SharedPtr buffer):device_(device)
 	{
-		VkSamplerCreateInfo sample_info{};
-		memset(&sample_info, 0, sizeof(sample_info));
-		sample_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		sample_info.flags = flags;
-		sample_info.magFilter = mag_filter;
-		sample_info.minFilter = min_filter;
-		sample_info.addressModeU = address_modeu;
-		sample_info.addressModeV = address_modev;
-		sample_info.addressModeW = address_modew;
-		return sample_info;
+		//todo
+		ReadyForTransmit();
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource = {};
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = {};
+		vkCmdCopyBufferToImage(device_->Get(), buffer->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	}
 
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count)
+	VulkanImage::VulkanImage(VulkanDevice::Ptr device, const VkImageCreateInfo& create_info):device_(device)
 	{
-		VkDescriptorSetAllocateInfo desc_info{};
-		memset(&desc_info, 0, sizeof(desc_info));
-		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		desc_info.descriptorPool = pool;
-		desc_info.descriptorSetCount = layout_count;
-		desc_info.pSetLayouts = layout;
-		return desc_info;
+		auto ret = vkCreateImage(device->Get(), &create_info, g_host_alloc, &handle_);
+		assert(ret == VK_SUCCESS && "create vulkan image faild");
 	}
 
-	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
-																			const SmallVector<VkDescriptorSetLayoutBinding>& bindings)
+	VulkanImage::~VulkanImage()
 	{
-		VkDescriptorSetLayoutCreateInfo desc_info{};
-		memset(&desc_info, 0, sizeof(desc_info));
-		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		desc_info.flags = flags;
-		if (!bindings.empty())
+		if (VK_NULL_HANDLE != handle_)
 		{
-			desc_info.bindingCount = bindings.size();
-			desc_info.pBindings = bindings.data();
+			vkDestroyImage(device_->Get(), handle_, g_host_alloc);
+			vmaFreeMemory(nullptr, vma_data_.allocation_);
 		}
-		return desc_info;
 	}
 
-	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets,
-																	const SmallVector<VkDescriptorPoolSize>& pool_size)
+	VkImage VulkanImage::Get()
 	{
-		VkDescriptorPoolCreateInfo pool_info{};
-		memset(&pool_info, 0, sizeof(pool_info));
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.flags = flags;
-		pool_info.pNext = VK_NULL_HANDLE;
-		pool_info.maxSets = max_sets;
-		if (!pool_size.empty())
+		return handle_;
+	}
+
+	VkFormat VulkanImage::GetFormat()const
+	{
+		return format_;
+	}
+
+	EResourceState VulkanImage::GetState()const
+	{
+		return state_;
+	}
+
+	VulkanImage& VulkanImage::SetState(EResourceState new_state)
+	{
+		state_ = new_state;
+		return *this;
+	}
+
+	VkSampleCountFlagBits VulkanImage::GetSampleCount()const
+	{
+		return prop_info_.samples;
+	}
+
+	VulkanImage& VulkanImage::Clear(VkClearValue value, const VkImageSubresourceRange& region)
+	{
+		if (region.aspectMask&VK_IMAGE_ASPECT_COLOR_BIT) 
 		{
-			pool_info.poolSizeCount = pool_size.size();
-			pool_info.pPoolSizes = pool_size.data();
+			const auto&color_value = value.color;
+			vkCmdClearColorImage(device_->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &color_value, 1, &region);
 		}
-		return pool_info;
-	}
-
-	DescriptorPool::DescriptorPool(VulkanDevice::Ptr device, const DescriptorPool::Desc& desc)
-	{
-		Init(device, desc);
-	}
-
-	void DescriptorPool::Init(VulkanDevice::Ptr device, const DescriptorPool::Desc& desc)
-	{
-		device_ = device;
-		UpdateCurrPool();
-	}
-
-	void DescriptorPool::UnInit()
-	{
-		for (auto pool : available_)
+		else if(region.aspectMask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT))
 		{
-			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
-		}
-		available_.clear();
-
-		for (auto pool : used_)
-		{
-			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
-		}
-		used_.clear();
-	}
-
-	VkDescriptorSet DescriptorPool::CreateDescriptorSet(VkDescriptorSetLayout layout)
-	{
-		auto desc_creater = [&](VkDescriptorPool pool) {
-			VkDescriptorSet desc_set = VK_NULL_HANDLE;
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, &layout, 1);
-			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, &desc_set);
-			if (ret == VK_SUCCESS)
-			{
-				return desc_set;
-			}
-			throw std::runtime_error("alloc desc set failed");
-		};
-		
-		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
-
-		if (curr_ == VK_NULL_HANDLE)
-		{
-			UpdateCurrPool();
-		}
-
-		try
-		{
-			auto desc_set = desc_creater(curr_);
-			return desc_set;
-		}
-		catch (std::runtime_error& e)
-		{
-			UpdateCurrPool();
-			auto desc_set = desc_creater(curr_);
-			return desc_set;
-		}
-
-	}
-
-	Vector<VkDescriptorSet> DescriptorPool::CreateDescriptorSets(const Vector<VkDescriptorSetLayout>& layouts)
-	{
-		Vector<VkDescriptorSet> desc_sets(layouts.size());
-		auto desc_creater = [&](VkDescriptorPool pool) {
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layouts.data(), layouts.size());
-			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, desc_sets.data());
-			if (ret == VK_SUCCESS)
-			{
-				return;
-			}
-			throw std::runtime_error("alloc desc set failed");
-		};
-
-		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
-		if (curr_ == VK_NULL_HANDLE)
-		{
-			UpdateCurrPool();
-		}
-
-		try
-		{
-			if (!CanAllocate())
-			{
-				UpdateCurrPool();
-			}
-			desc_creater(curr_);
-			return desc_sets;
-		}
-		catch (std::runtime_error& e)
-		{
-			throw std::runtime_error("descriptor set alloc failed");
-		}
-
-	}
-
-	bool DescriptorPool::CanAllocate(VkDescriptorSetLayout layout)const
-	{
-		//fixme memory logic
-		return alloc_size_ < pool_size_;
-	}
-
-	void DescriptorPool::Reset()
-	{
-		for (auto pool : used_)
-		{
-			//flags is reversed for future usage
-			vkResetDescriptorPool(device_->Get(), pool, 0);
-		}
-		available_.insert(available_.end(), used_.begin(), used_.end());
-		used_.clear();
-		curr_ = VK_NULL_HANDLE;
-	}
-
-
-	void DescriptorPool::UpdateCurrPool()
-	{
-		if (available_.empty())
-		{
-			VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, pool_size_, );
-			VkDescriptorPool pool;
-			auto ret = vkCreateDescriptorPool(device_->Get(), &pool_info, g_host_alloc, &pool);
-			assert(ret != VK_SUCCESS);
-			available_.push_back(pool);
-		}
-		curr_ = available_.front();
-		available_.pop_front();
-		used_.push_back(curr_);
-	}
-
-	DescriptorPool::Ptr DescriptorPoolManager::GetPool(uint32_t hash)
-	{
-		if (pools_.find(hash) == pools_.end())
-		{
-			DescriptorPool::Ptr pool_ptr(new DescriptorPool);
-			pools_.insert(std::make_pair(hash, pool_ptr));
-		}
-		return pools_[hash];
-	}
-
-	DescriptorSetsWrapper::PseudoDescriptor DescriptorSetsWrapper::operator[](std::string& desc_name)
-	{
-		return PseudoDescriptor(this, desc_lut_[desc_name]);
-	}
-
-	void DescriptorSetsWrapper::Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle)
-	{
-		name_ = desc_set.set_name_;
-		auto& bind_cfgs = desc_set.bindings_;
-		desc_lut_.clear();
-		for (auto n = 0; n < bind_cfgs.size(); ++n)
-		{
-			desc_lut_[bind_cfgs[n].binding_name_] = n;
-		}
-		desc_infos_.resize(bind_cfgs.size());
-		handle_ = handle;
-	}
-
-	void DescriptorSetsWrapper::BeginUpdates()
-	{
-		write_cache_.clear();
-	}
-
-	void DescriptorSetsWrapper::EndUpdates()
-	{
-		if (!write_cache_.empty())
-		{
-			vkUpdateDescriptorSets(device_->Get(), write_cache_.size(), write_cache_.data(), 0, VK_NULL_HANDLE);
-		}
-	}
-
-	void DescriptorSetsWrapper::UnInit()
-	{
-		//do nothing descriptor pool resp for release descriptorset
-	}
-
-	static inline VkDescriptorType SetDescriptorType(bool read_only, bool is_buffer, bool is_texel)
-	{
-		if (is_buffer) {
-			if (is_texel)
-			{
-				return read_only ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-			}
-			else
-			{
-				return read_only ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			}
+			const auto& depth_value = value.depthStencil;
+			vkCmdClearDepthStencilImage(device_->Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &depth_value, 1, &region);
 		}
 		else
 		{
-			return read_only ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			throw std::invalid_argument("invalid region aspect mask");
+		}
+		return *this;
+	}
+
+	void VulkanImage::GenerateMipMap(VulkanCmdBuffer& cmd_buffer)
+	{
+		uint32_t mip_width = 1024, mip_height = 1024;
+		VkImageMemoryBarrier barrier{};
+		barrier.image = handle_;
+		barrier.subresourceRange = {};
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		for (auto level = 1; level < prop_info_.mipLevels; ++level)
+		{
+			mip_width = std::max((uint32_t)1, mip_width >> 1);
+			mip_height = std::max((uint32_t)1, mip_height >> 1);
+			//barrier 
+			barrier.subresourceRange.baseMipLevel = level - 1;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			vkCmdPipelineBarrier(cmd_buffer.Get(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+									0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &barrier);
+			/*blit logic:https://vulkan-tutorial.com/Generating_Mipmaps */
+			VkImageBlit blit_region{};
+			blit_region.srcOffsets[0] = { 0, 0, 0 };
+			blit_region.srcOffsets[1] = { mip_width, mip_height, 1 };
+			blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blit_region.srcSubresource.mipLevel = level - 1;
+			blit_region.srcSubresource.baseArrayLayer = 0;
+			blit_region.srcSubresource.layerCount = 1;
+			blit_region.dstOffsets[0] = { 0, 0, 0 };
+			blit_region.dstOffsets[1] = { std::max((uint32_t)1, mip_width >> 1), std::max((uint32_t)1, mip_height >> 1), 1 };
+			blit_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			blit_region.dstSubresource.mipLevel = level;
+			blit_region.dstSubresource.baseArrayLayer = 0;
+			blit_region.dstSubresource.layerCount = 1;
+			/*the layout of the "source image subresources" for the blit*/
+			vkCmdBlitImage(cmd_buffer.Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit_region, VK_FILTER_LINEAR);
+
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+								0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &barrier);
+		}
+
+		barrier.subresourceRange.baseMipLevel = prop_info_.mipLevels - 1;
+		vkCmdPipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 
+							0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &barrier);
+
+	}
+
+	void VulkanImage::UploadData(VulkanCmdBuffer& cmd_buffer)
+	{
+		ReadyForTransmit(cmd_buffer);
+		auto data = raw_.data();
+		auto buffer_info = MakeBufferCreateInfo(1, 1);
+		buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		VulkanBuffer buffer(device_, buffer_info);
+		//layer count == 0, level count = 0
+		SmallVector<VkBufferImageCopy> regions(1);
+		region[0].bufferOffset = 0;
+		region[0].bufferRowLength = 0; //tightly packed, no padding
+		region[0].bufferImageHeight = 0; //tightly packed, no padding
+		{
+			region[0].imageSubresource = {};
+		}
+		region.imageOffset = { 0, 0, 0 };
+		region.imageExtent = { size_.x, size_.y, size_.z }; //todo 
+		vkCmdCopyBufferToImage(cmd_buffer.Get(), buffer.Get(), handle_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, region.data());
+		ReadyForRender(cmd_buffer);
+
+		if (prop_info_.mipLevels > 1)
+		{
+			GenerateMipMap(cmd_buffer);
 		}
 	}
 
-	void DescriptorSetsWrapper::UpdateImage(const Primitive::VulkanImage& image, uint32_t binding)
+	void VulkanImage::DownloadData(VulkanCmdBuffer& cmd_buffer)
 	{
-		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstSet = handle_;
-		write_set.dstBinding = binding;
-		write_set.descriptorCount = 1;
-		write_set.descriptorType = SetDescriptorType(read_only_, false, false);
-
-		auto* image_info = new (&desc_infos_[binding])VkDescriptorImageInfo;
-		image_info->imageLayout = read_only_ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-		image_info->imageView = 0;
-		image_info->sampler = nullptr;
-		write_set.pImageInfo = image_info;
-		write_cache_.emplace_back(write_cache_);
+		throw std::logic_error("not implemented download image data");
 	}
 
-	void DescriptorSetsWrapper::UpdateSampler(const Primitive::VulkanSampler& sampler, uint32_t binding)
+	void VulkanImage::ReadyForTransmit(VulkanCmdBuffer& cmd_buffer)
 	{
-		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstSet = handle_;
-		write_set.dstBinding = binding;
-		write_set.descriptorCount = 1;
-		write_set.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		auto* image_info = new(&desc_infos_[binding])VkDescriptorImageInfo;
-		image_info->sampler = sampler.Get();
-		write_set.pImageInfo = image_info;
-		write_cache_.emplace_back(write_set);
+		VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barrier.pNext = VK_NULL_HANDLE;
+		barrier.image = handle_;
+		barrier.srcAccessMask = GetAccessMaskForLayout(VK_IMAGE_LAYOUT_UNDEFINED);
+		barrier.dstAccessMask = GetAccessMaskForLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.subresourceRange = {};
+			
+		vkCmdPipelineBarrier(cmd_buffer.Get(), GetShaderStageMask(barrier.oldLayout), 
+							GetShaderStageMask(barrier.newLayout), 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	void DescriptorSetsWrapper::UpdateBuffer(const Primitive::VulkanBuffer& buffer, uint32_t binding, uint32_t offset)
+	void VulkanImage::ReadyForRender(VulkanCmdBuffer& cmd_buffer)
 	{
-		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstSet = handle_;
-		write_set.dstBinding = binding;
-		write_set.descriptorCount = 1;
-		write_set.descriptorType = SetDescriptorType(read_only_, true, false);
-		auto* buffer_info = new(&desc_infos_[binding])VkDescriptorBufferInfo;
-		buffer_info->buffer = buffer.Get();
-		buffer_info->offset = offset;
-		buffer_info->range = buffer.GetSize();
-		write_set.pBufferInfo = buffer_info;
-		write_cache_.emplace_back(write_set);
-		//todo
+		VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+		barrier.pNext = VK_NULL_HANDLE;
+		barrier.image = VK_NULL_HANDLE;
+		barrier.srcAccessMask = GetAccessMaskForLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		barrier.dstAccessMask = GetAccessMaskForLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.subresourceRange = {};
+
+		vkCmdPipelineBarrier(cmd_buffer.Get(), GetShaderStageMask(barrier.oldLayout), 
+								GetShaderStageMask(barrier.newLayout), 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	}
 
-	void DescriptorSetsWrapper::UpdateBufferView(const Primitive::VulkanBufferView& buffer_view, uint32_t binding)
+	VkImageType VulkanImage::TransImageType(EImageType type)
 	{
-		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstSet = handle_;
-		write_set.dstBinding = binding;
-		write_set.descriptorCount = 1;
-		write_set.descriptorType = SetDescriptorType(read_only_, true, true);
-		write_set.pTexelBufferView = buffer_view.Get();
-		write_cache_.emplace_back(write_set);
+		switch (type)
+		{
+		case EImageType::TEXTURE_1D:
+			return VK_IMAGE_TYPE_1D;
+		case EImageType::TEXTURE_2D:
+			return VK_IMAGE_TYPE_2D;
+		case EImageType::TEXTURE_3D:
+			return VK_IMAGE_TYPE_3D;
+		default:
+			throw std::invalid_argument("not supported image tpye");
+		}
 	}
 
-	void DescriptorSetsWrapper::UpdateInAttachment(const VulkanAttachment& attach, uint32_t binding)
+	VulkanImageView::VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t mip_level,
+										uint32_t array_layer, uint32_t n_mip_levels, uint32_t n_array_layers):image_(image),view_type_(view_type), format_(format)
+										
 	{
-		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		write_set.pNext = VK_NULL_HANDLE;
-		write_set.dstSet = handle_;
-		write_set.dstBinding = binding;
-		write_set.descriptorCount = 1;
-		write_set.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		auto* image_info = new(&desc_infos_[binding])VkDescriptorImageInfo;
-		image_info->sampler = VK_NULL_HANDLE;
-		//image_info->imageView = attach.
-		image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		write_set.pImageInfo = image_info; 
-		write_cache_.emplace_back(write_set);
+		auto image_vs_view_comp = [=](void)->bool {
+			const auto& image_info = image->prop_info_;
+			switch (view_type)
+			{
+			case VK_IMAGE_VIEW_TYPE_1D:
+				return (image_info.imageType == VK_IMAGE_TYPE_1D && image_info.arrayLayers == 1);
+			case VK_IMAGE_VIEW_TYPE_2D:
+				return (image_info.imageType == VK_IMAGE_TYPE_2D && image_info.arrayLayers == 1);
+			case VK_IMAGE_VIEW_TYPE_3D:
+				return (image_info.imageType == VK_IMAGE_TYPE_3D && image_info.arrayLayers == 1);
+			case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+				return (image_info.imageType == VK_IMAGE_TYPE_1D && image_info.arrayLayers > 1);
+			case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+				return (image_info.imageType == VK_IMAGE_TYPE_2D && image_info.arrayLayers > 1);
+			/*
+			case VK_IMAGE_VIEW_TYPE_CUBE:
+			case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+				return ((image_info.flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) && image_info.imageType == VK_IMAGE_TYPE_2D);
+			default:
+				return false;
+			*/
+			}
+		};
+
+		if(!image_vs_view_comp())
+		{
+			throw std::invalid_argument("in-compability view and image parameters");
+		}
+		assert(array_layer < image->prop_info_.arrayLayers&& mip_level < image->prop_info_.mipLevels);
+		auto view_type = GetImageViewType(image->prop_info_.imageType);
+		auto& view_info = MakeImageViewCreateInfo(static_cast<VkImageViewCreateFlags>(0), image->Get(), view_type);
+		auto& sub_res = view_info.subresourceRange;
+		sub_res.baseArrayLayer = array_layer;
+		sub_res.layerCount = n_array_layers < 1 ? VK_REMAINING_ARRAY_LAYERS : n_array_layers;
+		sub_res.baseMipLevel = mip_level;
+		sub_res.levelCount = n_mip_levels < 1 ? VK_REMAINING_MIP_LEVELS : n_mip_levels;
+		sub_res_range_ = sub_res;
+		auto ret = vkCreateImageView(image->graph_->GetDevice()->Get(), view_info, g_host_alloc, &handle_);
+		assert(ret == VK_SUCCESS && "create image view failed");
 	}
 
-	void DescriptorSetsWrapper::UpdateAccelerationStructure(void*, uint32_t binding)
+	VulkanImageView::~VulkanImageView()
 	{
-		/*If descriptorType is VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 
-		 *the pNext chain must include a VkWriteDescriptorSetAccelerationStructureKHR
-		 *structure whose accelerationStructureCount member equals descriptorCount */
-		auto* acc_info = new(&desc_infos_[binding])VkWriteDescriptorSetAccelerationStructureKHR;
-		memset(acc_info, 0, sizeof(*acc_info));
-		acc_info->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-		acc_info->accelerationStructureCount = 1;
-		acc_info->pAccelerationStructures = nullptr; //todo
-		VkWriteDescriptorSet write_set;
-		memset(&write_set, 0, sizeof(write_set));
-		write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		write_set.dstBinding = binding;
-		write_set.dstSet = handle_;
-		write_set.pNext = acc_info;
-		write_set.descriptorCount = acc_info.accelerationStructureCount;
-		write_cache_.emplace_back(write_set); 
+		if (VK_NULL_HANDLE != handle_)
+		{
+			vkDestroyImageView(image_->GetDevice()->Get(), handle_, g_host_alloc);
+		}
 	}
 
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanImage& image)
+	VkImageView	VulkanImageView::Get() 
 	{
-		wrapper_->UpdateImage(image, desc_binding_);
-	}
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanSampler& sampler)
-	{
-		wrapper_->UpdateSampler(sampler, desc_binding_);
-	}
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanBuffer& buffer)
-	{
-		wrapper_->UpdateBuffer(buffer, desc_binding_, 0);
-	}
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const Primitive::VulkanBufferView& buffer_view)
-	{
-		wrapper_->UpdateBufferView(buffer_view, desc_binding_);
-	}
-	void DescriptorSetsWrapper::PseudoDescriptor::operator=(const VulkanAttachment& attach)
-	{
-		wrapper_->UpdateInAttachment(attach, desc_binding_);
+		return handle_;
 	}
 
-	void RootSignature::AddSet(DescriptorSetDesc& desc_set)
+	VulkanSampler::VulkanSampler(Sampler&& sampler):Sampler(std::forward<Sampler>(sampler))
 	{
-		desc_sets_.emplace_back(desc_set);
+
 	}
 
-	void RootSignature::AddConstRange(ConstantRangeDesc& const_range)
+	VulkanSampler::~VulkanSampler()
 	{
-		consts_.emplace_back(const_range);
+		if (VK_NULL_HANDLE != handle_)
+		{
+			vkDestroySampler(nullptr, handle_, g_host_alloc);
+		}
 	}
-	bool RootSignature::ConstantRangeDesc::isValid() const
+
+	VkFilter VulkanSampler::TransFilterMode(EFilterType filter)
 	{
-		return offset_ & ~0x3 == 0 && size_ & ~0x3 == 0 && size_ <= max_const_size;
+		switch (filter)
+		{
+		case EFilterType::LINEAR:
+			return VkFilter::VK_FILTER_LINEAR;
+		case EFilterType::NEAREST:
+			return VkFilter::VK_FILTER_NEAREST;
+		default:
+			throw std::invalid_argument("not support filter type");
+		}
 	}
+
+	VkSamplerMipmapMode VulkanSampler::TransMipmapFilterMode(EFilterType filter)
+	{
+		switch (filter)
+		{
+		case EFilterType::LINEAR:
+			return VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		case EFilterType::NEAREST:
+			return VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		default:
+			throw std::invalid_argument("not support mipmap filter mode");
+		}
+	}
+		
+	VkSamplerAddressMode VulkanSampler::TransAddressMode(EAddressMode address)
+	{
+		switch (address)
+		{
+		case EAddressMode::CLAMP:
+			return VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		default:
+			throw std::invalid_argument("not support filter address mode");
+		}
+	}
+
+	VulkanBuffer::VulkanBuffer(VulkanDevice::Ptr device, const VkBufferCreateInfo& create_info):prop_info_(create_info)
+	{
+		auto ret = vkCreateBuffer(device->Get(), &create_info, g_host_alloc, &handle_);
+		assert(ret == VK_SUCCESS);
+	}
+
+	VkBuffer VulkanBuffer::Get()const
+	{
+		return handle_;
+	}
+
+	VkDeviceSize VulkanBuffer::GetSize()const
+	{
+		return prop_info_.size;
+	}
+
+	void* VulkanBuffer::Map()const
+	{
+		if (!mapped_)
+		{
+			void* ptr = nullptr;
+			vmaMapMemory(graph_->GetMemeAllocator().Get(), allocation_, &ptr);
+			mapped_ = true;
+			return ptr;
+		}
+		return nullptr;
+	}
+
+	VulkanBuffer& VulkanBuffer::Unmap()
+	{
+		vmaUnmapMemory(graph_->GetMemeAllocator().Get(), allocation_);
+		return *this;
+	}
+
+	VulkanBuffer& VulkanBuffer::Update(const uint8_t* data, size_t size, size_t offset)
+	{
+		auto ptr = Map();
+		std::memcpy(ptr, data + offset, size);
+		Unmap();
+	}
+
+	VulkanBuffer& VulkanBuffer::Flush()	const
+	{
+		if (mapped_)
+		{
+			vmaFlushAllocation(graph_->GetMemeAllocator().Get(), vma_data_, 0, GetSize());
+		}
+		return *this;
+	}
+
+	VulkanBuffer& VulkanBuffer::Clear(uint32_t data)
+	{
+		assert(VK_BUFFER_USAGE_TRANSFER_DST_BIT & prop_info_.usage);
+		vkCmdFillBuffer(graph_->GetMemeAllocator().Get(), handle_, 0, VK_WHOLE_SIZE, data);
+		return *this;
+	}
+
+	bool VulkanBuffer::IsStage()const
+	{
+		return prop_info_.usage & 0; //todo
+	}
+
+	VulkanBufferView::VulkanBufferView(VulkanBuffer::SharedPtr buffer, VkBufferViewCreateFlags flags, VkFormat format,
+										uint32_t offset, uint32_t range):buffer_(buffer)
+	{
+
+		auto& buffer_info = buffer->prop_info_;
+		if ((buffer_info.usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))||buffer_info.size < offset+range)
+		{
+			assert(0 && "buffer not support view");
+		}
+
+		auto view_info = MakeBufferViewCreateInfo(flags, buffer->Get(), format, offset, range);
+		auto ret = vkCreateBufferView(GetGlobalDevice(), &view_info, g_host_alloc, &handle_);
+	}
+
+	VulkanBufferView::Handle VulkanBufferView::Get()
+	{
+		return handle_;
+	}
+
+	VulkanBufferView::~VulkanBufferView()
+	{
+		if (VK_NULL_HANDLE != handle_)
+		{
+			vkDestroyBufferView(GetGlobalDevice(), handle_, g_host_alloc);
+		}
+	}
+
 }

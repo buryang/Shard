@@ -51,7 +51,7 @@ namespace MetaInit
 				edges_[edge_index] = {src_node_index, dst_node_index, edge_index};
 				src_node->AddOutEdge(edge_index);
 				dst_node->AddInEdge(edge_index);
-				add_edge_(edge_index);
+				add_edge_clk_(edge_index);
 			}
 		}
 
@@ -63,14 +63,14 @@ namespace MetaInit
 				GetNode(edge->GetSrc())->RemoveOutEdge(index);
 				GetNode(edge->GetDst())->RemoveInEdge(index);
 				edges_.erase(index);
-				rm_edge_(index);
+				rm_edge_clk_(index);
 			}
 		}
 
 		void DirectedAcyclicGraph::AddNode(uint32_t node_index)
 		{
 			nodes_.insert(eastl::make_pair(node_index, Node()));
-			add_node_(node_index);
+			add_node_clk_(node_index);
 		}
 
 		void DirectedAcyclicGraph::RemoveNode(uint32_t node_index)
@@ -92,7 +92,7 @@ namespace MetaInit
 					RemoveEdge(edge_index);
 				}
 				nodes_.erase(node_index);
-				rm_node_(node_index);
+				rm_node_clk_(node_index);
 			}
 		}
 

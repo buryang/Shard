@@ -1,11 +1,11 @@
-#include "RHI/VulkanRHI.h"
-#include "RHI/VulkanMemAllocator.h"
-#include "RHI/VulkanCmdContext.h"
-#include "GLM/glm.hpp"
+#include "eastl/algorithm.h"
+#include "Utils/CommonUtils.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
+#include "RHI/Vulkan/API/VulkanMemAllocator.h"
+#include "RHI/Vulkan/API/VulkanCmdContext.h"
 
-#include <string>
-#include <vector>
-#include <fstream>
+#define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
+#define ADD_LAYER_IF(CONDITION, LAYER_NAME) if(CONDITION) { layers.emplace_back(LAYER_NAME); }
 
 namespace MetaInit
 {
@@ -14,159 +14,137 @@ namespace MetaInit
 	  allocations are off the critical path", so just set null*/
 	VkAllocationCallbacks* g_host_alloc = VK_NULL_HANDLE;
 
-	namespace {
-		constexpr uint32_t max_phy_devices = 16;
+	//whether use ASYNC COMPUTE
+	REGIST_PARAM_TYPE(BOOL, DEVICE_ASYNC_COMPUTE, true);
+
+	static inline VkDeviceCreateInfo MakeDeviceCreateInfo(VkDeviceCreateFlags flags, const Span<VkDeviceQueueCreateInfo>& queue_infos, const Span<const char*>& ext_infos)
+	{
+		VkDeviceCreateInfo device_info;
+		memset(&device_info, 0, sizeof(device_info));
+		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		device_info.flags = flags;
+		device_info.queueCreateInfoCount = queue_infos.size();
+		device_info.pQueueCreateInfos = queue_infos.data();
+		device_info.enabledExtensionCount = ext_infos.size();
+		device_info.ppEnabledExtensionNames = ext_infos.data();
+		return device_info;
 	}
 
-	VulkanDevice::Ptr VulkanDevice::Create(VulkanInstance::Ptr instance, const VkDeviceCreateInfo& device_info)
+	static inline VkInstanceCreateInfo MakeInstanceCreateInfo(VkInstanceCreateFlags flags, const VkApplicationInfo& app_info, const Span<const char*> ext_infos, const Span<const char*>& layer_infos)
 	{
-		
-		uint32_t phy_device_count = 0;
-		auto ret = vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, VK_NULL_HANDLE);
-		assert(VK_SUCCESS == ret && "not phy device enumereated");
-		std::array<VkPhysicalDevice, max_phy_devices> phy_devices;
-		vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, phy_devices.data());
-		//find the best phydevice
-		auto query_phy_device = [&](VkPhysicalDevice device) {
+		VkInstanceCreateInfo instance_info;
+		memset(&instance_info, 0, sizeof(instance_info));
+		instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		instance_info.flags = flags;
+		instance_info.pApplicationInfo = &app_info;
+		instance_info.enabledLayerCount = layer_infos.size();
+		instance_info.ppEnabledLayerNames = layer_infos.data();
+		instance_info.enabledExtensionCount = ext_infos.size();
+		instance_info.ppEnabledExtensionNames = ext_infos.data();
+		return instance_info;
+	}
 
-			//1.step check extension support
-			uint32_t extension_count;
-			vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
-			SmallVector<VkExtensionProperties> available_extensions;
-			vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions.data());
-			for (auto n = 0; n < device_info.enabledExtensionCount; ++n)
-			{
-				auto ext_iter = std::find(available_extensions.begin(), available_extensions.end(), device_info.ppEnabledExtensionNames[n]);
-				if (available_extensions.end() == ext_iter)
-				{
-					return false;
-				}
-			}
-			
-			//2.step check feature support
-			if (nullptr != device_info.pEnabledFeatures)
-			{
-				VkPhysicalDeviceDescriptorIndexingFeaturesEXT index_feature{};
-				memset(&index_feature, 0, sizeof(index_feature));
-				index_feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-				VkPhysicalDeviceFeatures2 device_features{};
-				device_features.pNext = &index_feature;
-				vkGetPhysicalDeviceFeatures2(device, &device_features);
-				if (std::memcmp(device_info.pEnabledFeatures, &device_features.features, sizeof(device_features.features)) != 0)
-				{
-					return false;
-				}
+	VulkanDevice::SharedPtr VulkanDevice::Create(VulkanInstance::SharedPtr instance)
+	{
+		VulkanDevice::SharedPtr device_ptr{ new VulkanDevice };
+		SmallVector<const char*> extensions;
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_BUDGET), "VK_EXT_memory_budget");
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_REQUIRE), "VK_KHR_get_memory_requirements2");
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC), "VK_KHR_dedicated_allocation");
 
-				///now force bindless add bindless check like https://zhuanlan.zhihu.com/p/136449475
-				if (!(index_feature.runtimeDescriptorArray && index_feature.descriptorBindingVariableDescriptorCount
-					&& index_feature.shaderSampledImageArrayNonUniformIndexing))
-				{
-					return false;
-				}
-			}
-			return true;
-		};
-		auto selected_phy_device = std::find_if(phy_devices.begin(), phy_devices.end(), query_phy_device);
-		if (selected_phy_device == phy_devices.end())
+		auto select_phy_device = SelectSuitAbleDevice(instance, extensions);
+
+		uint32_t queue_property_count = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(selected_phy_device, &queue_property_count, nullptr);
+		SmallVector<VkQueueFamilyProperties> queue_properties(queue_property_count);
+		vkGetPhysicalDeviceQueueFamilyProperties(selected_phy_device, &queue_property_count, queue_properties.data());
+
+		SmallVector<VkDeviceQueueCreateInfo, 3> queue_infos;
 		{
-			throw std::invalid_argument("no suitable device found");
-		}
-		VulkanDevice::Ptr device_ptr{ new VulkanDevice };
-		auto ret = vkCreateDevice(*selected_phy_device, &device_info, g_host_alloc, &device_ptr->handle_);
-		assert(ret == VK_SUCCESS && "create device failed");
-		device_ptr->device_info_ = device_info;
-		vkGetPhysicalDeviceProperties(*selected_phy_device, &device_ptr->device_prop_);
+			const auto find_queue_family = [&](VkQueueFlags flags) {
+				for (auto n = 0; n < queue_properties.size(); ++n) {
+					const auto& prop = queue_properties[n];
+					if ((prop.queueFlags & ~VK_QUEUE_SPARSE_BINDING_BIT) == flags) {
+						return n;
+					}
+				}
+				PLOG(ERROR) << "do not find suitable queue";
+			};
 
-		device_ptr->Init();
+			auto gfx_family = find_queue_family(VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+			VkDeviceQueueCreateInfo gfx_queue;
+			memset(&gfx_queue, 0, sizeof(gfx_queue));
+			gfx_queue.queueFamilyIndex = gfx_family;
+			gfx_queue.queueCount = 1;
+			queue_infos.emplace_back(gfx_queue);
+			VulkanQueue::RegistFamily(VulkanQueue::EQueueType::eAllIn, gfx_family);
+
+			/*
+				auto transfer_family = find_queue_family(VK_QUEUE_TRANSFER_BIT);
+				VkDeviceQueueCreateInfo transfer_queue;
+				memset(&gfx_queue, 0, sizeof(transfer_queue));
+				transfer_queue.queueFamilyIndex = transfer_family;
+				transfer_queue.queueCount = 1;
+				queue_infos.emplace_back(transfer_queue);
+				VulkanQueue::RegistFamily(VulkanQueue::EQueueType::eTransfer, transfer_family);
+			*/
+			
+			if (GET_PARAM_TYPE_VAL(BOOL, DEVICE_ASYNC_COMPUTE)) {
+				auto compute_family = find_queue_family(VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT);
+				VkDeviceQueueCreateInfo compute_queue;
+				memset(&compute_queue, 0, sizeof(compute_queue));
+				compute_queue.queueFamilyIndex = compute_family;
+				compute_queue.queueCount = 1;
+				queue_infos.emplace_back(compute_queue);
+				VulkanQueue::RegistFamily(VulkanQueue::EQueueType::eNonGFX, compute_family);
+			}
+		}
+
+		const auto device_info = MakeDeviceCreateInfo(0x0, queue_infos, extensions);
+		auto ret = vkCreateDevice(selected_phy_device, &device_info, g_host_alloc, &device_ptr->handle_);
+		PCHECK(VK_SUCESS == ret ) << "vulkan create logic device failed";
 		return device_ptr;
 	}
 
-	VulkanQueue::Ptr VulkanDevice::GetQueue(VulkanDevice::EQueueType queue_type)
-	{
-		auto family_index = queue_families_[queue_type];
-
-		for(const auto findex:family_index)
-		{
-			auto& inuse = queue_inuse_[findex];
-			std::lock_guard<eastl::mutex> inuse_lock(mutex_);
-			auto iter = std::find(inuse.begin(), inuse.end(), 0);
-			if (iter != inuse.end())
-			{
-				auto index = static_cast<uint32_t>(iter - inuse.begin());
-				inuse[index] = 0xffffff; // fixme
-				return std::make_shared<VulkanQueue>(new VulkanQueue(shared_from_this(), findex, index));
-			}
-		}
-		throw std::runtime_error("no supported queue for this type");
-	}
-
-	VulkanQueue::Ptr VulkanDevice::QueryQueue(QueryCallback query)
-	{
-		for (uint32_t findex = 0; findex < queue_inuse_.size(); ++findex)
-		{
-			auto ret = query(phy_devices_, findex);
-			if (ret)
-			{
-				auto& inuse = queue_inuse_[findex];
-				std::lock_guard<eastl::mutex> inuse_lock(mutex_);
-				auto iter = std::find(inuse.begin(), inuse.end(), 0);
-				if (inuse.end() != iter)
-				{
-					auto index = static_cast<uint32_t>(iter - inuse.begin());
-					inuse[index] = 0xffffff; // fixme
-					return std::make_shared<VulkanQueue>( new VulkanQueue(shared_from_this(), findex, index));
-				}
-
-			}
-		}
-	
-		throw std::runtime_error("no supported queue");
-	}
-
-	void VulkanDevice::ReleaseQueue(VulkanQueue::Ptr queue)
-	{
-		std::lock_guard<eastl::mutex> queue_lock(mutex_);
-		queue_inuse_[queue->GetFamilyIndex()][queue->GetIndex()] = 0;
-	}
-
-	VkSampleCountFlags VulkanDevice::GetMaxUsableSampleCount()const
+	VkSampleCountFlags VulkanDevice::GetMaxUsableSampleCount() const
 	{
 		//todo
 		VkSampleCountFlags counts = std::min(device_prop_.limits.framebufferColorSampleCounts,
 												device_prop_.limits.framebufferDepthSampleCounts);
-#define CHECK(FLAG) if(counts&FLAG) {return FLAG;}
-		CHECK(VK_SAMPLE_COUNT_64_BIT);
-		CHECK(VK_SAMPLE_COUNT_32_BIT);
-		CHECK(VK_SAMPLE_COUNT_16_BIT);
-		CHECK(VK_SAMPLE_COUNT_8_BIT);
-		CHECK(VK_SAMPLE_COUNT_4_BIT);
-		CHECK(VK_SAMPLE_COUNT_2_BIT);
+#define CHECK_BIT(FLAG) if(counts & FLAG) { return FLAG; }
+		CHECK_BIT(VK_SAMPLE_COUNT_64_BIT);
+		CHECK_BIT(VK_SAMPLE_COUNT_32_BIT);
+		CHECK_BIT(VK_SAMPLE_COUNT_16_BIT);
+		CHECK_BIT(VK_SAMPLE_COUNT_8_BIT);
+		CHECK_BIT(VK_SAMPLE_COUNT_4_BIT);
+		CHECK_BIT(VK_SAMPLE_COUNT_2_BIT);
 		return VK_SAMPLE_COUNT_1_BIT;
+#undef CHECK_BIT
 	}
 
 	uint32_t VulkanDevice::GetMaxColorTargetCount() const
 	{
-		return device_prop_.limits.maxColorAttachments;
+		return 0;
 	}
 
 	uint32_t VulkanDevice::GetMaxPushConstantLimit() const
 	{
-		return device_prop_.limits.maxPushConstantsSize;
+		return 0;
 	}
 
 	uint32_t VulkanDevice::GetMaxVertexInputAttributes() const
 	{
-		return device_prop_.limits.maxVertexInputAttributes;
+		return 0;
 	}
 
 	uint32_t VulkanDevice::GetMaxVertexInputBinds() const
 	{
-		return device_prop_.limits.maxVertexInputBindings;
+		return 0;
 	}
 
 	VkDeviceSize VulkanDevice::GetMinUniformBufferOffsetAlignment() const
 	{
-		return device_prop_.limits.minUniformBufferOffsetAlignment;
+		return 0;
 	}
 
 	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
@@ -178,19 +156,20 @@ namespace MetaInit
 
 	void VulkanDevice::GetSwapchainSupportInfo() const
 	{
+		return;
 	}
 
 	bool VulkanDevice::IsFormatSupported(VkFormat format)const
 	{
-		VkImageFormatProperties format_prop;
+		VkImageFormatProperties format_prop{};
 		/*If format is not a supported image format, or if the combination of format, type, tiling, usage, and
 			flags is not supported for images, then vkGetPhysicalDeviceImageFormatProperties returns VK_ERROR_FORMAT_NOT_SUPPORTED.*/
-		auto ret = vkGetPhysicalDeviceImageFormatProperties(phy_devices_, format, VK_IMAGE_TYPE_2D,
+		auto ret = vkGetPhysicalDeviceImageFormatProperties(back_end_, format, VK_IMAGE_TYPE_2D,
 															VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0, &format_prop);
 		return ret != VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 	
-	void VulkanDevice::WaitIdle()const
+	void VulkanDevice::WaitIdle() const
 	{
 		vkDeviceWaitIdle(handle_);
 	}
@@ -203,95 +182,75 @@ namespace MetaInit
 		}
 	}
 
-	void VulkanDevice::Init()
+	VkPhysicalDevice VulkanDevice::SelectSutiAbleDevice(VulkanInstance::SharedPtr instance, const Span<const char*> extensions)
 	{
-		uint32_t family_count = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices_, &family_count, nullptr);
-		SmallVector<VkQueueFamilyProperties> family_props(family_count);
-		vkGetPhysicalDeviceQueueFamilyProperties(phy_devices_, &family_count, family_props.data());
-
-		queue_inuse_.resize(family_count);
-		for (auto n = 0; n < family_count; ++n)
-		{
-			auto& inuse = queue_inuse_[n];
-			inuse.resize(family_props[n].queueCount);
-			std::fill(inuse.begin(), inuse.end(), 0);
-		}
-
-		auto queue_creator = [&](EQueueType queue_type) {
-			VkQueueFlags queue_flags = 0;
-			switch (queue_type)
+		uint32_t phy_device_count = 0;
+		auto ret = vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, VK_NULL_HANDLE);
+		assert(VK_SUCCESS == ret && "not phy device enumereated");
+		SmallVector<VkPhysicalDevice> phy_devices(phy_device_count);
+		vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, phy_devices.data());
+		//find the best phydevice
+		const auto query_phy_device = [&](auto device)->bool {
+			uint32_t extension_count;
+			vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
+			SmallVector<VkExtensionProperties> available_extensions;
+			vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions.data());
+			for (auto n = 0; n < extensions.size(); ++n)
 			{
-			case EQueueType::eGraphics:
-				queue_flags = VK_QUEUE_GRAPHICS_BIT;
-				break;
-			case EQueueType::eCompute:
-				queue_flags = VK_QUEUE_COMPUTE_BIT;
-				break;
-			case EQueueType::eTransfer:
-				queue_flags = VK_QUEUE_TRANSFER_BIT;
-				break;
-			case EQueueType::eAllIn:
-				queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
-				break;
-			default:
-				throw std::invalid_argument("not supported queue type");
-			}
-
-			for (auto findex = 0; findex < family_count; ++findex)
-			{
-				auto& prop = family_props[findex];
-				if (queue_flags & prop.queueFlags)
+				auto ext_iter = std::find(available_extensions.begin(), available_extensions.end(), extensions[n]);
+				if (available_extensions.end() == ext_iter)
 				{
-					queue_families_[queue_type].push_back(findex);
+					return false;
 				}
 			}
+			return true;
 		};
-
-		queue_creator(VulkanDevice::EQueueType::eGraphics);
-		queue_creator(VulkanDevice::EQueueType::eCompute);
-		queue_creator(VulkanDevice::EQueueType::eTransfer);
-		queue_creator(VulkanDevice::EQueueType::eAllIn);
-
-		//init command pool
-		pool_manager_.Init(handle_);
+		auto selected_phy_device = eastl::find_if(phy_devices.begin(), phy_devices.end(), query_phy_device);
+		CHECK(selected_phy_device != phy_devices.end()) << "vulkan can not find physic device suitable";
+		return *select_phy_device;
 	}
 
-	VulkanInstance::Ptr VulkanInstance::Create(const VkInstanceCreateInfo& params)
+	VulkanInstance::SharedPtr VulkanInstance::Create()
 	{
-		VulkanInstance::Ptr instance_ptr(new VulkanInstance);
+		VkApplicationInfo app_info;
+		memset(&app_info, 0, sizeof(app_info));
+		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		app_info.pEngineName = "MetaInit";
+		app_info.engineVersion = 1;
+		app_info.apiVersion = 0;
+
+		SmallVector<const char*> extensions;
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, INSTANCE_DEBUG_REPORT_EXT), "VK_EXT_debug_report");
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, INSTANCE_DEBUG_UTILS_EXT), "VK_EXT_debug_utils");
+		SmallVector<const char*> layers;
+
+		VulkanInstance::SharedPtr instance_ptr(new VulkanInstance);
+		const auto& instance_info = MakeInstanceCreateInfo(0x0, app_info, extensions, layers);
 
 		/*check instance extensions*/
-		if (params.enabledExtensionCount>0)
+		if (instance_info.enabledExtensionCount > 0)
 		{
-			
 			uint32_t extensions_count = 0;
 			vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensions_count, VK_NULL_HANDLE);
-
-			if (extensions_count <= 0)
-			{
-				throw std::runtime_error("error while get instance extensions count");
-			}
-
 			SmallVector<VkExtensionProperties> extensions(extensions_count);
 			vkEnumerateInstanceExtensionProperties(VK_NULL_HANDLE, &extensions_count, extensions.data());
 
-			auto extension_check = [&](const char* ext_name) {
+			const auto extension_check = [&](const char* ext_name) {
 				auto iter = std::find_if(extensions.begin(), extensions.end(), [&](VkExtensionProperties prop) {return strcmp(prop.extensionName, ext_name)==0;});
 				if (iter == extensions.end())
 					return true;
 				return false;
 			};
 
-			if (std::any_of(params.ppEnabledExtensionNames, params.ppEnabledExtensionNames+
-								params.enabledExtensionCount, extension_check))
+			if (eastl::any_of(instance_info.ppEnabledExtensionNames,
+				instance_info.ppEnabledExtensionNames + instance_info.enabledExtensionCount, extension_check))
 			{
-				throw std::invalid_argument("some extension not support by instance");
+				PLOG(ERROR) << "not all extension supported";
 			}
 		}
 
 		//check instance layer support
-		if (params.enabledLayerCount > 0)
+		if (instance_info.enabledLayerCount > 0)
 		{
 			uint32_t layers_count = 0;
 			vkEnumerateInstanceLayerProperties(&layers_count, nullptr);
@@ -299,60 +258,61 @@ namespace MetaInit
 			{
 				SmallVector<VkLayerProperties> layers(layers_count);
 				vkEnumerateInstanceLayerProperties(&layers_count, layers.data());
-				auto layer_check = [&](const char* layer_name) {
+				const auto layer_check = [&](const char* layer_name) {
 					auto iter = std::find_if(layers.begin(), layers.end(), [&](VkLayerProperties prop) {return strcmp(layer_name, prop.layerName) == 0;});
 					if (iter == layers.end())
 						return true;
 					return false;
 				};
 
-				if (std::any_of(params.ppEnabledLayerNames, params.ppEnabledLayerNames + params.enabledLayerCount, layer_check))
+				if (std::any_of(instance_info.ppEnabledLayerNames, instance_info.ppEnabledLayerNames + instance_info.enabledLayerCount, layer_check))
 				{
-					throw std::invalid_argument("some layers not support by instance");
+					PLOG(ERROR) << " : some layers not support by instance";
 				}
 			}
 		}
-
 		//create instance
-		auto ret = vkCreateInstance(&params, g_host_alloc, &instance_ptr->handle_);
-		if (ret != VK_SUCCESS)
-		{
-			throw std::runtime_error("create vulkan instance failed");
-		}
-
+		auto ret = vkCreateInstance(&instance_info, g_host_alloc, &instance_ptr->handle_);
+		PCHECK(ret == VK_SUCCESS) << "create vulkan instance failed";
 		return instance_ptr;
 	}
 
-	VulkanQueue::VulkanQueue(VulkanDevice::Ptr device, uint32_t family_index, uint32_t index):device_(device)
+	VulkanQueue::VulkanQueue(uint32_t family_index, uint32_t index):family_index_(family_index), index_(index)
 	{
-		//todo other work
-		vkGetDeviceQueue(device->Get(), family_index, index, &handle_);
+		vkGetDeviceQueue(GetGlobalDevice(), family_index, index, &handle_);
 	}
 
-	void VulkanQueue::Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem, VkFence fence = VK_NULL_HANDLE)
+	VulkanQueue::SharedPtr VulkanQueue::Create(VulkanQueue::EQueueType queue_type)
+	{
+		VulkanQueue::SharedPtr queue;
+		auto family_index = queue_families_[VulkanQueue::EQueueType::AllIn];
+		if (GET_PARAM_TYPE_VAL(DEVICE_ASYNC_COMPUTE) && (VulkanQueue::EQueueType::eCompute == queue_type ||
+			VulkanQueue::EQueueType::eNonGFX == queue_type))
+		{
+			family_index = queue_families_[VulkanQueue::EQueueType::eNonGFX];
+		}
+		queue.reset(new VulkanQueue(family_index, 0));
+		return queue;
+	}
+
+	void VulkanQueue::Submit(VulkanCmdBuffer::SharedPtr cmd_buffer, const Span<VkSemaphore>& wait_semaphores, const Span<VkSemaphore>& signal_semaphores, VkFence fence)
 	{
 		VkSubmitInfo submit_info{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
 		memset(&submit_info, 0, sizeof(VkSubmitInfo));
-		submit_info.commandBufferCount = cmd_buffers.size();
-		SmallVector<VkCommandBuffer> cmd_handles;
-		for (auto n = 0; n < cmd_buffers.size(); ++n)
-		{
-			cmd_handles[n] = cmd_buffers[n].Get();
-		}
-		submit_info.pCommandBuffers = cmd_handles.data(); //fixme
+		submit_info.commandBufferCount = 1;
+		const VkCommandBuffer temp_cmd_buffers[] = { cmd_buffer->Get() };
+		submit_info.pCommandBuffers = temp_cmd_buffers;
 
-		if (!wait_sem.empty())
+		if (!wait_semaphores.empty())
 		{
-			submit_info.waitSemaphoreCount = wait_sem.size();
-			submit_info.pWaitSemaphores = wait_sem.data();
+			submit_info.waitSemaphoreCount = wait_semaphores.size();
+			submit_info.pWaitSemaphores = wait_semaphores.data();
 		}
-
-		if (!signal_sem.empty())
+		if (!signal_semaphores.empty())
 		{
-			submit_info.signalSemaphoreCount = signal_sem.size();
-			submit_info.pSignalSemaphores = signal_sem.data();
+			submit_info.signalSemaphoreCount = signal_semaphores.size();
+			submit_info.pSignalSemaphores = signal_semaphores.data();
 		}
-
 		vkQueueSubmit(handle_, 1, &submit_info, fence); 
 	}
 
@@ -365,16 +325,4 @@ namespace MetaInit
 	{
 		vkQueueWaitIdle(handle_);
 	}
-
-	VulkanQueue::~VulkanQueue()
-	{
-		//noop, detroy queue while destroying device
-		if (nullptr != device_)
-		{
-			device_->ReleaseQueue(*this);
-		}
-
-	}
-
-
 }

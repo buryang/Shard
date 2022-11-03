@@ -13,7 +13,7 @@ namespace MetaInit {
 		if (auto iter = map.find(key); iter != map.end()) {
 			return iter->second;
 		}
-		//deal with error
+		LOG(ERROR) << __FUNCTION__ << ":not supported global params(" << key << ")" << std::endl;
 	}
 
 	bool GlobalRenderConfig::SetBOOLVal(const String& key, BOOL val)

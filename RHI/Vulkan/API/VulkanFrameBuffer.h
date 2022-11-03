@@ -13,7 +13,7 @@ namespace MetaInit
 		{
 			struct Attachment
 			{
-				Primitive::VulkanImageView image_view_;
+				 VulkanImageView image_view_;
 			};
 			SmallVector<Attachment>	color_attachs_;
 			Attachment	depth_attach_;

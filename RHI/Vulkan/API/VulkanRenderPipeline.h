@@ -8,7 +8,7 @@
 namespace MetaInit
 {
 	class VulkanCmdBuffer;
-	class DescriptorSetsWrapper;
+	class VulkanDescriptorSet;
 	class VulkanRenderPipeline
 	{
 	public:
@@ -108,14 +108,14 @@ namespace MetaInit
 		VkPipeline Get() { return handle_; }
 		const VkPipelineLayout GetLayout()const { return layout_; }
 		EPipeType Type()const { return pipe_type_; }
-		DescriptorSetsWrapper& operator[](const std::string& set_name); 
+		VulkanDescriptorSet& operator[](const std::string& set_name); 
 		VulkanRenderPipeline(VulkanDevice::Ptr device, const Desc& desc, EPipeType pipe_type);
 		virtual ~VulkanRenderPipeline();
 	private:
 		void InitialDescSetLayouts(const RootSignature& root);
 	protected:
 		using ShaderList = Vector<VulkanShaderModule::Ptr>;
-		using DescSetList = Vector<DescriptorSetsWrapper>;
+		using DescSetList = Vector<VulkanDescriptorSet>;
 		VulkanDevice::Ptr				device_;
 		VkPipeline						handle_{ VK_NULL_HANDLE };
 		EPipeType						pipe_type_;

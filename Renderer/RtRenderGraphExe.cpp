@@ -111,7 +111,7 @@ namespace MetaInit
 			const String& key = field.GetParentName();
 			if (texture_map_.find(key) == texture_map_.end()) {
 				//transform field to desc
-				TextureHandle texture_handle = texture_repo_.Alloc();
+				TextureHandle texture_handle = texture_repo_.Alloc(field);
 				texture_map_.insert(eastl::make_pair(key, texture_handle));
 			}
 			return texture_map_[key];
@@ -122,15 +122,25 @@ namespace MetaInit
 			const String& key = field.GetParentName();
 			if (buffer_map_.find(key) == buffer_map_.end()) {
 				//transform field to desc
-				BufferHandle buffer_handle = buffer_repo_.Alloc();
+				BufferHandle buffer_handle = buffer_repo_.Alloc(field);
 				buffer_map_.insert(eastl::make_pair(key, buffer_handle));
 			}
 			return buffer_map_[key];
 		}
 
-		RtRenderGraphExecutor& RtRenderGraphExecutor::RegistExternalResource(const String& field_name, RtRenderResource::Ptr resource)
+		RtRenderGraphExecutor& RtRenderGraphExecutor::RegistExternalResource(const RtField& field, RtRenderResource::Ptr external_resource)
 		{
-
+			//alloc a same configure resource as resource
+			const auto& field_name = field.GetName();
+			if (field.GetType() == RtField::EType::eBuffer) {
+				auto buffer_handle = buffer_repo_.Alloc(*external_resource);
+				buffer_map_.insert(eastl::make_pair(field_name, buffer_handle));
+			}
+			else
+			{
+				auto texture_handle = texture_repo_.Alloc(*external_resource);
+				texture_map_.insert(eastl::make_pair());
+			}
 			return *this;
 		}
 

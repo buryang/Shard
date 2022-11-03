@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "volk/volk.h"
 #include "glfw/glfw3.h"
@@ -7,53 +8,35 @@
 namespace MetaInit
 {
 	extern VkAllocationCallbacks* g_host_alloc;
+	static constexpr uint32_t MAX_QUEUE_COUNT = 16;
 
-	VkDeviceCreateInfo MakeDeviceCreateInfo(VkDeviceCreateFlags flags, const Vector<VkDeviceQueueCreateInfo>& queue_infos,
-		const Vector<const char*>& ext_infos, const Vector<const char*>& layer_infos,
-		const Vector<VkPhysicalDeviceFeatures>& device_features);
-	VkInstanceCreateInfo MakeInstanceCreateInfo(VkInstanceCreateFlags flags, const VkApplicationInfo& app_info,
-		const Vector<const char*> ext_infos, const Vector<const char*>& layer_infos);
-
-	class MINIT_API VulkanInstance
+	class VulkanInstance
 	{
 	public:
 		using SharedPtr = std::shared_ptr<VulkanInstance>;
 		using Handle = VkInstance;
-		static SharedPtr Create(const VkInstanceCreateInfo& params);
+		static SharedPtr Create();
 		Handle Get() { return handle_; }
 		~VulkanInstance() { vkDestroyInstance(handle_, g_host_alloc); }
 	private:
 		VkInstance	handle_{ VK_NULL_HANDLE };
-		Vector<VkExtensionProperties>	extensions_;
-		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };
 	};
 
 	//todo alloc queue, and do swapchain init check
-	class VulkanVMAWrapper;
 	class VulkanQueue;
 	class VulkanCmdPoolManager;
-	class MINIT_API VulkanDevice : public std::enable_shared_from_this<VulkanDevice>
+	class VulkanDevice : public std::enable_shared_from_this<VulkanDevice>
 	{
 	public:
-		enum class EQueueType : uint32_t
-		{
-			eGraphics,
-			eCompute,
-			eTransfer,
-			eAllIn,
-		};
 		using SharedPtr = std::shared_ptr<VulkanDevice>;
 		using Handle = VkDevice;
-		static SharedPtr Create(VulkanInstance::SharedPtr instance, const VkDeviceCreateInfo& device_info);
-		using QueryCallback = std::function<bool(VkPhysicalDevice device, uint32_t family_index)>;
-		Handle Get() { return handle_; }
-		VkPhysicalDevice GetPhy() { return phy_devices_; }
-		VulkanQueue::Ptr GetQueue(EQueueType queue_type);
-		VulkanQueue::Ptr QueryQueue(QueryCallback query);
-		VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
+		using PhyHandle = VkPhysicalDevice;
+		static SharedPtr Create(VulkanInstance::SharedPtr instance);
+		FORCE_INLINE Handle Get() { return handle_; }
+		FORCE_INLINE PhyHandle GetPhyHandle() { return back_end_; }
+		FORCE_INLINE VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
 		//function to deal with command buffer logic
 		VulkanCmdPoolManager& GetCmdPoolManager() { return pool_manager_; }
-		void ReleaseQueue(VulkanQueue::Ptr queue);
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
 		uint32_t GetMaxColorTargetCount()const;
 		uint32_t GetMaxPushConstantLimit()const;
@@ -73,41 +56,60 @@ namespace MetaInit
 	private:
 		VulkanDevice() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanDevice);
-		void Init();
+		static VkPhysicalDevice SelectSuitAbleDevice(VulkanInstance::SharedPtr instance, const Span<const char*> extensions);
 	private:
 		VkDevice	handle_{ VK_NULL_HANDLE };
-		VkPhysicalDevice	phy_devices_{ VK_NULL_HANDLE };
-		VkPhysicalDeviceProperties	device_prop_;
-		VkDeviceCreateInfo	device_info_;
+		VkPhysicalDevice back_end_{ VK_NULL_HANDLE };
 		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };//todo 
 		VulkanCmdPoolManager	pool_manager_;
-		//pair<family_index, handle>
-		Map<EQueueType, SmallVector<uint32_t, 4>>	queue_families_;
-		SmallVector<SmallVector<uint32_t>>	queue_used_;
-		eastl::mutex	mutex_;
 	};
 
 	class VulkanCmdBuffer;
 	class VulkanQueue
 	{
 	public:
-		using Ptr = std::shared_ptr<VulkanQueue>;
-		VulkanQueue() = default;
-		explicit VulkanQueue(VulkanDevice::SharedPtr device, uint32_t family_index, uint32_t index);
-		DISALLOW_COPY_AND_ASSIGN(VulkanQueue);
-		void Submit(Span<VulkanCmdBuffer>& cmd_buffers, Span<VkSemaphore>& wait_sem, Span<VkSemaphore>& signal_sem, VkFence fence=VK_NULL_HANDLE);
+		enum class EQueueType : uint32_t
+		{
+			eUnkown = 0x0,
+			eGraphics = 0x1,
+			eCompute = 0x2,
+			eTransfer = 0x4,
+			eNonCompute = eGraphics | eTransfer,
+			eNonGFX = eCompute | eTransfer, //compute and transfer queue 
+			eAllIn = eGraphics | eCompute | eTransfer,
+		};
+		using SharedPtr = std::shared_ptr<VulkanQueue>;
+		static SharedPtr Create(VulkanQueue::EQueueType queue_type);
+		static FORCE_INLINE void RegistFamily(EQueueType queue_type, uint32_t family_index) {
+			queue_families_[queue_type] = family_index;
+		}
+		void Submit(VulkanCmdBuffer::SharedPtr cmd_buffers, const Span<VkSemaphore>& wait_semaphores, const Span<VkSemaphore>& signal_semaphores, VkFence fence=VK_NULL_HANDLE);
 		void Submit(const VkPresentInfoKHR& present_info);
 		void WaitIdle()const;
 		VkQueue Get()const { return handle_; };
 		uint32_t GetFamilyIndex()const { return family_index_; }
 		uint32_t GetIndex()const { return index_; }
-		~VulkanQueue();
 	private:
-		VulkanDevice::SharedPtr	device_;
+		explicit VulkanQueue(uint32_t family_index, uint32_t index);
+		DISALLOW_COPY_AND_ASSIGN(VulkanQueue);
+	private:
+		static Map<EQueueType, uint32_t>	queue_families_;
 		VkQueue	handle_{ VK_NULL_HANDLE };
-		uint32_t	family_index_ = 0;
-		uint32_t	index_ = 0;
+		uint32_t	family_index_{ -1 };
+		uint32_t	index_{ -1 };
 	};
+
+	static inline VkDevice GetGlobalDevice() {
+		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->Get();
+	}
+
+	static inline VkPhysicalDevice GetGlobalPhyDevice() {
+		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->GetPhyHandle();
+	}
+
+	static inline const VkAllocationCallbacks* GetGlobalAllocationCallBacks() {
+		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanCallBack();
+	}
 
 }
 

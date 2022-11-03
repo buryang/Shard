@@ -1,4 +1,5 @@
 #pragma once
+#include "eastl/shared_ptr.h"
 #include "Utils/CommonUtils.h"
 #include "Core/RenderGlobalParams.h"
 #include "Renderer/RtRenderResources.h"
@@ -16,8 +17,16 @@ namespace MetaInit
 		{
 		public:
 			using Ptr =	RHIResource*;
+			using SharedPtr = eastl::shared_ptr<RHIResource>;
 			virtual void SetRHI(RHIGlobalEntity::Ptr rhi_entity) = 0;
 			virtual void Release(RHIGlobalEntity::Ptr rhi_entity) {}
+			//FIXME whether map a cpu pointer
+			virtual void* MapBackMem() {
+				PLOG(ERROR) << "resource not support map backend memory";
+			}
+			virtual void UnMapBackMem() {
+				PLOG(ERROR) << "resource not support unmap backend memory";
+			}
 			virtual size_t GetOccupySize() const = 0;
 			virtual ~RHIResource() {}
 			bool IsDedicated() const { 
@@ -57,6 +66,7 @@ namespace MetaInit
 				eTextureCube = 0x3,
 				eTextureArray = 0x4,
 			};
+			RHITextureDesc() = default;
 			explicit RHITextureDesc(const Renderer::RtField& field):layout_(field.GetLayout()), 
 																	access_(field.GetSubField().access_),
 																	format_(field.GetPixFormat()){
@@ -76,18 +86,29 @@ namespace MetaInit
 				}
 				return EType::eTexture1D;
 			}
+			//FIXME
+			FORCE_INLINE bool operator==(const RHITextureDesc& rhs) const {
+				return layout_ == rhs.layout_ && format_ == rhs.format_
+					&& access_ == rhs.access_;
+			}
+			FORCE_INLINE bool operator!=(const RHITextureDesc& rhs) const {
+				return !(*this == rhs);
+			}
 			Renderer::TextureLayout	layout_;
 			Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };
 			Renderer::EPipeLine	pipeline_{ Renderer::EPipeLine::eGraphics };
-			EPixFormat	format_;
 			bool	is_transiant_{ true };
+			EPixFormat	format_{ EPixFormat::eUnkown };
+			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
 		class RHITexture final: public RHIResource
 		{
 		public:
 			using Ptr = RHITexture*;
-			RHITexture(const RHITextureDesc& desc) :desc_(desc) {}
+			using SharedPtr = eastl::shared_ptr<RHITexture>;
+			explicit RHITexture(const RHITextureDesc& desc) :desc_(desc) {}
+			~RHITexture();
 			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
 			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
 			size_t GetOccupySize() const override;
@@ -107,22 +128,35 @@ namespace MetaInit
 			explicit RHIBufferDesc(const Renderer::RtField& field) {
 
 			}
+			FORCE_INLINE bool operator==(const RHIBufferDesc& rhs)const {
+				return type_ == rhs.type_ && size_ == rhs.size_
+					&& pipeline_ == rhs.pipeline_
+					&& access_ == rhs.access_;
+			}
+			FORCE_INLINE bool operator!=(const RHIBufferDesc& rhs)const {
+				return !(*this == rhs);
+			}
 			Type	type_;
 			uint32_t	size_;
 			Renderer::EPipeLine	pipeline_{ Renderer::EPipeLine::eGraphics };
 			Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };
+			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
 		class RHIBuffer final : public RHIResource
 		{
 		public:
 			using Ptr = RHIBuffer*;
-			RHIBuffer(const RHIBufferDesc& desc) :desc_(desc) {}
+			explicit RHIBuffer(const RHIBufferDesc& desc) :desc_(desc) {}
+			~RHIBuffer();
 			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
 			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
+			void* MapBackMem() override;
+			void UnMapBackMem() override;
 			size_t GetOccupySize() const override;
 		private:
 			const RHIBufferDesc& desc_;
+			void* mapped_data_{ nullptr };
 		};
 
 		struct RHIAccelerateDesc
@@ -133,6 +167,8 @@ namespace MetaInit
 		class RHIAccelerate final : public RHIResource
 		{
 		public:
+			using Ptr = RHIAccelerate*;
+			using SharedPtr = eastl::shared_ptr<RHIAccelerate>;
 			enum class Type : uint8_t
 			{
 				eTopLevel,

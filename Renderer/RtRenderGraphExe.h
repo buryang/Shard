@@ -45,7 +45,7 @@ namespace MetaInit
 			TextureHandle GetOrCreateTexture(const RtField& field);
 			BufferHandle GetOrCreateBuffer(const RtField& field);
 			//binding external resource to executor
-			RtRenderGraphExecutor& RegistExternalResource(const String& field_name, RtRenderResource::Ptr resource);
+			RtRenderGraphExecutor& RegistExternalResource(const RtField& field, RtRenderResource::Ptr resource);
 			//whether executor ready for draw
 			bool IsReady()const;
 		private:

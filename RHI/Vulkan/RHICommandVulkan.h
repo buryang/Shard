@@ -19,7 +19,9 @@ namespace MetaInit::RHI {
 			void CopyTexture();
 			void CopyBuffer();
 		private:
-			VulkanCmdBuffer::Ptr rhi_handle_{ nullptr };
+			VulkanCmdBuffer::SharedPtr rhi_handle_{ nullptr };
+			SmallVector<VkSemaphore> wait_semaphore_;
+			SmallVector<VkSemaphore> signal_semaphore_;
 			uint32_t cmd_count_{ 0 };
 		};
 	}
