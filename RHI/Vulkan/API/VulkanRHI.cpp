@@ -48,11 +48,11 @@ namespace MetaInit
 	{
 		VulkanDevice::SharedPtr device_ptr{ new VulkanDevice };
 		SmallVector<const char*> extensions;
-		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_BUDGET), "VK_EXT_memory_budget");
-		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_REQUIRE), "VK_KHR_get_memory_requirements2");
-		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC), "VK_KHR_dedicated_allocation");
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_BUDGET), VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_REQUIRE), VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC), VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
 
-		auto select_phy_device = SelectSuitAbleDevice(instance, extensions);
+		auto selected_phy_device = SelectSuitAbleDevice(instance, extensions);
 
 		uint32_t queue_property_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(selected_phy_device, &queue_property_count, nullptr);
@@ -102,15 +102,21 @@ namespace MetaInit
 
 		const auto device_info = MakeDeviceCreateInfo(0x0, queue_infos, extensions);
 		auto ret = vkCreateDevice(selected_phy_device, &device_info, g_host_alloc, &device_ptr->handle_);
-		PCHECK(VK_SUCESS == ret ) << "vulkan create logic device failed";
+		PCHECK(VK_SUCCESS == ret ) << "vulkan create logic device failed";
+
+		//initial device related members
+		{
+			device_ptr->back_end_ = selected_phy_device;
+			vkGetPhysicalDeviceProperties(selected_phy_device, &device_ptr->back_end_properties_);
+		}
 		return device_ptr;
 	}
 
 	VkSampleCountFlags VulkanDevice::GetMaxUsableSampleCount() const
 	{
 		//todo
-		VkSampleCountFlags counts = std::min(device_prop_.limits.framebufferColorSampleCounts,
-												device_prop_.limits.framebufferDepthSampleCounts);
+		VkSampleCountFlags counts = std::min(back_end_properties_.limits.framebufferColorSampleCounts,
+										back_end_properties_.limits.framebufferDepthSampleCounts);
 #define CHECK_BIT(FLAG) if(counts & FLAG) { return FLAG; }
 		CHECK_BIT(VK_SAMPLE_COUNT_64_BIT);
 		CHECK_BIT(VK_SAMPLE_COUNT_32_BIT);
@@ -122,35 +128,10 @@ namespace MetaInit
 #undef CHECK_BIT
 	}
 
-	uint32_t VulkanDevice::GetMaxColorTargetCount() const
-	{
-		return 0;
-	}
-
-	uint32_t VulkanDevice::GetMaxPushConstantLimit() const
-	{
-		return 0;
-	}
-
-	uint32_t VulkanDevice::GetMaxVertexInputAttributes() const
-	{
-		return 0;
-	}
-
-	uint32_t VulkanDevice::GetMaxVertexInputBinds() const
-	{
-		return 0;
-	}
-
-	VkDeviceSize VulkanDevice::GetMinUniformBufferOffsetAlignment() const
-	{
-		return 0;
-	}
-
 	VkFormatProperties VulkanDevice::GetFormatProperty(VkFormat format) const
 	{
 		VkFormatProperties format_prop{};
-		vkGetPhysicalDeviceFormatProperties(phy_devices_, format, &format_prop);
+		vkGetPhysicalDeviceFormatProperties(back_end_, format, &format_prop);
 		return format_prop;
 	}
 
@@ -178,11 +159,12 @@ namespace MetaInit
 	{
 		if (VK_NULL_HANDLE != handle_)
 		{
+			WaitIdle();
 			vkDestroyDevice(handle_, g_host_alloc);
 		}
 	}
 
-	VkPhysicalDevice VulkanDevice::SelectSutiAbleDevice(VulkanInstance::SharedPtr instance, const Span<const char*> extensions)
+	VkPhysicalDevice VulkanDevice::SelectSuitAbleDevice(VulkanInstance::SharedPtr instance, const Span<const char*> extensions)
 	{
 		uint32_t phy_device_count = 0;
 		auto ret = vkEnumeratePhysicalDevices(instance->Get(), &phy_device_count, VK_NULL_HANDLE);
@@ -207,7 +189,7 @@ namespace MetaInit
 		};
 		auto selected_phy_device = eastl::find_if(phy_devices.begin(), phy_devices.end(), query_phy_device);
 		CHECK(selected_phy_device != phy_devices.end()) << "vulkan can not find physic device suitable";
-		return *select_phy_device;
+		return *selected_phy_device;
 	}
 
 	VulkanInstance::SharedPtr VulkanInstance::Create()
@@ -285,8 +267,8 @@ namespace MetaInit
 	VulkanQueue::SharedPtr VulkanQueue::Create(VulkanQueue::EQueueType queue_type)
 	{
 		VulkanQueue::SharedPtr queue;
-		auto family_index = queue_families_[VulkanQueue::EQueueType::AllIn];
-		if (GET_PARAM_TYPE_VAL(DEVICE_ASYNC_COMPUTE) && (VulkanQueue::EQueueType::eCompute == queue_type ||
+		auto family_index = queue_families_[VulkanQueue::EQueueType::eAllIn];
+		if (GET_PARAM_TYPE_VAL(BOOL, DEVICE_ASYNC_COMPUTE) && (VulkanQueue::EQueueType::eCompute == queue_type ||
 			VulkanQueue::EQueueType::eNonGFX == queue_type))
 		{
 			family_index = queue_families_[VulkanQueue::EQueueType::eNonGFX];

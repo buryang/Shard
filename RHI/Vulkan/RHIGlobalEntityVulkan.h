@@ -54,8 +54,8 @@ namespace MetaInit::RHI {
 			//viewport 
 
 			//memory resource manager
-			RHIPooledResourceAllocatorVulkan	pooled_repo_;
-			RHITransientResourceAllocatorVulkan	transient_repo_;
+			RHIPooledTextureAllocatorVulkan	pooled_repo_;
+			RHITransientResourceAllocatorVulkan::SharedPtr transient_repo_;
 			
 			//memory alloc wrapper for vulkan
 			VkAllocationCallbacks* alloc_clk_{ nullptr };

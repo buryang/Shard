@@ -35,14 +35,10 @@ namespace MetaInit
 		FORCE_INLINE Handle Get() { return handle_; }
 		FORCE_INLINE PhyHandle GetPhyHandle() { return back_end_; }
 		FORCE_INLINE VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
+		FORCE_INLINE const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const { return back_end_properties_; }
 		//function to deal with command buffer logic
 		VulkanCmdPoolManager& GetCmdPoolManager() { return pool_manager_; }
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
-		uint32_t GetMaxColorTargetCount()const;
-		uint32_t GetMaxPushConstantLimit()const;
-		uint32_t GetMaxVertexInputAttributes()const;
-		uint32_t GetMaxVertexInputBinds()const;
-		VkDeviceSize GetMinUniformBufferOffsetAlignment()const;
 		VkSurfaceCapabilitiesKHR GetSurfaceSupportInfo()const;
 		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;
@@ -60,6 +56,7 @@ namespace MetaInit
 	private:
 		VkDevice	handle_{ VK_NULL_HANDLE };
 		VkPhysicalDevice back_end_{ VK_NULL_HANDLE };
+		VkPhysicalDeviceProperties back_end_properties_;
 		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };//todo 
 		VulkanCmdPoolManager	pool_manager_;
 	};

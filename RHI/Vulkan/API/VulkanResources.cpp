@@ -1,6 +1,6 @@
 #include "RHI/Vulkan/API/VulkanRHI.h"
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
-#include "RHI/Vulkan/API/VulkanResource.h"
+#include "RHI/Vulkan/API/VulkanResources.h"
 #include "RHI/Vulkan/API/VulkanDescriptor.h"
 #include "Scene/Primitive.h"
 
@@ -123,11 +123,6 @@ namespace MetaInit
 	{
 		state_ = new_state;
 		return *this;
-	}
-
-	VkSampleCountFlagBits VulkanImage::GetSampleCount()const
-	{
-		return prop_info_.samples;
 	}
 
 	VulkanImage& VulkanImage::Clear(VkClearValue value, const VkImageSubresourceRange& region)

@@ -1,6 +1,7 @@
 #pragma once
 #include "RHI/Vulkan/API/VulkanRHI.h"
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
+#include "RHI/RHIResources.h"
 
 namespace MetaInit
 {
@@ -41,6 +42,7 @@ namespace MetaInit
 		uint32_t GetLayers()const;
 		VulkanImage& SetState(EResourceState new_state);
 		VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
+		void Bind();
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, SharedPtr image);
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, VulkanBuffer::SharedPtr buffer);
 	private:
@@ -130,8 +132,8 @@ namespace MetaInit
 	private:
 		friend class VulkanBufferView;
 		friend class VulkanImage;
-		bool	mapped_{ false };
 		Handle	handle_{ VK_NULL_HANDLE };
+		void*	mapped_data_{ nullptr };
 		//VkBuffer	stage_buffer_{ VK_NULL_HANDLE };
 		VkBufferCreateInfo	prop_info_;
 		EResourceState	state_{ EResourceState::eUndefined };
