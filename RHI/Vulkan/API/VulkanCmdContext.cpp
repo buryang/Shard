@@ -344,6 +344,11 @@ namespace MetaInit
 			barrier_info.image_barriers_.size(), barrier_info.image_barriers_.size() > 0 ? barrier_info.image_barriers_.data() : nullptr);
 	}
 
+	void VulkanCmdBuffer::PushConstants(const uint32_t flags, const uint32_t offset, const Span<uint8_t>& constants)
+	{
+		vkCmdPushConstants(handle_, nullptr, flags, offset, constants.size_bytes(), constants.data());
+	}
+
 	VulkanCmdBuffer::VulkanCmdBuffer(VulkanCmdPool::SharedPtr cmd_pool):parent_(cmd_pool)
 	{
 		//first to support primary command

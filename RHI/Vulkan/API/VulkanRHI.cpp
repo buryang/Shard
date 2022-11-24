@@ -1,8 +1,9 @@
 #include "eastl/algorithm.h"
 #include "Utils/CommonUtils.h"
-#include "RHI/Vulkan/API/VulkanRHI.h"
 #include "RHI/Vulkan/API/VulkanMemAllocator.h"
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
+#include "RHI/Vulkan/API/VulkanHelperStruct.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
 #define ADD_LAYER_IF(CONDITION, LAYER_NAME) if(CONDITION) { layers.emplace_back(LAYER_NAME); }
@@ -16,6 +17,16 @@ namespace MetaInit
 
 	//whether use ASYNC COMPUTE
 	REGIST_PARAM_TYPE(BOOL, DEVICE_ASYNC_COMPUTE, true);
+
+	static inline void MakeBindlessDeviceDescriptorIndexingFeatures(VkPhysicalDeviceDescriptorIndexingFeatures& indexing_features) {
+		memset(&indexing_features, 1, sizeof(indexing_features)); //default enable everything
+		indexing_features.pNext = nullptr;
+		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+		//https://blog.traverseresearch.nl/bindless-rendering-setup-afeb678d77fc
+		indexing_features.descriptorBindingUniformBufferUpdateAfterBind = false;//
+		indexing_features.shaderInputAttachmentArrayDynamicIndexing = false;//
+		indexing_features.shaderInputAttachmentArrayNonUniformIndexing = false;//
+	}
 
 	static inline VkDeviceCreateInfo MakeDeviceCreateInfo(VkDeviceCreateFlags flags, const Span<VkDeviceQueueCreateInfo>& queue_infos, const Span<const char*>& ext_infos)
 	{
@@ -100,14 +111,25 @@ namespace MetaInit
 			}
 		}
 
-		const auto device_info = MakeDeviceCreateInfo(0x0, queue_infos, extensions);
+		auto device_info = MakeDeviceCreateInfo(0x0, queue_infos, extensions);
+		//enable descriptor indexing feature
+		StructureChain<VkPhysicalDeviceDescriptorIndexingFeatures> device_extentions;
+		if (GET_PARAM_TYPE_VAL(BOOL, RHI_RESOURCE_BINDLESS)) {
+			auto indexing_features = device_extentions.get<VkPhysicalDeviceDescriptorIndexingFeatures>();
+			MakeBindlessDeviceDescriptorIndexingFeatures(indexing_features);
+			device_info.pNext = &indexing_features;
+		}
 		auto ret = vkCreateDevice(selected_phy_device, &device_info, g_host_alloc, &device_ptr->handle_);
 		PCHECK(VK_SUCCESS == ret ) << "vulkan create logic device failed";
 
 		//initial device related members
 		{
 			device_ptr->back_end_ = selected_phy_device;
-			vkGetPhysicalDeviceProperties(selected_phy_device, &device_ptr->back_end_properties_);
+			VkPhysicalDeviceProperties2 back_end_properties2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+			device_ptr->back_end_descrptor_indexing_properties_ = { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES, .pNext=VK_NULL_HANDLE };
+			back_end_properties2.pNext = &device_ptr->back_end_descrptor_indexing_properties_;
+			vkGetPhysicalDeviceProperties2(selected_phy_device, &back_end_properties2);
+			device_ptr->back_end_properties_ = back_end_properties2.properties;
 		}
 		return device_ptr;
 	}

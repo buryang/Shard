@@ -18,6 +18,7 @@ namespace MetaInit::RHI {
 			void CreateComputePipelineState() override;
 			void CreateSampler() override;
 			void CreateViewPoint() override;
+			RHIResourceBindlessHeap::Ptr CreateResourceBindlessHeap() override;
 			RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc) override;
 			RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc) override;
 			RHIResource::Ptr CreateTexture(const RHITextureDesc& desc) override;
@@ -30,6 +31,8 @@ namespace MetaInit::RHI {
 			void SetViewPoint() override;
 			void ResizeViewPoint() override;
 			void Execute(Span<RHICommandContext::Ptr> cmd_buffers) override;
+			bool SetUpTexture(RHITextureVulkan::Ptr texture);
+			bool SetUpBuffer(RHIBufferVulkan::Ptr buffer);
 			//special functions for vulkan
 			FORCE_INLINE VulkanInstance::SharedPtr GetVulkanInstance() {
 				assert(nullptr != instance_.get());
@@ -48,6 +51,7 @@ namespace MetaInit::RHI {
 		private:
 			RHIGlobalEntityVulkan();
 			void InitInstance();
+			void InitGlobalAllocationCallBacks();
 		private:
 			VulkanInstance::SharedPtr	instance_;
 			VulkanDevice::SharedPtr	device_;

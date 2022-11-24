@@ -77,7 +77,7 @@ namespace MetaInit
 		VkImageViewType			view_type_;
 		VkImageSubresourceRange	sub_res_range_;
 	};
-		
+
 	class VulkanImageSamplerFactory
 	{
 	public:
@@ -170,4 +170,12 @@ namespace MetaInit
 		VulkanBuffer::SharedPtr	vertex_;
 		VulkanBuffer::SharedPtr	index_;
 	};
+
+	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
+	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo);
+	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size);
+	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
+		VkFormat format, VkDeviceSize offset, VkDeviceSize range);
+	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
+		VkSamplerAddressMode address_modeu, VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew);
 }

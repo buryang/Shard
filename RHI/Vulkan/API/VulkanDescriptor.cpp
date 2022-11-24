@@ -4,94 +4,14 @@
 
 namespace MetaInit
 {
-	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
-	{
-		VkImageCreateInfo image_info{};
-		memset(&image_info, 0, sizeof(image_info));
-		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		image_info.flags = flags;
-		image_info.format = format;
-		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		/*pQueueFamilyIndices is a list of queue families that will access this image (ignored if sharingModeis not VK_SHARING_MODE_CONCURRENT).*/
-		image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		//not support cubemap now
-		image_info.arrayLayers = 1;
-		image_info.mipLevels = 1;
-		return image_info;
-	}
-
-	static inline VkImageViewType GetImageViewType(VkImageType image_type)
-	{
-		switch (image_type)
-		{
-		case VK_IMAGE_TYPE_1D:
-			return VK_IMAGE_VIEW_TYPE_1D;
-		case VK_IMAGE_TYPE_2D:
-			return VK_IMAGE_VIEW_TYPE_2D;
-		default:
-			PLOG(ERROR) << "not supported image view type";
-		}
-	}
-
-	static inline VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, VkImageViewType view_type)
-	{
-		VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		view_info.flags = flags;
-		view_info.pNext = VK_NULL_HANDLE;
-		view_info.viewType = view_type;
-		return view_info;
-	}
-
-	static inline VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size)
-	{
-		VkBufferCreateInfo buffer_info{};
-		memset(&buffer_info, 0, sizeof(buffer_info));
-		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		buffer_info.flags = flags;
-		buffer_info.size = size;
-		/*pQueueFamilyIndices is a list of queue families that will access this image (ignored if sharingModeis not VK_SHARING_MODE_CONCURRENT).*/
-		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		return buffer_info;
-	}
-
-	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
-		VkFormat format, VkDeviceSize offset, VkDeviceSize range)
-	{
-		VkBufferViewCreateInfo view_info{};
-		memset(&view_info, 0, sizeof(view_info));
-		view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-		view_info.flags = flags;
-		view_info.buffer = buffer;
-		view_info.format = format;
-		view_info.offset = offset;
-		view_info.range = range;
-		return view_info;
-	}
-
-	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, 
-												VkSamplerMipmapMode mipmap_mode, VkSamplerAddressMode address_modeu, 
-												VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew)
-	{
-		VkSamplerCreateInfo sample_info{};
-		memset(&sample_info, 0, sizeof(sample_info));
-		sample_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		sample_info.flags = flags;
-		sample_info.magFilter = mag_filter;
-		sample_info.minFilter = min_filter;
-		sample_info.addressModeU = address_modeu;
-		sample_info.addressModeV = address_modev;
-		sample_info.addressModeW = address_modew;
-		return sample_info;
-	}
-
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count)
+	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const Span<VkDescriptorSetLayout>& layout)
 	{
 		VkDescriptorSetAllocateInfo desc_info{};
 		memset(&desc_info, 0, sizeof(desc_info));
 		desc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		desc_info.descriptorPool = pool;
-		desc_info.descriptorSetCount = layout_count;
-		desc_info.pSetLayouts = layout;
+		desc_info.descriptorSetCount = layout.size();
+		desc_info.pSetLayouts = layout.data();
 		return desc_info;
 	}
 
@@ -127,45 +47,23 @@ namespace MetaInit
 		return pool_info;
 	}
 
-	DescriptorPool::DescriptorPool(const DescriptorPool::Desc& desc)
-	{
-		Init(desc);
-	}
-
-	void DescriptorPool::Init(const DescriptorPool::Desc& desc)
+	VulkanDescriptorPool::VulkanDescriptorPool(const VulkanPoolCreateDesc& pool_info):pool_desc_(pool_info)
 	{
 		UpdateCurrPool();
 	}
 
-	void DescriptorPool::UnInit()
+	VkDescriptorSet VulkanDescriptorPool::CreateDescriptorSet(VkDescriptorSetLayout layout)
 	{
-		for (auto pool : available_)
-		{
-			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
-		}
-		available_.clear();
-
-		for (auto pool : used_)
-		{
-			vkDestroyDescriptorPool(device_->Get(), pool, g_host_alloc);
-		}
-		used_.clear();
-	}
-
-	VkDescriptorSet DescriptorPool::CreateDescriptorSet(VkDescriptorSetLayout layout)
-	{
-		auto desc_creater = [&](VkDescriptorPool pool) {
-			VkDescriptorSet desc_set = VK_NULL_HANDLE;
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, &layout, 1);
-			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, &desc_set);
-			if (ret == VK_SUCCESS)
-			{
-				return desc_set;
-			}
-			throw std::runtime_error("alloc desc set failed");
+		const auto desc_creater = [&](VkDescriptorPool pool) {
+			VkDescriptorSet desc_set{ VK_NULL_HANDLE };
+			VkDescriptorSetLayout layout_array[] = { layout };
+			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layout_array);
+			auto ret = vkAllocateDescriptorSets(GetGlobalDevice(), &desc_info, &desc_set);
+			PCHECK(ret == VK_SUCCESS) << "alloc desc set failed";
+			return desc_set;
 		};
 		
-		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
+		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
 
 		if (curr_ == VK_NULL_HANDLE)
 		{
@@ -186,48 +84,62 @@ namespace MetaInit
 
 	}
 
-	Vector<VkDescriptorSet> DescriptorPool::CreateDescriptorSets(const Vector<VkDescriptorSetLayout>& layouts)
+	SmallVector<VkDescriptorSet> VulkanDescriptorPool::CreateDescriptorSets(const Span<VkDescriptorSetLayout>& layouts)
 	{
-		Vector<VkDescriptorSet> desc_sets(layouts.size());
+		SmallVector<VkDescriptorSet> desc_sets(layouts.size());
 		auto desc_creater = [&](VkDescriptorPool pool) {
-			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layouts.data(), layouts.size());
-			auto ret = vkAllocateDescriptorSets(device_->Get(), &desc_info, desc_sets.data());
+			VkDescriptorSetAllocateInfo desc_info = MakeDescriptorSetAllocateInfo(pool, layouts);
+			auto ret = vkAllocateDescriptorSets(GetGlobalDevice(), &desc_info, desc_sets.data());
 			if (ret == VK_SUCCESS)
 			{
 				return;
 			}
-			throw std::runtime_error("alloc desc set failed");
+			PLOG(FATAL) << "alloc desc set failed";
 		};
 
-		std::lock_guard<eastl::mutex> lock_pool(pool_mutex_);
-		if (curr_ == VK_NULL_HANDLE)
+		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		if (curr_ == VK_NULL_HANDLE || !CanAllocate(layouts))
 		{
 			UpdateCurrPool();
 		}
 
 		try
 		{
-			if (!CanAllocate())
-			{
-				UpdateCurrPool();
-			}
 			desc_creater(curr_);
 			return desc_sets;
 		}
 		catch (std::runtime_error& e)
 		{
-			throw std::runtime_error("descriptor set alloc failed");
+			PLOG(FATAL) << "descriptor set alloc failed";
 		}
 
 	}
 
-	bool DescriptorPool::CanAllocate(VkDescriptorSetLayout layout)const
+	VulkanDescriptorPool::~VulkanDescriptorPool()
 	{
-		//fixme memory logic
-		return alloc_size_ < pool_size_;
+		for (auto pool : available_)
+		{
+			vkDestroyDescriptorPool(GetGlobalDevice(), pool, g_host_alloc);
+		}
+		available_.clear();
+
+		for (auto pool : used_)
+		{
+			vkDestroyDescriptorPool(GetGlobalDevice(), pool, g_host_alloc);
+		}
+		used_.clear();
 	}
 
-	void DescriptorPool::Reset()
+	bool VulkanDescriptorPool::CanAllocate(const Span<VkDescriptorSetLayout>& layout)const
+	{
+		if (alloc_set_ + layout.size() > pool_set_) {
+			return false;
+		}
+		//whether check descriptor count;
+		return true;
+	}
+
+	void VulkanDescriptorPool::Reset()
 	{
 		for (auto pool : used_)
 		{
@@ -240,11 +152,11 @@ namespace MetaInit
 	}
 
 
-	void DescriptorPool::UpdateCurrPool()
+	void VulkanDescriptorPool::UpdateCurrPool()
 	{
 		if (available_.empty())
 		{
-			VkDescriptorPoolCreateInfo pool_info = MakeDescriptorPoolCreateInfo(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, pool_size_, );
+			VkDescriptorPoolCreateInfo pool_info = pool_desc_.ToVulkan();
 			VkDescriptorPool pool;
 			auto ret = vkCreateDescriptorPool(GetGlobalDevice(), &pool_info, g_host_alloc, &pool);
 			PCHECK(ret == VK_SUCCESS) << "create descriptor pool failed with error: " << ret;
@@ -255,37 +167,33 @@ namespace MetaInit
 		used_.push_back(curr_);
 	}
 
-	DescriptorPool::Ptr DescriptorPoolManager::GetPool(uint32_t hash)
-	{
-		if (pools_.find(hash) == pools_.end())
-		{
-			DescriptorPool::Ptr pool_ptr(new DescriptorPool);
-			pools_.insert(std::make_pair(hash, pool_ptr));
-		}
-		return pools_[hash];
+	VulkanDescriptorPoolManager& VulkanDescriptorPoolManager::Instance() {
+		static VulkanDescriptorPoolManager manager;
+		return manager;
 	}
 
-	VulkanDescriptorSet::PseudoDescriptor VulkanDescriptorSet::operator[](std::string& desc_name)
+	VulkanDescriptorPool::SharedPtr VulkanDescriptorPoolManager::GetPool(const VulkanPoolCreateDesc& pool_desc)
 	{
-		return PseudoDescriptor(this, desc_lut_[desc_name]);
-	}
-
-	void VulkanDescriptorSet::Init(const RootSignature::DescriptorSetDesc& desc_set, VkDescriptorSet handle)
-	{
-		name_ = desc_set.set_name_;
-		auto& bind_cfgs = desc_set.bindings_;
-		desc_lut_.clear();
-		for (auto n = 0; n < bind_cfgs.size(); ++n)
+		if (pools_.find(pool_desc) == pools_.end())
 		{
-			desc_lut_[bind_cfgs[n].binding_name_] = n;
+			VulkanDescriptorPool::SharedPtr pool_ptr(new VulkanDescriptorPool(pool_desc));
+			pools_.insert(eastl::make_pair(pool_desc, pool_ptr));
 		}
-		desc_infos_.resize(bind_cfgs.size());
-		handle_ = handle;
+		return pools_[pool_desc];
 	}
 
 	VulkanDescriptorSet::PseudoDescriptor VulkanDescriptorSet::operator[](const String& desc_name)
 	{
-		return VulkanDescriptorSet::PseudoDescriptor(this->shared_from_this(), descLUT_[desc_name]);
+		return VulkanDescriptorSet::PseudoDescriptor(this, descLUT_[desc_name]);
+	}
+
+	void VulkanDescriptorSet::Init(const VulkanPipelineLayoutDesc& desc_set)
+	{
+	}
+
+	VulkanDescriptorSet::PseudoDescriptor VulkanDescriptorSet::operator[](const uint32_t binding)
+	{
+		return VulkanDescriptorSet::PseudoDescriptor(this, binding);
 	}
 
 	void VulkanDescriptorSet::BeginUpdates()
@@ -301,9 +209,27 @@ namespace MetaInit
 		}
 	}
 
-	void VulkanDescriptorSet::UnInit()
+	VulkanDescriptorSet::VulkanDescriptorSet(VulkanDescriptorPool::SharedPtr pool, const VulkanDescriptorSetLayoutDesc& set_desc):name_(set_desc.name_)
 	{
-		//do nothing descriptor pool resp for release descriptorset
+		//vkCreateDescriptorSet();
+		assert(set_desc.bindings_.size() == set_desc.binding_names_.size());
+		descLUT_.clear();
+		for (auto n = 0; n < set_desc.bindings_.size(); ++n)
+		{
+			descLUT_[set_desc.binding_names_[n]] = n;
+		}
+		desc_infos_.resize(set_desc.binding_names_.size());
+		auto ret = vkCreateDescriptorSetLayout(GetGlobalDevice(), &set_desc.ToVulkan(), g_host_alloc, &layout_);
+		assert(ret == VK_SUCCESS && layout_ != VK_NULL_HANDLE);
+		handle_ = pool->CreateDescriptorSet(layout_);
+	}
+
+	VulkanDescriptorSet::~VulkanDescriptorSet() {
+		if (layout_ != VK_NULL_HANDLE) {
+			vkDestroyDescriptorSetLayout(GetGlobalDevice(), layout_, g_host_alloc);
+			layout_ = VK_NULL_HANDLE;
+			//descriptorset recyle by pool
+		}
 	}
 
 	static inline VkDescriptorType SetDescriptorType(bool read_only, bool is_buffer, bool is_texel)
@@ -372,7 +298,7 @@ namespace MetaInit
 		//todo
 	}
 
-	void VulkanDescriptorSet::UpdateBufferView(const  VulkanBufferView& buffer_view, uint32_t binding)
+	void VulkanDescriptorSet::UpdateBufferView(const VulkanBufferView& buffer_view, uint32_t binding)
 	{
 		VkWriteDescriptorSet write_set{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 		write_set.pNext = VK_NULL_HANDLE;
@@ -441,17 +367,4 @@ namespace MetaInit
 		wrapper_->UpdateInAttachment(attach, desc_binding_);
 	}
 
-	void RootSignature::AddSet(DescriptorSetDesc& desc_set)
-	{
-		desc_sets_.emplace_back(desc_set);
-	}
-
-	void RootSignature::AddConstRange(ConstantRangeDesc& const_range)
-	{
-		consts_.emplace_back(const_range);
-	}
-	bool RootSignature::ConstantRangeDesc::isValid() const
-	{
-		return offset_ & ~0x3 == 0 && size_ & ~0x3 == 0 && size_ <= max_const_size;
-	}
 }

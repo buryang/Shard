@@ -36,6 +36,7 @@ namespace MetaInit
 		FORCE_INLINE PhyHandle GetPhyHandle() { return back_end_; }
 		FORCE_INLINE VkPipelineCache GetPipelineCache() { return pipeline_cache_; }
 		FORCE_INLINE const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const { return back_end_properties_; }
+		FORCE_INLINE const VkPhysicalDeviceDescriptorIndexingProperties& GetPhysicalDeviceDescriptorIndexingProperties()const { return back_end_descrptor_indexing_properties_; }
 		//function to deal with command buffer logic
 		VulkanCmdPoolManager& GetCmdPoolManager() { return pool_manager_; }
 		VkSampleCountFlags GetMaxUsableSampleCount()const;
@@ -43,7 +44,6 @@ namespace MetaInit
 		VkFormatProperties GetFormatProperty(VkFormat format)const;
 		void GetSwapchainSupportInfo()const;
 		bool IsFormatSupported(VkFormat format)const;
-		//VkPhysicalDevice operator[](uint32_t index);
 		void WaitIdle()const;
 		//function to deal with device relative pipeline cache
 		void LoadPipelineCache(const String& cache_path);
@@ -57,6 +57,7 @@ namespace MetaInit
 		VkDevice	handle_{ VK_NULL_HANDLE };
 		VkPhysicalDevice back_end_{ VK_NULL_HANDLE };
 		VkPhysicalDeviceProperties back_end_properties_;
+		VkPhysicalDeviceDescriptorIndexingProperties back_end_descrptor_indexing_properties_;
 		VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };//todo 
 		VulkanCmdPoolManager	pool_manager_;
 	};

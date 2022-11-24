@@ -3,6 +3,7 @@
 #include "Core/RenderGlobalParams.h"
 #include "RHI/RHIResources.h"
 #include "RHI/RHICommand.h"
+#include "RHI/RHIResourceBinding.h"
 
 namespace MetaInit::RHI
 {
@@ -44,6 +45,7 @@ namespace MetaInit::RHI
 		virtual void CreateComputePipelineState();
 		virtual void CreateSampler();
 		virtual void CreateViewPoint();
+		virtual RHIResourceBindlessHeap::SharedPtr CreateResourceBindlessHeap();
 		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc);
 		virtual RHIResource::Ptr CreateTexture(const RHITextureDesc& desc);

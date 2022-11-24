@@ -18,8 +18,10 @@ namespace MetaInit
 		public:
 			using Ptr =	RHIResource*;
 			using SharedPtr = eastl::shared_ptr<RHIResource>;
-			virtual void SetRHI(RHIGlobalEntity::Ptr rhi_entity) = 0;
-			virtual void Release(RHIGlobalEntity::Ptr rhi_entity) {}
+			RHIResource(RHIGlobalEntity::Ptr parent):parent_(parent){}
+			DISALLOW_COPY_AND_ASSIGN(RHIResource);
+			virtual void SetUp() = 0;
+			virtual void Release() = 0;
 			//FIXME whether map a cpu pointer
 			virtual void* MapBackMem() {
 				PLOG(ERROR) << "resource not support map backend memory";
@@ -29,12 +31,11 @@ namespace MetaInit
 			}
 			virtual size_t GetOccupySize() const = 0;
 			virtual ~RHIResource() {}
-			bool IsDedicated() const { 
-				return dedicated_mem_;
+			FORCE_INLINE bool IsDedicated() const { 
+				return is_dedicated_;
 			}
-			template<typename RHIHandle>
-			RHIHandle GetRHI() {
-				return static_cast<RHIHandle>(rhi_);
+			FORCE_INLINE bool IsTransient() const {
+				return is_transient_;
 			}
 		protected:
 			uint32_t RefInCr() {
@@ -51,8 +52,9 @@ namespace MetaInit
 		protected:
 			//no multithread 
 			mutable uint32_t	ref_count_{ 0 };
-			bool	dedicated_mem_{ false };
-			void*	rhi_;
+			RHIGlobalEntity::Ptr parent_{ nullptr };
+			uint32_t is_dedicated_ : 1;
+			uint32_t is_transient_ : 1;
 		};
 
 
@@ -66,53 +68,63 @@ namespace MetaInit
 				eTextureCube = 0x3,
 				eTextureArray = 0x4,
 			};
-			RHITextureDesc() = default;
-			explicit RHITextureDesc(const Renderer::RtField& field):layout_(field.GetLayout()), 
-																	access_(field.GetSubField().access_),
-																	format_(field.GetPixFormat()){
-				is_transiant_ = field.IsTransiant();
-				//FIXME deal with pipeline
-			}
-			FORCE_INLINE EType GetType() const {
-				assert(layout_.width_ != 0 && "at least one dimension nonzero");
-				if (layout_.array_slices_ != 0) {
-					return EType::eTextureArray;
-				}
-				if (layout_.depth_ != 0) {
-					return EType::eTexture3D;
-				}
-				if (layout_.width_ != 0 && layout_.height_ != 0) {
-					return EType::eTexture2D;
-				}
-				return EType::eTexture1D;
-			}
-			//FIXME
-			FORCE_INLINE bool operator==(const RHITextureDesc& rhs) const {
-				return layout_ == rhs.layout_ && format_ == rhs.format_
-					&& access_ == rhs.access_;
-			}
-			FORCE_INLINE bool operator!=(const RHITextureDesc& rhs) const {
-				return !(*this == rhs);
+			enum class EAspect : uint8_t
+			{
+
+			};
+			static RHITextureDesc Create(const Renderer::RtField& field) {
+				RHITextureDesc desc{
+					.layout_ = field.GetLayout(),
+					.access_ = field.GetSubField().access_,
+					.is_dedicated_ = field.IsDedicated(),
+					.is_transiant_ = field.IsTransiant(),
+					.format_ = field.GetPixFormat(),
+				};
+				return desc;
 			}
 			Renderer::TextureLayout	layout_;
 			Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };
 			Renderer::EPipeLine	pipeline_{ Renderer::EPipeLine::eGraphics };
-			bool	is_transiant_{ true };
+			uint32_t	is_dedicated_ : 1;
+			uint32_t	is_transiant_: 1;
 			EPixFormat	format_{ EPixFormat::eUnkown };
 			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
-		class RHITexture final: public RHIResource
+		FORCE_INLINE RHITextureDesc::EType GetTextureType(const RHITextureDesc& desc) {
+			assert(desc.layout_.width_ != 0 && "at least one dimension nonzero");
+			if (desc.layout_.array_slices_ != 0) {
+				return  RHITextureDesc::EType::eTextureArray;
+			}
+			if (desc.layout_.depth_ != 0) {
+				return RHITextureDesc::EType::eTexture3D;
+			}
+			if (desc.layout_.width_ != 0 && desc.layout_.height_ != 0) {
+				return  RHITextureDesc::EType::eTexture2D;
+			}
+			return  RHITextureDesc::EType::eTexture1D;
+		}
+		//FIXME
+		FORCE_INLINE bool operator==(const RHITextureDesc& lhs, const RHITextureDesc& rhs) {
+			return lhs.layout_ == rhs.layout_ && lhs.format_ == rhs.format_
+				&& lhs.access_ == rhs.access_;
+		}
+
+		FORCE_INLINE bool operator!=(const RHITextureDesc& lhs, const RHITextureDesc& rhs) {
+			return !(lhs == rhs);
+		}
+
+		class RHITexture : public RHIResource
 		{
 		public:
 			using Ptr = RHITexture*;
 			using SharedPtr = eastl::shared_ptr<RHITexture>;
-			explicit RHITexture(const RHITextureDesc& desc) :desc_(desc) {}
-			~RHITexture();
-			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
-			size_t GetOccupySize() const override;
-		private:
+			explicit RHITexture(RHIGlobalEntity::Ptr parent, const RHITextureDesc& desc) :RHIResource(parent), desc_(desc) {}
+			virtual ~RHITexture() {}
+			FORCE_INLINE const RHITextureDesc& GetTextureDesc() const {
+				return desc_;
+			}
+		protected:
 			const RHITextureDesc& desc_;
 		};
 
@@ -125,38 +137,41 @@ namespace MetaInit
 				eStructedBuffer = 0x4,
 				eUniformStructed = eUniform | eStructedBuffer,
 			};
-			explicit RHIBufferDesc(const Renderer::RtField& field) {
-
-			}
-			FORCE_INLINE bool operator==(const RHIBufferDesc& rhs)const {
-				return type_ == rhs.type_ && size_ == rhs.size_
-					&& pipeline_ == rhs.pipeline_
-					&& access_ == rhs.access_;
-			}
-			FORCE_INLINE bool operator!=(const RHIBufferDesc& rhs)const {
-				return !(*this == rhs);
+			static RHIBufferDesc Create(const Renderer::RtField& field) {
+				assert(field.GetType() == Renderer::RtField::EType::eBuffer);
+				RHIBufferDesc desc{ .size_ = field.GetLayout().width_, .is_dedicated_ = field.IsDedicated(), .is_transiant_ = field.IsTransiant() };
+				return desc;
 			}
 			Type	type_;
 			uint32_t	size_;
 			Renderer::EPipeLine	pipeline_{ Renderer::EPipeLine::eGraphics };
 			Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };
+			uint32_t	is_dedicated_ : 1;
+			uint32_t	is_transiant_ : 1;
 			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
-		class RHIBuffer final : public RHIResource
+		FORCE_INLINE bool operator==(const RHIBufferDesc& lhs, const RHIBufferDesc& rhs) {
+			return lhs.type_ == rhs.type_ && lhs.size_ == rhs.size_
+				&& lhs.pipeline_ == rhs.pipeline_
+				&& lhs.access_ == rhs.access_;
+		}
+		FORCE_INLINE bool operator!=(const RHIBufferDesc& lhs, const RHIBufferDesc& rhs) {
+			return !(lhs == rhs);
+		}
+
+		class RHIBuffer : public RHIResource
 		{
 		public:
 			using Ptr = RHIBuffer*;
-			explicit RHIBuffer(const RHIBufferDesc& desc) :desc_(desc) {}
-			~RHIBuffer();
-			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
-			void* MapBackMem() override;
-			void UnMapBackMem() override;
+			explicit RHIBuffer(RHIGlobalEntity::Ptr parent, const RHIBufferDesc& desc) :RHIResource(parent), desc_(desc) {}
+			virtual ~RHIBuffer() {};
+			FORCE_INLINE const RHIBufferDesc& GetBufferDesc() const {
+				return desc_;
+			}
 			size_t GetOccupySize() const override;
-		private:
+		protected:
 			const RHIBufferDesc& desc_;
-			void* mapped_data_{ nullptr };
 		};
 
 		struct RHIAccelerateDesc
@@ -164,7 +179,7 @@ namespace MetaInit
 
 		};
 
-		class RHIAccelerate final : public RHIResource
+		class RHIAccelerate : public RHIResource
 		{
 		public:
 			using Ptr = RHIAccelerate*;
@@ -175,9 +190,7 @@ namespace MetaInit
 				eBottomLevel,
 				eNum,
 			};
-			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
-			size_t GetOccupySize() const override;
+			virtual ~RHIAccelerate() {}
 		private:
 			const RHIAccelerateDesc& desc_;
 		};
@@ -189,13 +202,13 @@ namespace MetaInit
 			Renderer::TextureSubRange	range_;
 		};
 
-		class RHITextureSRV final : public RHIResource
+		class RHITextureSRV : public RHIResource
 		{
 		public:
 			RHITextureSRV(const RHITextureSRVDesc& desc);
-			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
-			size_t GetOccupySize() const override;
+			virtual ~RHITextureSRV() {}
+		private:
+			const RHITextureSRVDesc& desc_;
 		};
 
 		struct RHITextureUAVDesc
@@ -205,13 +218,11 @@ namespace MetaInit
 			uint32_t mip_{ 0 };
 		};
 
-		class RHITextureUAV final : public RHIResource
+		class RHITextureUAV : public RHIResource
 		{
 		public:
 			RHITextureUAV(const RHITextureUAVDesc& desc);
-			void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-			void Release(RHIGlobalEntity::Ptr rhi_entity) override;
-			size_t GetOccupySize() const override;
+			virtual ~RHITextureUAV() {}
 		};
 	}
 }

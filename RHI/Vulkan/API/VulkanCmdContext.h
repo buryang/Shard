@@ -48,6 +48,7 @@ namespace MetaInit
 
 	class VulkanRenderPass;
 	class VulkanBuffer;
+	class VulkanImage;
 	class VulkanCmdBuffer
 	{
 	public:
@@ -102,6 +103,7 @@ namespace MetaInit
 		void Barrier( VulkanImage& image, EResourceState new_state);
 		void Barrier( VulkanBuffer& buffer, EResourceState new_state);
 		void Barrier(const RHI::VulkanTransitionInfo& barrier_info);
+		void PushConstants(const uint32_t flags, const uint32_t offset, const Span<uint8_t>& constants);
 		void BeginRenderPass();
 		void EndRenderPass();
 		void UpdateTopLevel();

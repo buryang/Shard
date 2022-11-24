@@ -6,6 +6,86 @@
 
 namespace MetaInit
 {
+	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
+	{
+		VkImageCreateInfo image_info{};
+		memset(&image_info, 0, sizeof(image_info));
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_info.flags = flags;
+		image_info.format = format;
+		image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		/*pQueueFamilyIndices is a list of queue families that will access this image (ignored if sharingModeis not VK_SHARING_MODE_CONCURRENT).*/
+		image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		//not support cubemap now
+		image_info.arrayLayers = 1;
+		image_info.mipLevels = 1;
+		return image_info;
+	}
+
+	static inline VkImageViewType GetImageViewType(VkImageType image_type)
+	{
+		switch (image_type)
+		{
+		case VK_IMAGE_TYPE_1D:
+			return VK_IMAGE_VIEW_TYPE_1D;
+		case VK_IMAGE_TYPE_2D:
+			return VK_IMAGE_VIEW_TYPE_2D;
+		default:
+			PLOG(ERROR) << "not supported image view type";
+		}
+	}
+
+	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, VkImageViewType view_type)
+	{
+		VkImageViewCreateInfo view_info{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		view_info.flags = flags;
+		view_info.pNext = VK_NULL_HANDLE;
+		view_info.viewType = view_type;
+		return view_info;
+	}
+
+	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size)
+	{
+		VkBufferCreateInfo buffer_info{};
+		memset(&buffer_info, 0, sizeof(buffer_info));
+		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.flags = flags;
+		buffer_info.size = size;
+		/*pQueueFamilyIndices is a list of queue families that will access this image (ignored if sharingModeis not VK_SHARING_MODE_CONCURRENT).*/
+		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		return buffer_info;
+	}
+
+	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
+		VkFormat format, VkDeviceSize offset, VkDeviceSize range)
+	{
+		VkBufferViewCreateInfo view_info{};
+		memset(&view_info, 0, sizeof(view_info));
+		view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+		view_info.flags = flags;
+		view_info.buffer = buffer;
+		view_info.format = format;
+		view_info.offset = offset;
+		view_info.range = range;
+		return view_info;
+	}
+
+	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter,
+		VkSamplerMipmapMode mipmap_mode, VkSamplerAddressMode address_modeu,
+		VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew)
+	{
+		VkSamplerCreateInfo sample_info{};
+		memset(&sample_info, 0, sizeof(sample_info));
+		sample_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sample_info.flags = flags;
+		sample_info.magFilter = mag_filter;
+		sample_info.minFilter = min_filter;
+		sample_info.addressModeU = address_modeu;
+		sample_info.addressModeV = address_modev;
+		sample_info.addressModeW = address_modew;
+		return sample_info;
+	}
+
 	static inline VkAccessFlags GetAccessMaskForLayout(VkImageLayout layout)
 	{
 		switch (layout)

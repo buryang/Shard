@@ -7,8 +7,11 @@
 
 namespace MetaInit::RHI::Vulkan
 {
-
-	static constexpr size_t RHI_PER_BLOCK_ALLOC_SIZE = 256 * 1024 * 1024; //256MB
+	enum
+	{
+		RHI_HEAP0_PER_BLOCK_ALLOC_SIZE = 256 * 1024 * 1024,
+		RHI_HEAP1_PER_BLOCK_ALLOC_SIZE = 64 * 1024 * 1024,
+	};
 
 	//set max pooled resource count
 	REGIST_PARAM_TYPE(UINT, RHI_POOLED_MAX_RES, 256);
@@ -105,6 +108,12 @@ namespace MetaInit::RHI::Vulkan
 	public:
 		using Ptr = RHIHeapMemoryBulkVulkanAllocator*;
 		using SharedPtr = eastl::shared_ptr<RHIHeapMemoryBulkVulkanAllocator>;
+		enum class ERecycleType {
+			eUnkown = 0x0,
+			eEvitAble = 0x1,
+			eDefragAble = 0x2,
+			eBoth = eEvitAble | eDefragAble,
+		};
 		explicit RHIHeapMemoryBulkVulkanAllocator(const MemoryBulkDesc& desc);
 		virtual ~RHIHeapMemoryBulkVulkanAllocator() { Release(); }
 		virtual MemoryAllocation Alloc(const MemoryAllocRequirements& alloc_require) = 0;
@@ -114,6 +123,9 @@ namespace MetaInit::RHI::Vulkan
 		virtual void Release() {
 			vkFreeMemory(GetGlobalDevice(), mem_bulk_, g_host_alloc);
 			mem_bulk_ = VK_NULL_HANDLE;
+		}
+		virtual ERecycleType GetRecycleType() const {
+			return ERecycleType::eUnkown;
 		}
 		FORCE_INLINE uint32_t GetHeapType() const {
 			return type_;

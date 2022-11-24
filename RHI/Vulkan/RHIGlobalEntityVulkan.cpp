@@ -1,4 +1,5 @@
 #include "RHI/Vulkan/RHICommandVulkan.h"
+#include "RHI/Vulkan/RHIResourcesVulkan.h"
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
@@ -55,6 +56,16 @@ namespace MetaInit::RHI::Vulkan {
 
 	void RHIGlobalEntityVulkan::InitInstance()
 	{
+	}
+
+	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::CreateResourceBindlessHeap()
+	{
+		return RHIResourceBindlessHeap::Ptr();
+	}
+
+	RHIResource::Ptr RHIGlobalEntityVulkan::CreateConstBuffer(const RHIBufferDesc& desc)
+	{
+		RHIBufferVulkan::Ptr 
 	}
 
 }

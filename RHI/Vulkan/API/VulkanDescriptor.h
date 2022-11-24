@@ -1,128 +1,149 @@
 #pragma once
 #include "RHI/Vulkan/API/VulkanRHI.h"
-#include "RHI/Vulkan/API/VulkanResource.h"
-#include <mutex>
+#include "RHI/Vulkan/API/VulkanResources.h"
 
 //https://stackoverflow.com/questions/48867995/how-to-correctly-use-decriptor-sets-for-multiple-interleaving-buffers
 namespace MetaInit
 {
-	/*functions to make create informations for resource related structure*/
-	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format);
-	VkImageViewCreateInfo MakeImageViewCreateInfo(VkImageViewCreateFlags flags, VkImage image, const VkImageCreateInfo& imageInfo);
-	VkBufferCreateInfo MakeBufferCreateInfo(VkBufferCreateFlags flags, uint32_t size);
-	VkBufferViewCreateInfo MakeBufferViewCreateInfo(VkBufferViewCreateFlags flags, VkBuffer buffer,
-													VkFormat format, VkDeviceSize offset, VkDeviceSize range);
-	VkSamplerCreateInfo MakeSamplerCreateInfo(VkSamplerCreateFlags flags, VkFilter mag_filter, VkFilter min_filter, VkSamplerMipmapMode mipmap_mode,
-											VkSamplerAddressMode address_modeu, VkSamplerAddressMode address_modev, VkSamplerAddressMode address_modew);
-	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const VkDescriptorSetLayout* layout, const uint32_t layout_count);
-	VkDescriptorSetLayoutCreateInfo MakeDescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutCreateFlags flags,
-																		const Span<VkDescriptorSetLayoutBinding>& bindings);
-	VkDescriptorPoolCreateInfo MakeDescriptorPoolCreateInfo(VkDescriptorPoolCreateFlags flags, uint32_t max_sets, 
-															const Span<VkDescriptorPoolSize>& pool_size);
-	VkPipelineLayoutCreateInfo MakePipelineLayoutCreateInfo();
-
-
-	struct VulkanPoolDesc
+	struct VulkanPoolCreateDesc
 	{
+		using ThisType = VulkanPoolCreateDesc;
 		uint32_t	set_size_;
-		struct DescCount
-		{
-			uint32_t	desc_type_;
-			uint32_t	desc_count_;
-		};
-		//Vector<DescCount> desc_count_;
+		VkDescriptorPoolCreateFlags	flags_{ 0x0 };
+		SmallVector<VkDescriptorPoolSize> desc_count_;
+		FORCE_INLINE ThisType& AddPoolSize(const VkDescriptorPoolSize& pool_size) { desc_count_.emplace_back(pool_size); }
+		FORCE_INLINE VkDescriptorPoolCreateInfo ToVulkan() const {
+			VkDescriptorPoolCreateInfo create_info{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+													.pNext = nullptr,
+													.flags = flags_,
+													.maxSets = set_size_ };
+			create_info.poolSizeCount = desc_count_.size();
+			create_info.pPoolSizes = desc_count_.data();
+			return create_info;
+		}
+	};
+
+	struct VulkanDescriptorSetLayoutDesc
+	{
+		using ThisType = VulkanDescriptorSetLayoutDesc;
+		String	name_;
+		SmallVector<VkDescriptorSetLayoutBinding>	bindings_;
+		SmallVector<String>	binding_names_;
+		SmallVector<VkDescriptorBindingFlags>	binding_flags_;
+		VkDescriptorSetLayoutCreateFlags	flags_{ 0x0 };
+		mutable VkDescriptorSetLayoutBindingFlagsCreateInfo temp_binding_flags_create_info_;
+		FORCE_INLINE static bool IsBindingSamplerIMmutable(const VkDescriptorSetLayoutBinding& binding) {
+			return binding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER || binding.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		}
+		FORCE_INLINE VkDescriptorSetLayoutBinding& operator[](uint32_t index) { return bindings_[index]; }
+		FORCE_INLINE ThisType& AddBinding(const String& name, const VkDescriptorSetLayoutBinding& binding, VkDescriptorBindingFlags binding_flags) { 
+			bindings_.emplace_back(binding);
+			binding_names_.emplace_back(name);
+			if (binding_flags != 0x0) {
+				binding_flags_.emplace_back(binding_flags);
+			}
+			return *this;
+		}
+		FORCE_INLINE uint32_t GetBindingSize() const { return bindings_.size(); }
+		FORCE_INLINE VkDescriptorSetLayoutCreateInfo ToVulkan() const {
+			PCHECK(binding_flags_.empty() || binding_flags_.size() == bindings_.size()) << "bind flags size wrong";
+			VkDescriptorSetLayoutCreateInfo create_info;
+			memset(&create_info, 0, sizeof(create_info));
+			create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			if (binding_flags_.size()) {
+				auto& flags_info = temp_binding_flags_create_info_;
+				flags_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+				flags_info.pNext = VK_NULL_HANDLE;
+				flags_info.bindingCount = binding_flags_.size();
+				flags_info.pBindingFlags = binding_flags_.data();
+				create_info.pNext = &flags_info;
+			}
+			create_info.flags = flags_;
+			create_info.bindingCount = bindings_.size();
+			create_info.pBindings = bindings_.data();
+			return create_info;
+		}
+	};
+
+	//like dxr RootSignature
+	struct VulkanPipelineLayoutDesc
+	{
+		using ThisType = VulkanPipelineLayoutDesc;
+		VkPipelineLayoutCreateFlags	flags_{ 0x0 };
+		SmallVector<VkPushConstantRange>	push_consts_;
+		SmallVector<VkDescriptorSetLayout>	set_layouts_;
+		//fixme with this
+		SmallVector<VulkanDescriptorSetLayoutDesc> set_layouts_desc_;
+		FORCE_INLINE ThisType& AddSet(const VulkanDescriptorSetLayoutDesc& desc_set, const VkDescriptorSetLayout& desc_set_layout) {
+			set_layouts_.emplace_back(desc_set_layout);
+			set_layouts_desc_.emplace_back(desc_set);
+			return *this;
+		}
+		FORCE_INLINE ThisType& AddConstRange(const VkPushConstantRange& const_range) { 
+			PCHECK(IsPushConstantRangeValid(const_range)) << "push constant range is invalid";
+			push_consts_.emplace_back(const_range);
+			return *this;
+		}
+		FORCE_INLINE uint32_t GetNumConstants()const { return push_consts_.size(); }
+		FORCE_INLINE uint32_t GetNumDescriptorSets()const { return set_layouts_.size(); }
+		FORCE_INLINE const VkPushConstantRange& GetConstantDesc(uint32_t index)const {
+			return push_consts_[index];
+		}
+		FORCE_INLINE const VkDescriptorSetLayout& GetDescriptorSetDesc(uint32_t index)const {
+			return set_layouts_[index];
+		}
+		FORCE_INLINE static bool IsPushConstantRangeValid(const VkPushConstantRange& range) {
+			return range.offset&0x3==0 && range.size&0x3==0;
+		}
+		FORCE_INLINE VkPipelineLayoutCreateInfo ToVulkan() const {
+			VkPipelineLayoutCreateInfo create_info{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+			create_info.pNext = VK_NULL_HANDLE;
+			create_info.flags = flags_;
+			create_info.setLayoutCount = set_layouts_.size();
+			create_info.pSetLayouts = set_layouts_.data();
+			create_info.pushConstantRangeCount = push_consts_.size();
+			create_info.pPushConstantRanges = push_consts_.data();
+			return create_info;
+		}
 	};
 
 	class VulkanDescriptorPool
 	{
 	public:
-		using Desc = VulkanPoolDesc;
 		using SharedPtr = std::shared_ptr<VulkanDescriptorPool>;
 		using Handle = VkDescriptorPool;
-		VulkanDescriptorPool() = default;
-		explicit VulkanDescriptorPool(const Desc& desc);
-		void Init(const Desc& desc);
-		void UnInit();
+		explicit VulkanDescriptorPool(const VulkanPoolCreateDesc& pool_info);
+		~VulkanDescriptorPool();
 		VkDescriptorSet CreateDescriptorSet(VkDescriptorSetLayout layout);
-		SmallVector<VkDescriptorSet> CreateDescriptorSets(const SmallVector<VkDescriptorSetLayout>& layouts);
+		SmallVector<VkDescriptorSet> CreateDescriptorSets(const Span<VkDescriptorSetLayout>& layouts);
 		void Reset();
-		~VulkanDescriptorPool() { UnInit(); }
 	private:
 		DISALLOW_COPY_AND_ASSIGN(VulkanDescriptorPool);
-		bool CanAllocate(VkDescriptorSetLayout layout)const;
+		bool CanAllocate(const Span<VkDescriptorSetLayout>& layout)const;
 		void UpdateCurrPool();
 	private:
 		friend class DescriptorPoolManager;
 		using List = List<VkDescriptorPool>;
 		List available_;
 		List used_;
-		Handle	handle_{ VK_NULL_HANDLE };
-		uint32_t	alloc_size_ = 0;//size allocated from curr pool
-		uint32_t	pool_size_;
+		VkDescriptorPool curr_{ VK_NULL_HANDLE };
+		uint32_t	alloc_set_{ 0 };
+		uint32_t	pool_set_;
+		const VulkanPoolCreateDesc pool_desc_;
 		std::mutex	pool_mutex_;
 	};
 
 	class VulkanDescriptorPoolManager
 	{
 	public:
-		using SharedPtr = std::shared_ptr<VulkanDescriptorPoolManager>;
-		static SharedPtr Instance();
-		VulkanDescriptorPool::SharedPtr GetPool(uint32_t key);
+		using ThisType = VulkanDescriptorPoolManager;
+		static ThisType& Instance();
+		VulkanDescriptorPool::SharedPtr GetPool(const VulkanPoolCreateDesc& pool_desc);
 	private:
 		VulkanDescriptorPoolManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(VulkanDescriptorPoolManager);
 	private:
-		Map<uint32_t, VulkanDescriptorPool::SharedPtr>	pools_;
-	};
-
-	struct VulkanPushConstantRangeDesc
-	{
-		VkShaderStageFlags	flags_{ VK_SHADER_STAGE_ALL };
-		uint32_t	offset_{ 0 };
-		uint32_t	size_{ 0 };
-		FORCE_INLINE bool IsValid()const {
-			return Utils::AlignDown(offset_ , 4) == offset_ && Utils::AlignDown(size_, 4) == size_;
-		}
-	};
-
-	struct VulkanDescriptorSetDesc
-	{
-		struct VulkanDescriptorBindDesc
-		{
-			uint32_t	binding_{ 0 };
-			uint32_t	desc_type_{ VK_DESCRIPTOR_TYPE_SAMPLER };
-			//desc count > 0 for desccriptor indexing
-			uint32_t	desc_count_{ 1 };
-			VkShaderStageFlags	flags_{ VK_SHADER_STAGE_ALL };
-			String	binding_name_;
-			//the sampler objects must not be destroyed before the final 
-			//use of the set layout and any descriptor pools and sets created using it
-			VkSampler	sampler{ VK_NULL_HANDLE };
-			bool IsSamplerMutable()const {
-				return !((desc_type_ == VK_DESCRIPTOR_TYPE_SAMPLER || desc_type_ == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-					&& sampler != VK_NULL_HANDLE);
-			}
-		};
-		SmallVector<VulkanDescriptorBindDesc>	bindings_;
-		String	name_;
-		FORCE_INLINE uint32_t GetBindingSize() const { return bindings_.size(); }
-	};
-
-	//like dxr RootSignature
-	struct VulkanPipelineLayoutDesc
-	{
-		void AddSet(VulkanDescriptorSetDesc& desc_set);
-		void AddConstRange(VulkanPushConstantRangeDesc& const_range);
-		FORCE_INLINE uint32_t GetNumConstants()const { return consts_.size(); }
-		FORCE_INLINE uint32_t GetNumDescriptorSets()const { return desc_sets_.size(); }
-		FORCE_INLINE const VulkanPushConstantRangeDesc& GetConstantDesc(uint32_t index)const {
-			return push_consts_[index];
-		}
-		FORCE_INLINE const VulkanDescriptorSetDesc& GetDescriptorSetDesc(uint32_t index)const {
-			return desc_sets_[index];
-		}
-		SmallVector<VulkanPushConstantRangeDesc>	push_consts_;
-		SmallVector<VulkanDescriptorSetDesc>	desc_sets_;
+		Map<VulkanPoolCreateDesc, VulkanDescriptorPool::SharedPtr>	pools_;
 	};
 
 	class VulkanCmdBuffer;
@@ -131,26 +152,28 @@ namespace MetaInit
 	{
 	public:
 		using Handle = VkDescriptorSet;
+		using Ptr = VulkanDescriptorSet*;
 		using SharedPtr = eastl::shared_ptr<VulkanDescriptorSet>;
 		struct PseudoDescriptor
 		{
-			PseudoDescriptor(SharedPtr wrapper, uint32_t binding) : wrapper_(wrapper), desc_binding_(binding) {}
+			PseudoDescriptor(Ptr wrapper, uint32_t binding) : wrapper_(wrapper), desc_binding_(binding) {}
 			void operator=(const VulkanImage& image);
 			void operator=(VkSampler sampler);
 			void operator=(const VulkanBuffer& buffer);
 			void operator=(const VulkanBufferView& buffer_view);
 			void operator=(const VulkanAttachment& attach);
-			SharedPtr wrapper_;
+			Ptr wrapper_{ nullptr };
 			uint32_t desc_binding_{ 0 };
 		};
 		PseudoDescriptor operator[](const String& desc_name);
-		void Init(const VulkanPipelineLayoutDesc& desc_set, VkDescriptorSet handle);
+		//interface for bindless access
+		PseudoDescriptor operator[](const uint32_t binding);
 		void BeginUpdates();
 		void EndUpdates();
-		void UnInit();
 		FORCE_INLINE const String& GetName()const { return name_; }
 		FORCE_INLINE Handle Get()const { return handle_; }
-		VulkanDescriptorSet() = default;
+		FORCE_INLINE VkDescriptorSetLayout GetLayout()const { return layout_; }
+		explicit VulkanDescriptorSet(VulkanDescriptorPool::SharedPtr pool, const VulkanDescriptorSetLayoutDesc& set_desc);
 		DISALLOW_COPY_AND_ASSIGN(VulkanDescriptorSet);
 		//descriptor pool to manage resource release
 		~VulkanDescriptorSet();
@@ -164,6 +187,8 @@ namespace MetaInit
 		void UpdateAccelerationStructure(void*, uint32_t binding);
 	private:
 		Handle handle_{ VK_NULL_HANDLE };
+		//descriptor set layout 
+		VkDescriptorSetLayout	layout_{ VK_NULL_HANDLE };
 		Map<String, uint32_t>	descLUT_;
 		SmallVector<VkWriteDescriptorSet>	write_cache_;
 		bool	read_only_{ false };

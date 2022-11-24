@@ -2,35 +2,43 @@
 
 #include "RHI/RHIResources.h"
 #include "RHI/Vulkan/API/VulkanResources.h"
-#include "RHI/Vulkan/RHIResourceAllocatorVulkan.h"
+#include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 
 namespace MetaInit::RHI::Vulkan
 {
 	class RHITextureVulkan final : public RHITexture
 	{
 	public:
-		RHITextureVulkan(const RHITextureDesc& desc) :RHITexture(desc) {}
-		void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-		void Release(RHIGlobalEntity::Ptr rhi_entity) override;
+		RHITextureVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHITextureDesc& desc) :RHITexture(parent, desc) {}
+		void operator=(RHITextureVulkan&& rhs);
+		void SetUp() override;
+		void Release() override;
 		size_t GetOccupySize() const override;
+		FORCE_INLINE VulkanImage::SharedPtr GetImpl() {
+			return texture_;
+		}
 		~RHITextureVulkan() { Release(); }
 	private:
-		VulkanImage	texture_;
+		VulkanImage::SharedPtr	texture_;
 		MemoryAllocation memory_;
 	};
 
 	class RHIBufferVulkan final : public RHIBuffer
 	{
 	public:
-		RHIBufferVulkan(const RHIBufferDesc& desc) :RHIBuffer(desc) {}
-		void SetRHI(RHIGlobalEntity::Ptr rhi_entity) override;
-		void Release(RHIGlobalEntity::Ptr rhi_entity) override;
+		RHIBufferVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHIBufferDesc& desc) :RHIBuffer(parent, desc) {}
+		void operator=(RHIBufferVulkan&& rhs);
+		void SetUp() override;
+		void Release() override;
 		size_t GetOccupySize() const override;
 		void* MapBackMem() override;
 		void UnMapBackMem() override;
+		FORCE_INLINE VulkanBuffer::SharedPtr GetImpl() {
+			return buffer_;
+		}
 		~RHIBufferVulkan() { Release(); }
 	private:
-		VulkanBuffer buffer_;
+		VulkanBuffer::SharedPtr buffer_;
 		MemoryAllocation memory_;
 	};
 }

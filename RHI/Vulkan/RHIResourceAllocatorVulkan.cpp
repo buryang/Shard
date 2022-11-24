@@ -135,6 +135,9 @@ namespace MetaInit::RHI::Vulkan {
 	void RHIPooledTextureAllocatorVulkan::Free(RHIResource::Ptr resource)
 	{
 		PooledResource pooled_resource{ .handle_ = resource, .last_stamp_ = curr_time_stamp_ };
+		//FIXME restore desc
+		pooled_resource.buffer_desc_ = {};
+		pooled_resource.texture_desc_ = {};
 		pooled_repo_.emplace_back(pooled_resource);
 	}
 
@@ -190,13 +193,25 @@ namespace MetaInit::RHI::Vulkan {
 		else
 		{
 			const auto buffer_desc = *reinterpret_cast<const RHIBufferDesc*>(desc);
+			//find best fit buffer block
+			VkDeviceSize best_fit_size = VK_WHOLE_SIZE;
+			auto best_fit_iter = pooled_repo_.begin();
+			const auto is_buffer_fit = [&](auto rhs_desc) {
+				return rhs_desc.access_ == buffer_desc.access_ &&
+					rhs_desc.size_ >= buffer_desc.size_ &&
+					rhs_desc.type_ == buffer_desc.type_ &&
+					rhs_desc.is_dedicated_ == buffer_desc.is_dedicated_ &&
+					rhs_desc.is_transiant_ == buffer_desc.is_transiant_; //??
+			};
 			for (auto iter = pooled_repo_.begin(); iter != pooled_repo_.end(); ++iter) {
-				if (iter->buffer_desc_ == buffer_desc) {
+				if (is_buffer_fit(iter->buffer_desc_)&& iter->buffer_desc_.size_<best_fit_size) {
 					found = true;
-					ret = *iter;
-					pooled_repo_.erase(iter);
+					best_fit_iter = iter;
+					best_fit_size = iter->buffer_desc_.size_;
 				}
 			}
+			ret = *best_fit_iter;
+			pooled_repo_.erase(best_fit_iter);
 		}
 		return found;
 	}
