@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/Handle.h"
-#include "RHI/RHIResource.h"
+#include "RHI/RHIResources.h"
 #include "Core/PixelInfo.h"
 #include "Renderer/RtRenderResourceDefinitions.h"
 #include "Renderer/RtRenderPass.h"
@@ -178,14 +178,15 @@ namespace MetaInit
 				return false;
 			}
 
-			bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(layout_); }
-			bool IsConnectAble(const RtField& other)const;
-			bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
-			bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
-			bool IsExtract()const { return usage_ == EUsage::eExtracted; }
-			bool IsReferenced()const { return ref_count_ > 1; }
-			bool IsCrossQueue()const { return is_cross_queue_; }
-			bool IsTransiant()const;
+			FORCE_INLINE bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(layout_); }
+			FORCE_INLINE bool IsConnectAble(const RtField& other)const;
+			FORCE_INLINE bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
+			FORCE_INLINE bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
+			FORCE_INLINE bool IsExtract()const { return usage_ == EUsage::eExtracted; }
+			FORCE_INLINE bool IsReferenced()const { return ref_count_ > 1; }
+			FORCE_INLINE bool IsCrossQueue()const { return is_cross_queue_; }
+			FORCE_INLINE bool IsDedicated()const {}
+			FORCE_INLINE bool IsTransiant()const{}
 			RtField& Name(const String& name);
 			RtField& ParentName(const String& name);
 			RtField& Width(const uint32_t width);
@@ -229,6 +230,7 @@ namespace MetaInit
 			//which stage of pass use this rtfield
 			EPipelineStageFlags	stage_{ EPipelineStageFlags::eUnkown };
 			//user force it tobe transiant
+			bool	is_dedicated_{ false };
 			bool	is_transiant_{ false };
 			bool	is_cross_queue_{ false };
 			uint32_t	sample_count_{ 1 };

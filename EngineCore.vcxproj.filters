@@ -104,7 +104,7 @@
     </ClCompile>
     <ClCompile Include="RHI\Vulkan\API\VulkanCmdContext.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanFrameBuffer.cpp" />
-    <ClCompile Include="RHI\Vulkan\API\VulkanResource.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanResources.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanRayTraceKHR.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanRenderPass.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanRenderPipeline.cpp" />
@@ -123,6 +123,9 @@
     <ClCompile Include="Core\RenderGlobalParams.cpp" />
     <ClCompile Include="RHI\RHIResources.cpp" />
     <ClCompile Include="RHI\Vulkan\RHISyncVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\API\VulkanStat.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourcesVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIResourceBindingVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -214,7 +217,7 @@
     </ClInclude>
     <ClInclude Include="RHI\Vulkan\API\VulkanCmdContext.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanFrameBuffer.h" />
-    <ClInclude Include="RHI\Vulkan\API\VulkanResource.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanResources.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanRayTraceKHR.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanRenderPass.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanRenderPipeline.h" />
@@ -234,6 +237,11 @@
     <ClInclude Include="RHI\Vulkan\RHIGlobalEntityVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceAllocatorVulkan.h" />
     <ClInclude Include="Core\RenderGlobalParams.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanStat.h" />
+    <ClInclude Include="RHI\Vulkan\RHIResourcesVulkan.h" />
+    <ClInclude Include="RHI\RHIResourceBinding.h" />
+    <ClInclude Include="RHI\Vulkan\API\VulkanHelperStruct.h" />
+    <ClInclude Include="RHI\Vulkan\RHIResourceBindingVulkan.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">

@@ -2,6 +2,7 @@
 
 #ifdef _MSC_VER
 #define MINIT_API __declspec(dllexport)
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #else 
 #define MINIT_API
 #endif 
@@ -48,6 +49,10 @@ namespace MetaInit {
 
 	using mat3 = glm::mat3;
 	using mat4 = glm::mat4;
+
+	using ivec2 = glm::ivec2;
+	using ivec3 = glm::ivec3;
+	using ivec4 = glm::ivec4;
 
 	using uvec2 = glm::uvec2;
 	using uvec3 = glm::uvec3;
@@ -112,10 +117,22 @@ namespace MetaInit::Utils {
 		return static_cast<Enum>(res);
 	}
 
-	template<typename T>
-	requires std::is_integral<T>::value
-	static inline constexpr T Align(T val, T alignment) {
-		return val & (~(alignment - 1));
+	template <typename T>
+	requires std::is_integral_v<T>
+	static inline constexpr bool IsPow2(T x) {
+		return (x & (x - 1)) == 0;
+	}
+
+	template<typename T, typename U>
+	requires std::is_integral_v<T> && std::is_integral_v<U>
+	static inline constexpr T AlignDown(T val, U alignment) {
+		return val & (~static_cast<T>(alignment - 1));
+	}
+
+	template<typename T, typename U>
+	requires std::is_integral_v<T> && std::is_integral_v<U>
+	static inline constexpr T AlignUp(T val, U alignment) {
+		return (val + alignment - 1) & ~(static_cast<T>(alignment - 1));
 	}
 
 	template<class Atomic=std::atomic_bool>
