@@ -84,6 +84,7 @@
     <ClInclude Include="Renderer\RtRenderShader.h" />
     <ClInclude Include="Renderer\RtRenderShaderFactory.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
+    <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
     <ClInclude Include="RHI\RHIGlobalEntity.h" />
     <ClInclude Include="RHI\RHICommand.h" />
     <ClInclude Include="RHI\RHICommandIR.h" />

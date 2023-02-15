@@ -242,6 +242,7 @@
     <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanHelperStruct.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceBindingVulkan.h" />
+    <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">

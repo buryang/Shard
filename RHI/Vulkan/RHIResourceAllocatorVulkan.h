@@ -231,11 +231,11 @@ namespace MetaInit::RHI::Vulkan
 		using SharedPtr = eastl::shared_ptr<RHIPooledTextureAllocatorVulkan>;
 		RHIPooledTextureAllocatorVulkan() {
 			if (!GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC)) {
-				alloc_.reset(new RHIHeapMemoryBulkSubAllocator);
+				alloc_.reset(new RHILinearHeapMemoryBulkVulkanSubAllocator);
 			}
 		}
-		RHIResource::Ptr AllocBuffer(const RHIBufferDesc& desc);
-		RHIResource::Ptr AllocTexture(const RHITextureDesc& desc);
+		bool AllocBuffer(const RHIBufferDesc& desc, RHIBufferVulkan::Ptr buffer);
+		bool AllocTexture(const RHITextureDesc& desc, RHITextureVulkan::Ptr texture);
 		void Free(RHIResource::Ptr resource);
 		bool Tick(float time);
 	private:

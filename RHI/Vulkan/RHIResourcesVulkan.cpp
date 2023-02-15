@@ -5,6 +5,54 @@
 
 namespace MetaInit::RHI::Vulkan
 {
+	static inline VkFormat ConvertEPixFormatToVulkan(EPixFormat format) {
+		switch (format) {
+		case EPixFormat::eR8Unorm:
+			return VK_FORMAT_R8_UNORM;
+		case EPixFormat::eR8Snorm:
+			return VK_FORMAT_R8_SNORM;
+		case EPixFormat::eR16Unorm:
+			return VK_FORMAT_R16_UNORM;
+		case EPixFormat::eR16Snorm:
+			return VK_FORMAT_R16_SNORM;
+		case EPixFormat::eRG8Unorm:
+			return VK_FORMAT_R8G8_UNORM;
+		case EPixFormat::eRG8Snorm:
+			return VK_FORMAT_R8G8_SNORM;
+		case EPixFormat::eRG16Unorm:
+			return VK_FORMAT_R16G16_UNORM;
+		case EPixFormat::eRG16Snorm:
+			return VK_FORMAT_R16G16_SNORM;
+		case EPixFormat::eR24UnormX8:
+			//todo
+			return 0;
+		case EPixFormat::eRGB5A1Unorm:
+			return VK_FORMAT_
+		//to do add others
+		case EPixFormat::eUnkown:
+		default:
+			return VK_FORMAT_UNDEFINED;
+		}
+	}
+
+	static inline VkImageCreateInfo ConvertTextureDescToVkImageCreateInfo(const RHITextureDesc& texture_desc) {
+		VkImageCreateInfo image_info;
+		memset(&image_info, 0, sizeof(image_info));
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		image_info.extent = { texture_desc.layout_.width_, texture_desc.layout_.height_, texture_desc.layout_.depth_ };
+		image_info.format = ConvertEPixFormatToVulkan(texture_desc.format_);
+		return image_info;
+	}
+
+	static inline VkBufferCreateInfo ConvertBufferDescToVkBufferCreateInfo(const RHIBufferDesc& buffer_desc) {
+		VkBufferCreateInfo buffer_info;
+		memset(&buffer_info, 0, sizeof(buffer_info));
+		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		return buffer_info;
+	}
+
 	void RHITextureVulkan::operator=(RHITextureVulkan&& rhs)
 	{
 		texture_ = rhs.texture_;
@@ -28,7 +76,17 @@ namespace MetaInit::RHI::Vulkan
 	}
 	size_t RHITextureVulkan::GetOccupySize() const
 	{
-		return size_t();
+		return size_t(memory_.size_);
+	}
+	void RHITextureVulkan::SetUpHandleAlone()
+	{
+		const auto& texture_info = ConvertTextureDescToVkImageCreateInfo(desc_);
+		texture_.reset(new VulkanImage(texture_info));
+	}
+	void RHITextureVulkan::SetUpHandleMemory(const MemoryAllocation& memory)
+	{
+		memory_ = memory;
+		texture_->Bind(memory_.mem_, memory_.offset_);
 	}
 	void RHIBufferVulkan::operator=(RHIBufferVulkan&& rhs)
 	{
@@ -50,6 +108,10 @@ namespace MetaInit::RHI::Vulkan
 	{
 		ReleaseMemoryAllocation(memory_);
 	}
+	size_t RHIBufferVulkan::GetOccupySize() const
+	{
+		return size_t(memory_.size_);
+	}
 	void* RHIBufferVulkan::MapBackMem()
 	{
 		return buffer_->Map();
@@ -57,5 +119,15 @@ namespace MetaInit::RHI::Vulkan
 	void RHIBufferVulkan::UnMapBackMem()
 	{
 		buffer_->Unmap();
+	}
+	void RHIBufferVulkan::SetUpHandleAlone()
+	{
+		const auto& buffer_info = ConvertBufferDescToVkBufferCreateInfo(desc_);
+		buffer_.reset(new VulkanBuffer(buffer_info));
+	}
+	void RHIBufferVulkan::SetUpHandleMemory(const MemoryAllocation& memory)
+	{
+		memory_ = memory;
+		buffer_->Bind(memory_.mem_, memory_.offset_);
 	}
 }

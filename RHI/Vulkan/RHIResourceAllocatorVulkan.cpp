@@ -74,15 +74,16 @@ namespace MetaInit::RHI::Vulkan {
 		return PreProcessAllocRequirements(alloc_req);
 	}
 
-	RHIResource::Ptr RHIPooledTextureAllocatorVulkan::AllocTexture(const RHITextureDesc& desc)
+	bool RHIPooledTextureAllocatorVulkan::AllocTexture(const RHITextureDesc& desc, RHITextureVulkan::Ptr texture)
 	{
 		RHIPooledTextureAllocatorVulkan::PooledResource pooled_resource;
 		if (auto ret = FindSuitAbleResource(true, &desc, pooled_resource)) {
-			return pooled_resource;
+			*texture = std::move(*static_cast<RHITextureVulkan::Ptr>(pooled_resource.handle_));
+			return true;
 		}
 
-		auto resource_ptr = new RHITextureVulkan(desc);
-		auto alloc_req = GetTextureMemoryRequirements();
+		texture->SetUpHandleAlone();
+		auto alloc_req = GetTextureMemoryRequirements(texture->GetImpl()->Get(), 0x0, 0x0);
 		if (desc.is_dedicated_ && GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC)) {
 			auto& mem_stat = RHIDeviceMemoryStateCounter::Instance();
 			mem_stat.InCreAllocCount();
@@ -95,27 +96,31 @@ namespace MetaInit::RHI::Vulkan {
 			alloc_info.memoryTypeIndex = alloc_req.mem_tpye_;
 			alloc_info.pNext = &dedicate_info;
 			vkAllocateMemory(GetGlobalDevice(), &alloc_info, g_host_alloc, &allocation.mem_);
+			texture->SetUpHandleMemory(allocation);
 		}
 		else
 		{
 			auto allocation = alloc_->Alloc(alloc_req);
+			texture->SetUpHandleMemory(allocation);
 		}
-		return pooled_resource;
+		return true;
 	}
 
-	RHIResource::Ptr RHIPooledTextureAllocatorVulkan::AllocBuffer(const RHIBufferDesc& desc)
+	bool RHIPooledTextureAllocatorVulkan::AllocBuffer(const RHIBufferDesc& desc, RHIBufferVulkan::Ptr buffer)
 	{
 		RHIPooledTextureAllocatorVulkan::PooledResource resource;
-		auto ret = FindSuitAbleResource(false, &desc, resource);
-		if (ret) {
-			return resource;
+		if(auto ret = FindSuitAbleResource(false, &desc, resource))
+		{
+			*buffer = std::move(*static_cast<RHIBufferVulkan::Ptr>(buffer));
+			return true;
 		}
-		auto buffer = new RHIBufferVulkan(desc);
-		auto alloc_req = GetBufferMemoryRequirements();
+		
+		buffer->SetUpHandleAlone();
+		auto alloc_req = GetBufferMemoryRequirements(buffer->GetImpl()->Get(), 0x0, 0x0);
 		if (desc.is_dedicated_ && GET_PARAM_TYPE_VAL(BOOL, DEVICE_DEDICATED_ALLOC)) {
 			auto& mem_stat = RHIDeviceMemoryStateCounter::Instance();
 			mem_stat.InCreAllocCount();
-			PCHECK(alloc_req.size_ < mem_stat.GetHeapBudget(mem_stat.GetHeapIndexForMemType(alloc_req.mem_tpye_)));
+			PCHECK(alloc_req.size_ < mem_stat.GetHeapBudget(mem_stat.GetHeapIndexForMemType(alloc_req.mem_type_));
 			MemoryAllocation allocation;
 			VkMemoryDedicatedAllocateInfoKHR dedicate_info{ VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
 			dedicate_info.buffer = 0;
@@ -124,12 +129,14 @@ namespace MetaInit::RHI::Vulkan {
 			alloc_info.memoryTypeIndex = alloc_req.mem_tpye_;
 			alloc_info.pNext = &dedicate_info;
 			vkAllocateMemory(GetGlobalDevice(), &alloc_info, g_host_alloc, &allocation.mem_);
+			buffer->SetUpHandleMemory(allocation);
 		}
 		else
 		{
 			auto allocation = alloc_->Alloc(alloc_req);
+			buffer->SetUpHandleMemory(allocation);
 		}
-		return buffer;
+		return true;
 	}
 
 	void RHIPooledTextureAllocatorVulkan::Free(RHIResource::Ptr resource)

@@ -32,17 +32,18 @@ namespace MetaInit
 	public:
 		using Ptr = VulkanImage*;
 		using SharedPtr = eastl::shared_ptr<VulkanImage>;
+		using Handle = VkImage;
 		explicit VulkanImage(const VkImageCreateInfo& create_info);
 		~VulkanImage();
-		VkImage Get();
-		VkFormat GetFormat()const;
-		VkSampleCountFlagBits GetSampleCount()const;
-		EResourceState GetState()const;
-		uint32_t GetLevels()const;
-		uint32_t GetLayers()const;
-		VulkanImage& SetState(EResourceState new_state);
+		Handle Get();
+		FORCE_INLINE VkFormat GetFormat()const { return format_; }
+		FORCE_INLINE VkSampleCountFlags GetSampleCount()const { return sample_count_; }
+		FORCE_INLINE EResourceState GetState()const { return state_; }
+		FORCE_INLINE uint32_t GetLevels()const { return mips_; }
+		FORCE_INLINE uint32_t GetLayers()const { return layers_; }
+		VulkanImage& SetState(EResourceState new_state) { state_ = new_state; return *this; }
 		VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
-		void Bind();
+		VulkanImage& Bind(VkDeviceMemory memory, VkDeviceSize offset);
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, SharedPtr image);
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, VulkanBuffer::SharedPtr buffer);
 	private:
@@ -57,6 +58,7 @@ namespace MetaInit
 		EResourceState			state_{ EResourceState::eUndefined };
 		uint32_t				mips_;
 		uint32_t				layers_;
+		VkSampleCountFlags		sample_count_;
 	};
 
 	class VulkanImageView
@@ -126,6 +128,7 @@ namespace MetaInit
 		VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);
 		VulkanBuffer& Flush()const;
 		VulkanBuffer& Clear(uint32_t data);
+		VulkanBuffer& Bind(VkDeviceMemory memory, VkDeviceSize offset);
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, VulkanImage::SharedPtr image);
 		void CopyTo(VulkanCmdBuffer::SharedPtr cmd_buffer, SharedPtr buffer);
 		bool IsStage()const;

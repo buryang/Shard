@@ -20,6 +20,7 @@
 #include "eastl/hash_map.h"
 #include "eastl/fixed_hash_map.h"
 #include "eastl/hash_set.h"
+#include "eastl/fixed_hash_set.h"
 #include "eastl/list.h"
 #include "eastl/queue.h"
 #include "eastl/stack.h"
@@ -31,8 +32,10 @@
 #include "eastl/internal/thread_support.h"
 #include <memory>
 #include <algorithm>
-#include <assert.h>
-
+#include <cassert>
+#ifdef _WIN32
+#include <stringapiset.h>
+#endif
 
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
@@ -69,9 +72,11 @@ namespace MetaInit {
 	template<typename Key, typename Val>
 	using Map = eastl::hash_map<Key, Val>;
 	template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
-	using SmallMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
+	using FixedMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
 	template<typename Val>
 	using Set = eastl::hash_set<Val>;
+	template<typename Value, size_t node_count>
+	using FixedSet = eastl::fixed_hash_set<Value, node_count>;
 	template<typename T>
 	using Queue = eastl::queue<T>;
 	template<typename T>
@@ -89,6 +94,7 @@ namespace MetaInit {
 	using Optional = eastl::optional<T>;
 
 	using String = eastl::string;
+	using WString = eastl::wstring;
 	
 	//multi thread 
 	/*
@@ -148,6 +154,68 @@ namespace MetaInit::Utils {
 		}
 	private:
 		Atomic& sign_;
+	};
+
+	//string/wstring conver helper
+	class StringConvertHelper
+	{
+	public:
+#ifdef _WIN32
+		static inline WString StringToWString(const String& str) {
+			WString wstr;
+			auto num = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+			if (num > 0)
+			{
+				wstr.resize(size_t(num) - 1);
+				MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], num);
+			}
+		}
+		static inline String WStringToString(const WString& wstr) {
+			String str;
+			auto num = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+			if (num > 0)
+			{
+				str.resize(size_t(num));
+				WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], num, nullptr, nullptr);
+			}
+
+		}
+		static inline int CharToWChar(const char* from, wchar_t* to) {
+			int num = MultiByteToWideChar(CP_UTF8, 0, from, -1, nullptr, 0);
+			if (num > 0)
+			{
+				MultiByteToWideChar(CP_UTF8, 0, from, -1, &to[0], num);
+			}
+			return num;
+		}
+		static inline int WCharToChar(const wchar_t* from, char* to) {
+			int num = WideCharToMultiByte(CP_UTF8, 0, from, -1, nullptr, 0, nullptr, nullptr);
+			if (num > 0)
+			{
+				WideCharToMultiByte(CP_UTF8, 0, from, -1, &to[0], num, nullptr, nullptr);
+			}
+			return num;
+		}
+#else
+		static inline WString StringToWString(const String& str) {
+			std::wstring_convert<std::codecvt_utf8<wchar_t>> cv:
+			return cv.from_bytes(str);
+		}
+		static inline String WStringToString(const WString& wstr) {
+			std::wstring_convert<std::codecvt_utf8<wchar_t>> cv:
+			return cv.to_bytes(wstr);
+		}
+		static inline int CharToWChar(const char* from, wchar_t* to) {
+			std::wstring_convert<std::codecvt_utf8<wchar_t>> cv;
+			std::memcpy(to, cv.from_bytes(from).c_str(), cv.converted());
+			return (int)cv.converted();
+		}
+		static inline int WCharToChar(const wchar_t* from, char* to) {
+			std::wstring_convert<std::codecvt_utf8<wchar_t>> cv;
+			std::memcpy(to, cv.to_bytes(from).c_str(), cv.converted());
+			return (int)cv.converted();
+		}
+#endif
 	};
 }
 

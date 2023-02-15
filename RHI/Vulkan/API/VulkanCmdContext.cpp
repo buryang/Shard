@@ -1,7 +1,7 @@
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 #include "RHI/Vulkan/API/VulkanRenderPass.h"
 #include "RHI/Vulkan/API/VulkanRayTraceKHR.h"
-#include "RHI/Vulkan/API/VulkanResource.h"
+#include "RHI/Vulkan/API/VulkanResources.h"
 
 namespace MetaInit
 {

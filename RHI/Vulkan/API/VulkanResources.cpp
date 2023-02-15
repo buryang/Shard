@@ -175,6 +175,10 @@ namespace MetaInit
 		assert(ret == VK_SUCCESS && "create vulkan image faild");
 	}
 
+	VulkanImage::VulkanImage(const VkImageCreateInfo& create_info)
+	{
+	}
+
 	VulkanImage::~VulkanImage()
 	{
 		if (VK_NULL_HANDLE != handle_)
@@ -182,27 +186,6 @@ namespace MetaInit
 			vkDestroyImage(device_->Get(), handle_, g_host_alloc);
 			vmaFreeMemory(nullptr, vma_data_.allocation_);
 		}
-	}
-
-	VkImage VulkanImage::Get()
-	{
-		return handle_;
-	}
-
-	VkFormat VulkanImage::GetFormat()const
-	{
-		return format_;
-	}
-
-	EResourceState VulkanImage::GetState()const
-	{
-		return state_;
-	}
-
-	VulkanImage& VulkanImage::SetState(EResourceState new_state)
-	{
-		state_ = new_state;
-		return *this;
 	}
 
 	VulkanImage& VulkanImage::Clear(VkClearValue value, const VkImageSubresourceRange& region)
@@ -221,6 +204,12 @@ namespace MetaInit
 		{
 			throw std::invalid_argument("invalid region aspect mask");
 		}
+		return *this;
+	}
+
+	VulkanImage& VulkanImage::Bind(VkDeviceMemory memory, VkDeviceSize offset)
+	{
+		vkBindImageMemory(GetGlobalDevice(), handle_, memory, offset);
 		return *this;
 	}
 
@@ -518,6 +507,12 @@ namespace MetaInit
 	{
 		assert(VK_BUFFER_USAGE_TRANSFER_DST_BIT & prop_info_.usage);
 		vkCmdFillBuffer(graph_->GetMemeAllocator().Get(), handle_, 0, VK_WHOLE_SIZE, data);
+		return *this;
+	}
+
+	VulkanBuffer& VulkanBuffer::Bind(VkDeviceMemory memory, VkDeviceSize offset)
+	{
+		vkBindBufferMemory(GetGlobalDevice(), handle_, memory, offset);
 		return *this;
 	}
 

@@ -50,6 +50,49 @@ namespace MetaInit::RHI::Vulkan {
 		}
 	}
 
+	bool RHIGlobalEntityVulkan::SetUpTexture(RHITextureVulkan::Ptr texture)
+	{
+		if (texture->GetImpl().get()) {
+			return true;
+		}
+
+		const auto& texture_desc = texture->GetTextureDesc();
+
+		if (texture_desc.is_transiant_) {
+			assert(transient_repo_.get() != nullptr);
+			bool ret = transient_repo_->AllocTexture(texture_desc, texture);
+			return ret;
+		}
+		else
+		{
+			bool ret = pooled_repo_.AllocTexture(texture_desc, texture);
+			return ret;
+		}
+
+		return true;
+
+	}
+
+	bool RHIGlobalEntityVulkan::SetUpBuffer(RHIBufferVulkan::Ptr buffer)
+	{
+		if (buffer->GetImpl().get()) {
+			return true;
+		}
+
+		const auto& buffer_desc = buffer->GetBufferDesc();
+		if (buffer_desc.is_transiant_) {
+			assert(transient_repo_.get() != nullptr);
+			bool ret = transient_repo_->AllocBuffer(buffer_desc, buffer);
+			return ret;
+		}
+		else
+		{
+			bool = pooled_repo_.AllocBuffer(buffer_desc, buffer);
+			return ret;
+		}
+		return true;
+	}
+
 	RHIGlobalEntityVulkan::RHIGlobalEntityVulkan() {
 
 	}

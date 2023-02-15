@@ -33,15 +33,15 @@ namespace MetaInit::RHI {
 			eBlitImage,
 			ePushConstant,
 		};
-		virtual ECommandType Type() const {
-			return ECommandType::eNone;
-		}
+		enum {
+			Type = ECommandType::eNone,
+		};
 		virtual ~RHICommandPacketInterface() {}
 	};
 
-#define IMPLEMENT_TYPE(type) ECommandType Type() const override{ return type; }
+#define IMPLEMENT_TYPE(type) enum { Type = (type), }
 
-	struct RHISetStreamSroucePacket final : public RHICommandPacketInterface {
+	struct RHISetStreamSourcePacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eSetStreamSource);
 		uint32_t	stream_index_;
 		uint32_t	offset_;

@@ -1,4 +1,4 @@
-#include "RuntimeShaderPermunation.h"
+#include "RuntimeShaderPermutation.h"
 
 namespace MetaInit
 {
