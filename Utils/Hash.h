@@ -2,40 +2,49 @@
 #include "Utils/CommonUtils.h"
 #include <ThirdParty/CSHA/SHA1.h>
 #include <folly/Hash.h>
+#include <blake3.h>
 
 namespace MetaInit::Utils {
-	template<typename Hash, uint32_t hash_size=20>
-	class HashContainer {
+	template<typename Hash, uint32_t hash_size=20*8>
+	class HashSignature {
 	public:
 		enum {
 			MAX_HASH_SIZE = hash_size,
-			MAX_HASH_STR_SIZE = hash_size *2,
+			MAX_HASH_STR_SIZE = hash_size*2,
 		};
-		using ValType = HashType;
-		HashContainer& FromString(const String& str);
-		HashContainer& FromWString(const WString& wstr);
-		HashContainer& FromBinary(const Span<uint8_t>& hash);
+		//using ValType = HashType;
+		HashSignature() = default;
+		HashSignature& FromString(const String& str);
+		HashSignature& FromWString(const WString& wstr);
+		HashSignature& FromBinary(const Span<uint8_t>& hash);
 		String ToString()const;
 		WString ToWString()const;
 		constexpr bool IsZero()const;
 		FORCE_INLINE uint8_t* GetBytes() { return hash_; }
-		FORCE_INLINE uint32_t GetHashSize()const { return size_; }
-		FORCE_INLINE constexpr bool operator==(const HashContainer& rhs) const {
+		FORCE_INLINE constexpr uint32_t GetHashSize()const { return MAX_HASH_SIZE; }
+		FORCE_INLINE constexpr bool operator==(const HashSignature& rhs) const {
 			auto ret = std::memcmp(hash_, rhs.hash_, size_);
 			return !ret;
 		}
-		FORCE_INLINE constexpr bool operator!=(const HashContainer& rhs) const {
+		FORCE_INLINE constexpr bool operator!=(const HashSignature& rhs) const {
 			return !(*this == rhs);
 		}
+		friend FileArchive& operator << (FileArchive& ar, HashSignature& hash) {
+			return ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
+		}
 	private:
-		alignas(32) uint8_t hash_[MAX_HASH_SIZE];
+		alignas(32) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0 };
 	};
 
 	//hash conainters
-	using SpookyV2Hash64 = HashContainer<folly::hash::SpookyHashV2, 64>;
-	using SpookyV2Hash128 = HashContainer<folly::hash::SpookyHashV2, 128>;
-	using SHA1Hash = HashContainer<CSHA1, 20*8>; //20 bytes
-
+	//my default non-cryptographic hash
+	using SpookyV2Hash32 = HashSignature<folly::hash::SpookyHashV2, 32>;
+	using SpookyV2Hash64 = HashSignature<folly::hash::SpookyHashV2, 64>;
+	using SpookyV2Hash128 = HashSignature<folly::hash::SpookyHashV2, 128>;
+	using SHA1Hash = HashSignature<CSHA1, 20*8>; //20 bytes
+	//my default cryptographic hash 
+	using Blake3Hash64 = HashSignature<blake3_hasher, 64>; //64 bits
+	using Blake3Hash256 = HashSignature<blake3_hasher, 32*8>;//32 bytes
 
 	//template function implement
 	template<typename TCHAR>
@@ -83,7 +92,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	HashContainer<HashType, hash_size>& HashContainer<HashType, hash_size>::FromString(const String& str)
+	HashSignature<HashType, hash_size>& HashSignature<HashType, hash_size>::FromString(const String& str)
 	{
 		assert(str.size() == MAX_HASH_STR_SIZE);
 		for (auto n = 0; n < MAX_HASH_STR_SIZE; n += 2) {
@@ -96,7 +105,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	HashContainer<HashType, hash_size>& HashContainer<HashType, hash_size>::FromWString(const WString& wstr)
+	HashSignature<HashType, hash_size>& HashSignature<HashType, hash_size>::FromWString(const WString& wstr)
 	{
 		assert(wstr.size() == MAX_HASH_STR_SIZE);
 		for (auto n = 0; n < MAX_HASH_STR_SIZE; n += 2) {
@@ -109,7 +118,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	HashContainer<HashType, hash_size>& HashContainer<HashType, hash_size>::FromBinary(const Span<uint8_t>& hash)
+	HashSignature<HashType, hash_size>& HashSignature<HashType, hash_size>::FromBinary(const Span<uint8_t>& hash)
 	{
 		assert(hash.size() == MAX_HASH_SIZE);
 		std::memcpy(hash_, hash.data(), MAX_HASH_SIZE);
@@ -117,7 +126,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	String HashContainer<HashType, hash_size>::ToString() const
+	String HashSignature<HashType, hash_size>::ToString() const
 	{
 		String str;
 		for (auto n = 0; n < MAX_HASH_SIZE; ++n) {
@@ -129,7 +138,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	WString HashContainer<HashType, hash_size>::ToWString() const
+	WString HashSignature<HashType, hash_size>::ToWString() const
 	{
 		WString wstr;
 		for (auto n = 0; n < MAX_HASH_SIZE; ++n) {
@@ -141,7 +150,7 @@ namespace MetaInit::Utils {
 	}
 
 	template<typename HashType, uint32_t hash_size>
-	constexpr bool HashContainer<HashType, hash_size>::IsZero() const
+	constexpr bool HashSignature<HashType, hash_size>::IsZero() const
 	{
 		for (auto n = 0; n < MAX_HASH_SIZE; ++n) {
 			if (hash_[n] != 0) {
@@ -149,5 +158,17 @@ namespace MetaInit::Utils {
 			}
 		}
 		return true;
+	}
+
+	template<uint32_t hash_size=64>
+	auto CalcBlake3HashForBytes(const uint8_t* bytes, size_t size)->HashSignature<blake3_hasher, hash_size>
+	{
+		using HashType = HashSignature<blake3_hasher, hash_size>;
+		HashType hash;
+		blake3_hasher hasher;
+		blake3_hasher_init(&hasher);
+		blake3_hasher_update(&hasher, bytes, size);
+		blake3_hasher_finalize(&hasher, hash.GetBytes(), hash_zie);
+		return hash;
 	}
 }

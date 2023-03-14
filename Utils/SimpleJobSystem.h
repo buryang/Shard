@@ -33,7 +33,7 @@ namespace MetaInit
 				virtual void operator()(void) = 0;
 			};
 			template<typename Handle>
-			struct TaskEntry : public Task
+			struct TaskEntry final : public Task
 			{
 				Handle		handle_;
 				TaskEntry() = default;
@@ -94,6 +94,7 @@ namespace MetaInit
 			job_entry.SetTask(job_task);
 			job_entry.parent_ = parent;
 			SimpleJobSystem::Instance().Execute(job_entry);
+			return 0u;
 		}
 	}
 }

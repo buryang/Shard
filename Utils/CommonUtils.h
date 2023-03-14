@@ -30,19 +30,37 @@
 #include "eastl/bitset.h"
 #include "eastl/bitvector.h"
 #include "eastl/internal/thread_support.h"
+#include "folly/format.h"
 #include <memory>
 #include <algorithm>
 #include <cassert>
 #ifdef _WIN32
 #include <stringapiset.h>
+#else
+#include <codecvt>
 #endif
-
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
 class_name(const class_name##&)=delete; \
 class_name##& operator=(const class_name##&)=delete;\
 class_name(class_name##&&)=delete;\
 class_name##& operator=(class_name##&&)=delete;
+
+/*foreach varargs macro*/
+#define PARENS ()
+
+#define EXPAND(...) EXPAND4(EXPAND4(EXPAND4(EXPAND4(__VA_ARGS__))))
+#define EXPAND4(...) EXPAND3(EXPAND3(EXPAND3(EXPAND3(__VA_ARGS__))))
+#define EXPAND3(...) EXPAND2(EXPAND2(EXPAND2(EXPAND2(__VA_ARGS__))))
+#define EXPAND2(...) EXPAND1(EXPAND1(EXPAND1(EXPAND1(__VA_ARGS__))))
+#define EXPAND1(...) __VA_ARGS__
+
+#define FOR_EACH(MACRO, ...)                                    \
+  __VA_OPT__(EXPAND(FOR_EACH_HELPER(MACRO, __VA_ARGS__)))
+#define FOR_EACH_HELPER(MACRO, A1, ...)                         \
+  MACRO(A1)                                                     \
+  __VA_OPT__(FOR_EACH_AGAIN PARENS (MACRO, __VA_ARGS__))
+#define FOR_EACH_AGAIN() FOR_EACH_HELPER
 
 namespace MetaInit {
 
@@ -125,27 +143,27 @@ namespace MetaInit::Utils {
 
 	template <typename T>
 	requires std::is_integral_v<T>
-	static inline constexpr bool IsPow2(T x) {
+		static inline constexpr bool IsPow2(T x) {
 		return (x & (x - 1)) == 0;
 	}
 
 	template<typename T, typename U>
-	requires std::is_integral_v<T> && std::is_integral_v<U>
-	static inline constexpr T AlignDown(T val, U alignment) {
+	requires std::is_integral_v<T>&& std::is_integral_v<U>
+		static inline constexpr T AlignDown(T val, U alignment) {
 		return val & (~static_cast<T>(alignment - 1));
 	}
 
 	template<typename T, typename U>
-	requires std::is_integral_v<T> && std::is_integral_v<U>
-	static inline constexpr T AlignUp(T val, U alignment) {
+	requires std::is_integral_v<T>&& std::is_integral_v<U>
+		static inline constexpr T AlignUp(T val, U alignment) {
 		return (val + alignment - 1) & ~(static_cast<T>(alignment - 1));
 	}
 
-	template<class Atomic=std::atomic_bool>
+	template<class Atomic = std::atomic_bool>
 	class SpinLock
 	{
 	public:
-		SpinLock(Atomic& sign):sign_(sign) {
+		SpinLock(Atomic& sign) :sign_(sign) {
 			bool expected = false;
 			while (!sign_.compare_exchange_weak(expected, true)) {}
 		}
@@ -217,5 +235,6 @@ namespace MetaInit::Utils {
 		}
 #endif
 	};
+
 }
 

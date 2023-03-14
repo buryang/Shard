@@ -361,7 +361,7 @@ namespace MetaInit
 	VulkanCmdPool::SharedPtr VulkanCmdPoolManager::GetIdlePool(VkCommandPoolCreateFlags flags, uint32_t family_index)
 	{
 		VulkanCmdPool::SharedPtr pool_ptr;
-		std::lock_guard<std::mutex> lock(mutex_);
+		std::scoped_lock <std::mutex> lock(mutex_);
 		{
 			auto check_pool = [&](const auto pool)->bool {
 				return pool->State() == VulkanCmdPool::EState::eIdle;

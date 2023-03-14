@@ -1,18 +1,23 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/FileArchive.h"
+#include "Utils/Hash.h"
+#include "RHI/RHIShader.h"
+#include "RHI/RHIShaderLibrary.h"
 #include "Renderer/RtRenderShader.h"
 #include <functional>
 #include <shared_mutex>
+#include <condition_variable>
+#include <semaphore>
 #ifdef _WIN32
 #include <atlbase.h>
 #include <dxc/dxcapi.h>
 #include <d3d12shader.h> 
 #endif
 
-
 namespace MetaInit::Renderer
 {
+	REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
 	class MINIT_API RtShaderType
 	{
 	public:
@@ -40,6 +45,8 @@ namespace MetaInit::Renderer
 
 	struct ShaderCompileJobIn
 	{
+		using HashType = Utils::SpookyV2Hash32;
+		mutable HashType hash_;
 		String	file_;
 		String	entry_;
 		uint32_t	permutation_;
@@ -47,11 +54,24 @@ namespace MetaInit::Renderer
 		SmallVector<String> include_path_;
 		SmallVector<String>	defines_;
 		SmallVector<String> extra_cli_;
+		void ComputeHash()const;
 	};
+
+	bool operator==(const ShaderCompileJobIn& lhs, const ShaderCompileJobIn& rhs);
+	bool operator!=(const ShaderCompileJobIn& lhs, const ShaderCompileJobIn& rhs);
+	//only read ANSI encode file
+	void TraverseHLSLIncludePath(const String& prefix, const String& file, Vector<String>& paths);
 
 	struct ShaderCompileJobOutput
 	{
-		RtRenderShaderCode shader_code_;
+		enum class EJobStat {
+			eFinalized = 0x1,
+			eSuccess = 0x2,
+			eFailed	= 0x4,
+		};
+		EJobStat	stat_;
+		RtRenderShaderCode	shader_code_;
+		String	compile_message_;
 		//other data
 	};
 
@@ -59,12 +79,17 @@ namespace MetaInit::Renderer
 	{
 	public:
 		using Ptr = RtShaderCompileWorker*;
-		void Submit(const ShaderCompileJobIn& job);
-		bool IsAllCompiled()const { return compile_jobs_.empty(); }
-		virtual void Compile() = 0;
+		explicit RtShaderCompileWorker(ShaderCompileJobIn&& job_in) :compile_input_(std::move(job_in)) {}
 		virtual ~RtShaderCompileWorker() {}
+		virtual void Compile() = 0;
+		FORCE_INLINE const ShaderCompileJobOutput& GetOutput()const { return compile_output_; }
+		FORCE_INLINE const ShaderCompileJobIn::HashType GetHash()const { 
+			compile_input_.ComputeHash();
+			return compile_input_.hash_; 
+		}
 	protected:
-		Vector<ShaderCompileJobIn> compile_jobs_;
+		ShaderCompileJobIn	compile_input_;
+		ShaderCompileJobOutput	compile_output_;
 	};
 
 #ifdef _WIN32
@@ -80,29 +105,81 @@ namespace MetaInit::Renderer
 	private:
 		static void GenerateCompileCLI(const ShaderCompileJobIn& job, SmallVector<LPCWSTR>& cli);
 		static WString ConvertSMToTargetProfile(EShaderFrequency freq, EShaderModel sm);
-		void CompileSingleJob(const ShaderCompileJobIn& job, ShaderCompileJobOutput& output);
+		void DoCompileJob(const ShaderCompileJobIn& job, ShaderCompileJobOutput& output);
 	private:
 		CComPtr<IDxcUtils>	utils_;
 		CComPtr<IDxcCompiler> compiler_;
 	};
 #endif
 
+	class RtGlobalCompileWorkManager {
+	public:
+		static RtGlobalCompileWorkManager& Instance() {
+			static RtGlobalCompileWorkManager instance;
+			return instance;
+		}
+		uint32_t Submit(RtShaderCompileWorker::Ptr work);
+		uint32_t Wait(uint32_t work_id)const;
+		void FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output)const;
+		void WaitAllJobsDone()const;
+	private:
+		RtGlobalCompileWorkManager() = default;
+		DISALLOW_COPY_AND_ASSIGN(RtGlobalCompileWorkManager);
+	private:
+		struct CompileEntity
+		{
+			RtShaderCompileWorker::Ptr entity_{ nullptr };
+			std::binary_semaphore	done_semaphore_;
+		};
+		Map<uint32_t, CompileEntity>	pending_works_;
+		std::mutex	pending_work_mutex_;
+		std::condition_variable	pengding_work_cv_;
+		std::atomic_uint32_t	total_works_{ 0u };
+		std::atomic_uint32_t	failed_works_{ 0u };
+		std::atomic_uint32_t	successed_works_{ 0u };
+	};
+
+	struct ShaderKey
+	{
+		using HashType = Utils::Blake3Hash64;
+		HashType	shader_type_;
+		uint32_t	permutation_{ 0 };
+	};
+
 	class MINIT_API RtShaderCompiledRepo
 	{
 	public:
-		using HashType = uint64_t;
-		void Serialize(const String& file) const;
-		void UnSerialize(const String& file);
-		RtRenderShader::SharedPtr Read(HashType hash)const;
+		static RtShaderCompiledRepo& Instance() {
+			static RtShaderCompiledRepo repo;
+			return repo;
+		}
+		RHI::RHIShader::Ptr	GetRHIShader(const ShaderKey& key);
+		RHI::RHIShader::Ptr GetRHIShaderWait(const ShaderKey& key);
+		RtRenderShader::SharedPtr GetShader(const ShaderKey& key);
 		/*read a shader if not found wait*/
-		RtRenderShader::SharedPtr ReadWait(HashType hash)const;
+		RtRenderShader::SharedPtr GetShaderWait(const ShaderKey& key);
+		//force_rebuild: whether a shader code exist in shader archive or not force to rebuild it
+		void StartAllCompileWorkers(bool force_rebuild = false);
 		void WaitForAllCompileWorkers()const;
 	private:
-		void Add(HashType hash, RtRenderShader::SharedPtr shader);
-		void Remove(HashType hash);
+		RtShaderCompiledRepo() = default;
+		DISALLOW_COPY_AND_ASSIGN(RtShaderCompiledRepo);
+		void Add(const ShaderKey& sbader_key, RtRenderShader::SharedPtr shader);
+		void Remove(const ShaderKey& shader_key);
+		void CollectOutDatedShader(Vector<RtRenderShader::SharedPtr>& outdated_shaders)const;
+		//void BeginCompileShader();
+		//void WaitCompileShaderDone();
 	private:
-		Map<HashType, RtRenderShader::SharedPtr>	shader_repo_;
-		std::shared_mutex	write_mutex_;
-		SmallVector<RtShaderCompileWorker::Ptr> compile_workers_;
+		RtShaderCompileWorker::Ptr	compile_worker_;
+		mutable std::shared_mutex	compile_mutex_;
+	};
+
+	class MINIT_API RtShaderPipelineRepo
+	{
+	public:
+
+	private:
+		RHI::RHIShaderLibraryInterface::SharedPtr	shader_cache_;
+
 	};
 }

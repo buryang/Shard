@@ -63,7 +63,7 @@ namespace MetaInit
 			return desc_set;
 		};
 		
-		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		std::scoped_lock <std::mutex> lock_pool(pool_mutex_);
 
 		if (curr_ == VK_NULL_HANDLE)
 		{
@@ -97,7 +97,7 @@ namespace MetaInit
 			PLOG(FATAL) << "alloc desc set failed";
 		};
 
-		std::lock_guard<std::mutex> lock_pool(pool_mutex_);
+		std::scoped_lock <std::mutex> lock_pool(pool_mutex_);
 		if (curr_ == VK_NULL_HANDLE || !CanAllocate(layouts))
 		{
 			UpdateCurrPool();

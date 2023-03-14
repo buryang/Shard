@@ -1,22 +1,30 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "Utils/Hash.h"
 #include <fstream>
 
 namespace MetaInit::Utils {
 
 	class MINIT_API FileArchive {
 	public:
+		using SizeType = uint64_t;
+		using PositionType = SizeType;
+
 		enum EArchiveMode {
 			eUndefined = 0,
 			eRead = 1 << 0,
 			eWrite = 1 << 1,
 			eAppend = eWrite | 0x100,
 		};
+		FileArchive() = default;
 		FileArchive(const String& file_path, EArchiveMode mode);
 		void Open(const String& file_path, EArchiveMode mode);
 		void Close();
+		constexpr SizeType Tell()const;
+		FileArchive& Seek(PositionType pos);
 		bool IsReading()const { return archive_mode_ & eRead; }
-		FileArchive& Serialize(void* data, uint32_t size);
+		bool IsEof()const { return archive_stream_.eof(); }
+		FileArchive& Serialize(void* data, uint64_t size);
 		template <typename T>
 		friend FileArchive& operator << (FileArchive& archive, T&& value) {
 			assert(archive.archive_mode_ != FileArchive::eUndefined);
@@ -32,6 +40,8 @@ namespace MetaInit::Utils {
 		EArchiveMode	archive_mode_{ eUndefined };
 		std::fstream	archive_stream_;
 	};
+
+	constexpr uint64_t CalcFileArchiveCrc(const FileArchive& archive, FileArchive::PositionType beg, FileArchive::PositionType end);
 
 	struct FileImageSectionDescriptor {
 		using Ptr = FileImageSectionDescriptor*;
