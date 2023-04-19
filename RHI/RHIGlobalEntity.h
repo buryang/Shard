@@ -4,6 +4,7 @@
 #include "RHI/RHIResources.h"
 #include "RHI/RHICommand.h"
 #include "RHI/RHIResourceBinding.h"
+#include "RHI/RHIShaderLibrary.h"
 
 namespace MetaInit::RHI
 {
@@ -45,6 +46,8 @@ namespace MetaInit::RHI
 		virtual void CreateComputePipelineState();
 		virtual void CreateSampler();
 		virtual void CreateViewPoint();
+		//only metal support shader library
+		virtual RHIShaderLibraryInterface::Ptr CreateShaderLibrary();
 		virtual RHIResourceBindlessHeap::SharedPtr CreateResourceBindlessHeap();
 		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc);

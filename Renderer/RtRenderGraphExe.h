@@ -29,8 +29,8 @@ namespace MetaInit
 			using BufferHandle = BufferRepo<>::Handle;
 			struct _CommandContext
 			{
-				RHI::RHICommandContext*		rhi_{ nullptr };
-				RHI::RHICommandContext*		async_rhi_{ nullptr };
+				RHI::RHICommandContext* rhi_{ nullptr };
+				RHI::RHICommandContext* async_rhi_{ nullptr };
 			};
 			using RHIUnionContext = _CommandContext;
 		public:
@@ -38,12 +38,16 @@ namespace MetaInit
 			void Execute(RHIUnionContext& context);
 			void InsertPass(PassHandle handle, RtRendererPass& pass);
 			//regist resource collection and barrier batch as callback
-			void InsertCallBack(PassHandle time, CallBack&& call, bool is_post=false);
+			void InsertCallBack(PassHandle time, CallBack&& call, bool is_post = false);
 			const RtRendererPass& GetRenderPass(PassHandle handle) const;
 			RtRenderTexture::Ptr GetRenderTexture(TextureHandle handle);
 			RtRenderBuffer::Ptr GetRenderBuffer(BufferHandle handle);
 			TextureHandle GetOrCreateTexture(const RtField& field);
 			BufferHandle GetOrCreateBuffer(const RtField& field);
+			template<class ShaderParameter, typename... Args>
+			typename ShaderParameter::Ptr CreateShaderParameters(Args&&... args) {
+				return AllocNoDestruct<ShaderParameter>(args);
+			}
 			//binding external resource to executor
 			RtRenderGraphExecutor& RegistExternalResource(const RtField& field, RtRenderResource::Ptr resource);
 			//whether executor ready for draw

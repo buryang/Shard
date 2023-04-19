@@ -339,7 +339,7 @@ private:\
 	static auto g_temp_##TYPE##_##NAME = TypeLayoutDescAddField(#NAME, std::offsetof(ThisType, NAME), 1, TypeLayoutResolver::Get<TYPE>());
 
 #define LAYOUT_ARRAY_FIELD(PREFIX, TYPE, NAME, ARRAY_SIZE)\
-	PREFIX TYPE NAME;\
+	PREFIX TYPE NAME[ARRAY_SIZE];\
 	static auto g_temp_##TYPE##_##NAME = TypeLayoutDescAddField(#NAME, std::offsetof(ThisType, NAME), ARRAY_SIZE, TypeLayoutResolver::Get<TYPE>());
 
 /*for cannot get bit-filed offset from class*/

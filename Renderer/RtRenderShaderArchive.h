@@ -20,7 +20,13 @@ namespace MetaInit::Renderer {
 
 			} raytracing_desc_;
 		};
-		xxx	type_;
+		enum class EPSOType {
+			eUnkown,
+			eCompute,
+			eGFX,
+			eRayTracing,
+		};
+		EPSOType	type_{ EPSOType::eUnkown };
 	};
 
 	FileArchive& operator<<(FileArchive& ar, PipelineStateObjectDesc& pso);
@@ -38,8 +44,9 @@ namespace MetaInit::Renderer {
 		Utils::Blake3Hash64	hash_;
 	};
 	
-	enum class EIRLanguage {
+	enum class EIRBackend {
 		eUnkown,
+		eDXIL,
 		eSPIRV,
 	};
 
@@ -47,7 +54,7 @@ namespace MetaInit::Renderer {
 		static constexpr const uint32_t	SHADER_HEADER_SIZE = 1000u;
 		static constexpr const uint32_t SHADER_HEADER_MAGIC_NUM = ;
 		uint32_t	magic_{ SHADER_HEADER_MAGIC_NUM };
-		EIRLanguage	ir_{ EIRLanguage::eSPIRV };
+		EIRBackend	ir_{ EIRBackend::eSPIRV };
 		EShaderModel	shader_model_;
 		//platfom
 		SmallVector<ShaderSectionDesc>	sections_;
@@ -71,10 +78,10 @@ namespace MetaInit::Renderer {
 		const RtRenderShaderCode& GetShaderCode(const HashType& hash) const;
 		const uint64_t GetArchiveSize() const;
 		const uint32_t GetShadersCount() const;
-		void Empty();
+		void Clear();
 		bool IsEmpty() const;
 	private:
-		EIRLanguage	ir_{ EIRLanguage::eSPIRV };
+		EIRBackend	ir_{ EIRBackend::eSPIRV };
 		EShaderModel	shader_model_;
 		Vector<HashType>	shader_hashes_;
 		Vector<RtRenderShaderCode>	shader_codes_;

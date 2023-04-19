@@ -30,7 +30,9 @@
     <ClCompile Include="Renderer\RtRenderPass.cpp" />
     <ClCompile Include="Renderer\RtRenderResources.cpp" />
     <ClCompile Include="Renderer\RtRenderShader.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderFactory.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
     <ClCompile Include="RHI\RHIGlobalEntity.cpp" />
     <ClCompile Include="RHI\RHIResources.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanStat.cpp" />
@@ -65,7 +67,10 @@
     <ClCompile Include="Scene\SceneComponent.cpp" />
     <ClCompile Include="Scene\Volumetric.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
+    <ClCompile Include="Utils\DataFileCache.cpp" />
     <ClCompile Include="Utils\Memory.cpp" />
+    <ClCompile Include="Utils\Reflection.cpp" />
+    <ClCompile Include="Utils\ReflectionImageObject.cpp" />
     <ClCompile Include="Utils\SimpleJobSystem.cpp" />
     <ClCompile Include="Utils\SimpleCoro.inl" />
   </ItemGroup>
@@ -82,8 +87,10 @@
     <ClInclude Include="Renderer\RtRenderResourceDefinitions.h" />
     <ClInclude Include="Renderer\RtRenderResources.h" />
     <ClInclude Include="Renderer\RtRenderShader.h" />
+    <ClInclude Include="Renderer\RtRenderShaderArchive.h" />
     <ClInclude Include="Renderer\RtRenderShaderFactory.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
+    <ClInclude Include="Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
     <ClInclude Include="RHI\RHIGlobalEntity.h" />
     <ClInclude Include="RHI\RHICommand.h" />
@@ -91,6 +98,7 @@
     <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\RHIResources.h" />
     <ClInclude Include="RHI\RHIShader.h" />
+    <ClInclude Include="RHI\RHIShaderLibrary.h" />
     <ClInclude Include="RHI\RHISync.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanCmdContext.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanFrameBuffer.h" />
@@ -121,9 +129,12 @@
     <ClInclude Include="Scene\SceneComponent.h" />
     <ClInclude Include="Utils\Algorithm.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
+    <ClInclude Include="Utils\DataFileCache.h" />
     <ClInclude Include="Utils\DirectedAcyclicGraph.h" />
     <ClInclude Include="Utils\Handle.h" />
     <ClInclude Include="Utils\Memory.h" />
+    <ClInclude Include="Utils\Reflection.h" />
+    <ClInclude Include="Utils\ReflectionImageObject.h" />
     <ClInclude Include="Utils\SimpleCoro.h" />
     <ClInclude Include="Utils\SimpleEntitySystem.h" />
     <ClInclude Include="Utils\SimpleJobSystem.h" />

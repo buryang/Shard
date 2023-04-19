@@ -15,12 +15,12 @@ namespace MetaInit
 			//ugly only config once time
 			static std::atomic<bool> initable{ false };
 			bool expected = false;
-			if (!initable.compare_exchange_weak(expected, true)) {
+			if (!initable.compare_exchange_weak(expected, true,std::memory_order::memory_order_acq_rel)) {
 				return;
 			}
 
 			const auto thread_loop = [&, this](const uint32_t group_id) {
-				while (!is_terminated_.load())
+				while (!is_terminated_.load(std::memory_order::memory_order_acquire))
 				{
 					auto curr_job = local_queues_[group_id].PopFront();
 					if (!curr_job.has_value())
@@ -36,7 +36,7 @@ namespace MetaInit
 
 					if (curr_job.has_value())
 					{
-						(*curr_job)();
+						curr_job.value();
 					}
 					else
 					{
@@ -47,7 +47,7 @@ namespace MetaInit
 				}
 			};
 
-			auto thread_count = group_count > 0 ? group_count : std::thread::hardware_concurrency();
+			auto thread_count = std::max(group_count, std::thread::hardware_concurrency());
 
 			//init job queue
 			for (auto n = 0; n < thread_count; ++n)
@@ -66,7 +66,7 @@ namespace MetaInit
 
 		void Utils::SimpleJobSystem::UnInit()
 		{
-			is_terminated_.store(true);
+			is_terminated_.store(true, std::memory_order::memory_order_release);
 
 			for (auto& th:thread_pool_)
 			{

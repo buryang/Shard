@@ -12,18 +12,154 @@ namespace MetaInit::Renderer {
 
 	bool RtShaderType::Regist(Ptr shader_type)
 	{
-		if (auto iter = shader_repos_.find(shader_type->name_); iter == shader_repos_.end()) {
-			shader_repos_.insert({shader_type->name_, shader_type});
+		if (auto iter = shader_type_repos_.find(shader_type->hash_name_); iter == End()) {
+			shader_type_repos_.insert({shader_type->hash_name_, shader_type});
 		}
 		return false;
 	}
 
+	RtShaderType::Ptr RtShaderType::GetShaderType(const HashType& hash)
+	{
+		if (auto iter = shader_type_repos_.find(hash); iter != End()) {
+			return iter->second;
+		}
+		LOG(ERROR) << std::format("try to get type :{} not exsit", hash.ToString());
+		return nullptr;
+	}
+
+	RtShaderType::RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq):name_(name), file_name_(file),entry_func_(func)
+	{
+	}
+
 	void RtShaderCompiledRepo::Serialize(Utils::FileArchive& archive) const
 	{
+		archive << shader_sections_.size();
+		for (const auto& section : shader_sections_) {
+			section.second->Serialize(archive);
+		}
 	}
 
 	void RtShaderCompiledRepo::UnSerialize(Utils::FileArchive& archive)
 	{
+		size_t sections_count{ 0 };
+		archive << sections_count;
+		for (auto n = 0; n < sections_count; ++n) {
+			auto* section = new RtShaderCompiledFileMap;
+			section->Serialize(archive);
+			const auto hash_name = section->GetFileNameHash();
+			shader_sections_.insert({ hash_name, section });
+		}
+	}
+
+	void RtShaderCompiledRepo::BeginCompile() {
+		for (auto& [key, sec] : shader_sections_) {
+			if (sec->IsReCompileNeeded()) {
+				shader_sections_.erase(key);
+			}
+		}
+		
+		decltype(shader_sections_) candidate_sections;
+		//traverse shader types to do compile extra work 
+		for (auto iter = RtShaderType::Begin(); iter != RtShaderType::End(); ++iter) {
+			//check wether need compile file
+			const auto* shader_type = iter->second;
+			const auto& section_file_name = shader_type->GetHashFileName();
+			RtShaderCompiledFileMap::Ptr shader_section = nullptr;
+			if (auto* section = FindSection(section_file_name); section != nullptr) {
+				continue;
+			}
+			else
+			{
+				if (auto sec_iter = candidate_sections.find(section_file_name); sec_iter != candidate_sections.end()) {
+					shader_section = sec_iter->second;
+				}
+				else
+				{
+					shader_section = new RtShaderCompiledFileMap;
+					candidate_sections.insert({section_file_name, shader_section });
+				}
+			}
+			//iterator permutation ids
+			for (auto n = 0; n < shader_type->GetPermutationCount(); ++n) {
+				if (shader_type->ShouldCompile(n)) {
+					ShaderCompileJobIn job;
+					job.InitByShaderType(*shader_type, n);
+#ifdef _WIN32
+					auto* compile_task = new RtShaderDXCCompileWorker(job, shader_section);
+#else
+					static_assert(0 && "not implemented other platform");
+#endif
+					RtGlobalCompileWorkManager::Instance().Submit(compile_task);
+				}
+			}
+		}
+		candidate_sections.insert(shader_sections_.begin(), shader_sections_.end());
+		std::swap(shader_sections_, candidate_sections);
+	}
+
+	void RtShaderCompiledRepo::EndCompile() {
+		//sync compile work
+		RtGlobalCompileWorkManager::Instance().WaitAllJobsDone();
+	}
+
+	void RtShaderCompiledRepo::Compile() {
+		BeginCompile();
+		EndCompile();
+	}
+
+	static void UpdateHasherOfFileStream(std::ifstream& stream, blake3_hasher& hasher) {
+		stream.seekg(0, stream.end);
+		const auto stream_size = stream.tellg();
+		stream.seekg(0, stream.beg);
+		std::unique_ptr<uint8_t[]> buffer{new uint8_t[stream_size]};
+		stream.read(reinterpret_cast<char*>(buffer.get()), stream_size);
+		blake3_hasher_update(&hasher, buffer.get(), stream_size);
+	}
+
+	bool RtShaderCompiledFileMap::IsReCompileNeeded()const {
+		using Path = std::filesystem::path;
+		const auto file_path = Path() / file_name_;
+		if (!std::filesystem::exists(file_path.string()) {
+			return false;
+		}
+		Vector<String> include_paths;
+		TraverseHLSLIncludePath(, file_name_, include_paths);
+		include_paths.emplace_back(file_path_.str());
+		HashType curr_hash;
+		blake3_hasher hasher;
+		blake3_hasher_init(&hasher);
+		for (const auto& path : include_paths) {
+			std::ifstream include_file(path. std::ios::in|std::ios::binary);
+			if (include_path.is_open()) {
+					return false;
+			}
+			UpdateHasherOfFileStream(include_file, hasher);
+		}
+		blake3_hasher_finalize(&hasher, curr_hash.GetBytes(), curr_hash.GetHashSize());
+		precalc_hash_ = curr_hash;
+		return curr_hash != hash_;
+	}
+
+	RtShaderCompiledFileMap::Ptr RtShaderCompiledRepo::FindOrCreateSection(const RtRenderShader& shader)
+	{
+		if (const auto& iter = shader_sections_.find(name); iter != shader_sections_.end()) {
+			return iter->second;
+		}
+		auto* section = new RtShaderCompiledFileMap(shader.);
+		shader_sections_.insert({name, section});
+		return section;
+	}
+
+	RtRenderShader::SharedPtr MetaInit::Renderer::RtShaderCompiledRepo::GetShader(const ShaderKey& key)
+	{
+		return RtRenderShader::SharedPtr();
+	}
+
+	RtShaderCompiledRepo::~RtShaderCompiledRepo()
+	{
+		for (auto& iter : shader_sections_) {
+			delete iter.second;
+		}
 	}
 
 
@@ -35,16 +171,6 @@ namespace MetaInit::Renderer {
 			ptr = Read(hash);
 		}
 		return ptr;
-	}
-
-	void RtShaderCompiledRepo::StartAllCompileWorkers(bool force_rebuild)
-	{
-
-	}
-
-	void RtShaderCompiledRepo::WaitForAllCompileWorkers() const
-	{
-		//to do 
 	}
 
 	void RtShaderCompiledRepo::Add(HashType hash, RtRenderShader::SharedPtr shader)
@@ -59,10 +185,16 @@ namespace MetaInit::Renderer {
 		shader_repo_.erase(hash);
 	}
 
+#ifdef _WIN32
+	RtShaderDXCCompileWorker::~RtShaderDXCCompileWorker()
+	{
+	}
+
 	void RtShaderDXCCompileWorker::Compile()
 	{
 		DoCompileJob(compile_input_, compile_output_);
 	}
+#endif
 
 	void ShaderCompileJobIn::ComputeHash() const
 	{
@@ -92,6 +224,13 @@ namespace MetaInit::Renderer {
 			hasher.Final(&hash0, &hash1);
 			hash_.FromBinary(&hash0);
 		}
+	}
+
+	void ShaderCompileJobIn::InitByShaderType(const RtShaderType& shader_type, uint32_t permutation_id) {
+		file_ = shader_type.GetFileName();
+		entry_ = shader_type.GetEntryName();
+		permutation_ = permutation_id;
+		//todo other work
 	}
 
 	uint32_t RtGlobalCompileWorkManager::Submit(RtShaderCompileWorker::Ptr work)
@@ -148,29 +287,33 @@ namespace MetaInit::Renderer {
 		return curr_work_id;
 	}
 
-	void RtGlobalCompileWorkManager::FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output) const
+	void RtGlobalCompileWorkManager::FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output)
 	{
 		//get output data
-		{
-			std::shared_lock<std::mutex> lock(work_mutex_);
-			compile_context = pending_works_[work_id];
-			output = compile_context.entity_->GetOutput();
-		}
+		CompileEntity* compile_context = nullptr;
+		compile_context = &pending_works_[work_id];
+		compile_context.done_semaphore_.acquire();
+		output = std::move(compile_context->entity_->GetOutput());
 		//remove work
 		{
 			std::unique_lock<std::mutex> lock(work_mutex_);
+			delete compile_context->entity_;
 			pending_works_.erase(work_id);
 		}
 	}
 
-	void RtGlobalCompileWorkManager::WaitAllJobsDone() const
+	void RtGlobalCompileWorkManager::FinalizeAllJobs()
 	{
-		std::shared_lock<std::mutex> lock(work_mutex_);
 		for (auto& [id, context] : pending_works_ ) {
 			context.done_semaphore_.acquire();
 			const auto& output = context.entity_->GetOutput();
 			if (output.stat_ == EJobStat::eSuccess) {
 				successed_works_++;
+				//save shader code
+				auto* shader_archive = context.entity_->GetOwner();
+				if (nullptr != shader_archice) {
+					shader_archive->AddShaderCode(output.shader_code_);
+				}
 			}
 			else
 			{
@@ -178,8 +321,17 @@ namespace MetaInit::Renderer {
 			}
 		}
 		LOG(INFO) << std::format("Compile Stat:\nTotal:\t{}\n"
-							"Success:\t{}\nFailed:\t{}\n", 
-							total_works_, successed_works_, failed_works_);
+			"Success:\t{}\nFailed:\t{}\n",
+			total_works_, successed_works_, failed_works_);
+		Clear();
+	}
+
+	void RtGlobalCompileWorkManager::Clear() {
+		std::unique_lock<std::mutex> lock(work_mutex_);
+		pending_works_.clear();
+		total_works_ = 0u;
+		successed_works_ = 0u;
+		failed_works_ = 0u;
 	}
 
 	

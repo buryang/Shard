@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "Renderer/RtRenderShaderParameters.h"
 #include "RHI/RHISync.h"
 #include "RHI/RHIResources.h"
 
@@ -11,6 +12,7 @@ namespace MetaInit::RHI {
 		enum class ECommandType :uint32_t {
 			eNone,
 			eSetStreamSource,
+			eSetResource,
 			eSetViewPoint,
 			eSetScissorRect,
 			eSetPipelineState,
@@ -45,6 +47,20 @@ namespace MetaInit::RHI {
 		IMPLEMENT_TYPE(ECommandType::eSetStreamSource);
 		uint32_t	stream_index_;
 		uint32_t	offset_;
+	};
+
+	struct RHISetReourcePacket final : public RHICommandPacketInterface {
+		using EResourceType = Renderer::EShaderResourceType;
+		IMPLEMENT_TYPE(ECommandType::eSetResource);
+		EResourceType	resource_type_;
+		uint32_t	base_index_{ 0u };
+		uint32_t	buffer_index_{ 0u };
+		union {
+			void* trival_data_{ nullptr };
+			RHIBuffer::Ptr	buffer_;
+			RHITexture::Ptr texture_;
+			RHISampler::Ptr	sampler_;
+		};
 	};
 
 	struct RHISetViewPointPacket final : public RHICommandPacketInterface {

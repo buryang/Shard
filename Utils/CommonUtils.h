@@ -29,8 +29,11 @@
 #include "eastl/string.h"
 #include "eastl/bitset.h"
 #include "eastl/bitvector.h"
+#include "eastl/unique_ptr.h"
+#include "eastl/shared_ptr.h"
 #include "eastl/internal/thread_support.h"
 #include "folly/format.h"
+#include "folly/poly.h"
 #include <memory>
 #include <algorithm>
 #include <cassert>
@@ -122,6 +125,16 @@ namespace MetaInit {
 	template<typename T>
 	using Promise = folly::Promise<T>;
 	*/
+
+	//poly tickable
+	struct TickAbleInterface {
+		template<class Base> struct Interface : Base {
+			void Tick(float time) { folly::poly_call<0>(*this, time); }
+		};
+		template <class T>
+		using Members = folly::PolyMembers<&T::Tick>;
+	};
+	using TickAble = folly::Poly<TickAbleInterface>;
 }
 
 namespace MetaInit::Utils {

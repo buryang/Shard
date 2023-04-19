@@ -3,9 +3,27 @@
 namespace MetaInit::Renderer {
 	void RtRenderShaderArchive::Serialize(FileArchive& ar, bool use_compress)
 	{
+		ar << ir_;
+		ar << shader_model_;
+		ar << shader_codes_.size();
+		for (auto& code : shader_codes_) {
+			if (use_compress) {
+				code.Compress();
+			}
+			ar << code;
+		}
 	}
 	void RtRenderShaderArchive::Unserialize(FileArchive& ar)
 	{
+		ar << ir_;
+		ar << shader_model_;
+		size_t shader_code_size{ 0u };
+		ar << shader_code_size;
+		for (auto n = 0; n < shader_code_size; ++n) {
+			RtRenderShaderCode shader_code;
+			ar << shader_code;
+			shader_codes_.emplace_back(shader_code);
+		}
 	}
 	void RtRenderShaderArchive::AddShaderCode(const RtRenderShaderCode& shader_code)
 	{
@@ -53,7 +71,7 @@ namespace MetaInit::Renderer {
 		return shader_hashes_.size();
 	}
 
-	void RtRenderShaderArchive::Empty()
+	void RtRenderShaderArchive::Clear()
 	{
 		std::unique_lock<std::shared_mutex> lock(shader_rw_mutex_);
 		shader_hashes_.clear();

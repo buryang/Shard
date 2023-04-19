@@ -20,4 +20,9 @@ namespace MetaInit::RHI
 		create_func_repo_.insert(eastl::make_pair(back_end, func));
 		return true;
 	}
+	
+	RHIShaderLibraryInterface::Ptr RHIGlobalEntity::CreateShaderLibrary()
+	{
+		return nullptr;
+	}
 }

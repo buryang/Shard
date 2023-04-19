@@ -126,6 +126,11 @@
     <ClCompile Include="RHI\Vulkan\API\VulkanStat.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourcesVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceBindingVulkan.cpp" />
+    <ClCompile Include="Utils\DataFileCache.cpp" />
+    <ClCompile Include="Utils\ReflectionImageObject.cpp" />
+    <ClCompile Include="Utils\Reflection.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderArchive.cpp" />
+    <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -243,6 +248,12 @@
     <ClInclude Include="RHI\Vulkan\API\VulkanHelperStruct.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceBindingVulkan.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
+    <ClInclude Include="Utils\DataFileCache.h" />
+    <ClInclude Include="Utils\Reflection.h" />
+    <ClInclude Include="Utils\ReflectionImageObject.h" />
+    <ClInclude Include="RHI\RHIShaderLibrary.h" />
+    <ClInclude Include="Renderer\RtRenderShaderArchive.h" />
+    <ClInclude Include="Renderer\RtRenderShaderParameters.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">

@@ -1,5 +1,6 @@
 #include "Utils/FileArchive.h"
 #include "Renderer/RtRenderShaderFactory.h"
+#include "Renderer/RtRenderShaderParameters.h"
 #include <fstream>
 #include <filesystem>
 
@@ -87,6 +88,16 @@ namespace MetaInit::Renderer {
 			cli.emplace_back(L"-D");
 			cli.emplace_back(def);
 		}
+		
+		if (job.ir_lang_ = EIRBackend::eSPIRV) {
+			cli.emplace_back(L"-spirv");
+			cli.emplace_back(L"-fspv-reflect");
+			//-fspv-target-env=vulkan1.3 put it in extra cli info?
+		}
+		//reflection to do
+		for (const auto& extra : job.extra_cli_) {
+			cli.emplace_back((Utils::StringConvertHelper::StringToWString(extra).c_str())
+		}
 	}
 
 	WString RtShaderDXCCompileWorker::ConvertSMToTargetProfile(EShaderFrequency freq, EShaderModel sm)
@@ -173,6 +184,7 @@ namespace MetaInit::Renderer {
 							.Size = ssource_ptr->GetBufferSize(), .Encoding = DXC_CP_ACP };
 		CComPtr<IDxcResult> result{ nullptr };
 		UniqueIncludeMetaHandler meta_handler{job.file_ + ".meta", this};
+		GenerateCompileCLI(job, cli);
 		compiler_->Compile(&ssource, cli.data(), cli.size(), &meta_handler, IID_PPV_ARGS(&result));
 
 		HRESULT hr_stat;
@@ -205,8 +217,30 @@ namespace MetaInit::Renderer {
 
 		//output hash
 		CComPtr<IDxcBlob> shader_hash{ nullptr };
-		result->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&shader_bin), nullptr);
+		result->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&shader_hash), nullptr);
 		assert(shader_hash != nullptr);
+
+		//output parameter reflection
+		CComPtr<IDxcBlob> shader_reflection{ nullptr };
+		result->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&shader_reflection), nullptr);
+		assert(shader_reflection != nullptr);
+		//platform specical
+		if(job.ir_lang_ == EIRBackend::eDXIL)
+		{
+			const DxcBuffer reflection_buffer{
+								.Ptr = shader_reflection->GetBufferPointer(),
+								.Size = shader_reflection->GetBufferSize(),
+								.Encoding = 0u; };
+			CComPtr<ID3D12ShaderReflection> d3d12_reflection{ nullptr };
+			utils_->CreateReflection(&reflection_buffer, IID_PPV_ARGS(&shader_reflection));
+			D3D12_SHADER_DESC shader_desc{};
+			shader_reflection->GetDesc(shader_desc);
+			//to do
+		}
+		else if (job.ir_lang_ == EIRBackend::eSPIRV) {
+			const Span<uint8_t> reflect_code{ shader_reflection->GetBufferPointer(), shader_reflection->GetBufferSize() };
+			GetSPIRVShaderParameterInfosReflection(reflect_code, output.shader_params_);
+		}
 	}
 
 #endif

@@ -3,22 +3,31 @@
 #include "Utils/Hash.h"
 #include "Utils/FileArchive.h"
 #include "Utils/ReflectionImageObject.h"
+#include "RHI/RHIGlobalEntity.h"
 #include "Renderer/RtRenderShaderUtils.inl"
+#include "Renderer/RtRenderShaderParameters.h"
 #include "eastl/shared_ptr.h"
 
 namespace MetaInit::Renderer
 {
 	struct RtRendererShaderParamBinding
 	{
-		enum class Type : uint8_t
+		struct BindEntity
 		{
-			eScalarOrVec,
-			eResource,
-			eStructInclude,
+			enum class EType : uint8_t
+			{
+				eScalarOrVec,
+				eTexture,
+				eBuffer,
+				eSampler,
+			};
+			EType		type_;
+			uint32_t	base_index_{ 0u };
+			uint32_t	buffer_index_{ 0u };
+			uint32_t	byte_offset_{ 0u };
 		};
-		Type		type_;
-		uint32_t	index_{ 0 };
-		uint32_t	byte_offset_{ 0 };
+		//binding entities
+		SmallVector<BindEntity>	entities_;
 	};
 
 	static constexpr uint32_t MAX_PARAM_BINDINGS = 8;
@@ -56,8 +65,22 @@ namespace MetaInit::Renderer
 		eSM_6_7 = 0x67,
 	};
 
+	struct ShaderPlatform
+	{
+		RHI::ERHIBackEnd	back_end_;
+		EShaderModel	shader_model_;
+		static const String& ToString(const ShaderPlatform& platform);
+	};
+
+	//default platform use vulkan sm5
+	static constexpr ShaderPlatform g_default_platform{ RHI::ERHIBackEnd::eVulkan, EShaderModel::eSM_5_1 };
+
 	struct RtRenderShaderCode {
-		FORCE_INLINE void Serialize(Utils::FileArchive& archive){
+		using HashType = Utils::Blake3Hash64;
+		enum {
+			eCompressBitFlag = 1 << 31
+		};
+		FORCE_INLINE void Serialize(Utils::FileArchive& archive) {
 			archive << magic_num_;
 			archive << freq_;
 			archive << hash_;
@@ -83,14 +106,27 @@ namespace MetaInit::Renderer
 				LOG(ERROR) << "unserialize shader binary failed";
 			}
 		}
+		FORCE_INLINE bool IsCompressed()const {
+			return magic_num_ & eCompressBitFlag;
+		}
+		FORCE_INLINE void SetHash(const HashType& hash) {
+			hash_ = hash;
+		}
 		RtRenderShaderCode& Compress();
 		RtRenderShaderCode& DeCompress();
-		using HashType = Utils::Blake3Hash64;
 		uint32_t	magic_num_{ 0u };
 		EShaderFrequency	freq_{ EShaderFrequency::eNum };
 		HashType	hash_;
-		int64_t time_tag_{ 0 }; //todo fix time rep
+		int64_t	time_tag_{ 0 }; //todo fix time rep
 		Vector<uint8_t>	code_binary_;
+	};
+
+	/*data to initialize shader infos*/
+	struct RtRenderShaderInitializeInput
+	{
+		RtShaderType::HashType	shader_type_;
+		RtRenderShaderCode	shader_code_;
+		RtShaderParameterInfosMap	shader_params_;
 	};
 
 	class MINIT_API RtRenderShader
@@ -102,52 +138,81 @@ namespace MetaInit::Renderer
 		using PermutationVec = PermutationTupleNULL;
 		using HashType = Utils::Blake3Hash64;
 
+		static Ptr Create(const RtRenderShaderInitializeInput& input) {
+			return nullptr;
+		}
+
+		static Ptr CreateFromArchive() {
+			return nullptr;
+		}
+
+		static bool ShouldCompile(uint32_t permutation_id) {
+			return false;
+		}
+
 		struct ShaderParam
 		{
 			virtual ~ShaderParam() {}
 		};
+		RtRenderShader() = default;
+		//initial render from compiled code
+		RtRenderShader(const RtRenderShaderInitializeInput& initializer) {};
 		virtual ~RtRenderShader() {}
-		static const RtRendererShaderParamBindings& GetShaderBindings() {
-			return bindings_;
-		}
-		/*our hash to identify a shader*/
-		static HashType MakeShaderHash(RtRenderShader::Ptr shader, uint32_t permutation_id);
-		virtual HashType GetShaderHash() const = 0;
-		virtual uint32_t GetShaderPermutationCount() const { return 1u; }
-		virtual EShaderFrequency GetShaderFrequency() const = 0;
+		const HashType& GetShaderHash()const;
+		const uint32_t GetResourceIndex()const;
+		const RtShaderType::Ptr GetShaderType()const;
 		virtual void Compile(const RtRenderShaderCode& shader_code) = 0;
-		virtual bool IsCompileNeedFor(const uint32_t permutation) = 0;
+		virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
 	protected:
-		bool IsShaderSourceFileChanged(const String& meta_path) const;
-		FORCE_INLINE void RefreshCompileTime() { time(&compile_time_); }
+		void BindShaderParameters(const RtShaderParameterInfosMap& param_infos);
+		void ComputeHash();
+	public:
+		LAYOUT_FIELD(RtRendererShaderParamBindings, bindings_);
 	protected:
-		static RtRendererShaderParamBindings bindings_;
+		//indentify shader type by hash
+		LAYOUT_FIELD(RtShaderType::HashType, shader_type_);
+		LAYOUT_FIELD(HashType, shader_hash_);
+		LAYOUT_FIELD(uint32_t, resource_index_);
 		LAYOUT_FIELD(uint32_t, permutation_id_);
-		LAYOUT_FIELD_DEFAULT(std::time_t, compile_time_, 0u); //shader compile time
 		END_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
 	};
 
-	template<class Shader>
-	void SetShaderParameters(RHICommandList& cmd, Shader::Ptr shader, const Shader::ShaderParam& parameters) {
-
-	}
-
-	class MINIT_API RtRenderShaderParametersMeta
+	struct RtRenderShaderParametersMeta
 	{
-	public:
 		struct Element
 		{
-			uint16_t	buffer_index_{ 0 };
-			uint16_t	base_index_{ 0 };
-			uint16_t	byte_offset_{ 0 };
-			//type
+			enum class EType
+			{
+				eScalarOrVec,
+				eResource,
+				eReference,
+				eStructIncluded, //include another parameters
+			};
+			EType	type_;
+			String	name_;
+			uint16_t	byte_offset_{ 0u };
+			union {
+				uint16_t	size_{ 0u };
+				RtRenderShaderParametersMeta* sub_meta_{ nullptr };
+			};
 		};
 		const Element& operator[](uint32_t index)const;
 		FORCE_INLINE uint32_t ParameterCount()const {
 			return members_.size();
 		}
 		void AddElement(Element&& element);
-	private:
 		SmallVector<Element>	members_;
+	};
+
+	//bind shader parameter by reflection and meta info
+	class MINIT_API RtRenderShaderParameterBindHelper
+	{
+	public:
+		explicit RtRenderShaderParameterBindHelper(RtRendererShaderParamBindings& bindings) :bindings_(bindings) {}
+		void Bind(const RtRenderShaderParametersMeta& param_meta, const RtShaderParameterInfosMap& param_map);
+	private:
+		void Bind(const Span<RtRenderShaderParametersMeta::Element>& param_meta, const RtShaderParameterInfosMap& param_map, const String& prefix_name, uint32_t prefix_offset = 0u);
+	private:
+		RtRendererShaderParamBindings& bindings_;
 	};
 }

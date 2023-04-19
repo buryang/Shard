@@ -224,5 +224,12 @@ namespace MetaInit
 			RHITextureUAV(const RHITextureUAVDesc& desc);
 			virtual ~RHITextureUAV() {}
 		};
+
+		class RHISampler : public RHIResource
+		{
+		public:
+			using Ptr = RHISampler*;
+			virtual ~RHISampler() {}
+		};
 	}
 }

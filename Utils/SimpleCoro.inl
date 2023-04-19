@@ -12,22 +12,23 @@ namespace MetaInit
 			LockGuard(std::atomic<bool>& atomic) :atomic_(atomic)
 			{
 				bool expected = false;
-				while (!atomic_.compare_exchange_weak(expected, true))
+				while (!atomic_.compare_exchange_weak(expected, true, std::memory_order::memory_order_consume))
 				{
 					expected = false;
 				}
 			}
 			~LockGuard()
 			{
-				atomic_.store(false);
+				atomic_.store(false, std::memory_order::memory_order_release);
 			}
 		private:
-			std::atomic<bool>& atomic_;
+			std::atomic<bool>& atomic_{ false };
 		};
 
 		template<typename T>
 		RingBuffer<T>::RingBuffer(const uint32_t capacity) :capacity_(capacity)
 		{
+			LockGuard(lock_);
 			data_repo_.resize(capacity);
 		}
 

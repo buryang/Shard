@@ -6,7 +6,7 @@ namespace MetaInit::RHI::Vulkan {
 
 	struct VulkanImmutableSamplers
 	{
-		uint32_t	count_;
+		uint32_t	count_{ 0u };
 		VkSampler*	samplers_{ nullptr };
 	};
 

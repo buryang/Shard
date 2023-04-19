@@ -82,6 +82,10 @@ namespace MetaInit
 		enum class PipelineStageFlags : uint8_t
 		{
 			eStageUnkown = 0x0,
+			eStageVertex = 0x1,
+			eStageGemotry = 0x2,
+			eStageDomain = 0x3,
+			eStagePixel = 0x4,
 		};
 	}
 }

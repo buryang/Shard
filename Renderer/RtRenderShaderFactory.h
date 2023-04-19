@@ -2,6 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "Utils/FileArchive.h"
 #include "Utils/Hash.h"
+#include "Utils/Handle.h"
 #include "RHI/RHIShader.h"
 #include "RHI/RHIShaderLibrary.h"
 #include "Renderer/RtRenderShader.h"
@@ -22,22 +23,58 @@ namespace MetaInit::Renderer
 	{
 	public:
 		using Ptr = RtShaderType*;
-		static Map<String, Ptr>	shader_repos_;
-		using Iter = decltype(shader_repos_.begin());
+		using HashType = Utils::Blake3Hash64;
+		using CreateShaderFunc = std::function<RtRenderShader::SharedPtr(const RtRenderShaderInitializeInput&)>;
+		using CreateShaderFromArchiveFunc = std::function<RtRenderShader::SharedPtr()>;
+		using ShouldCompilePermutationFunc = std::function<bool(uint32_t permutation_id)>;
+		static Map<HashType, Ptr>	shader_type_repos_;
+		using Iter = decltype(shader_type_repos_.begin());
 		static bool Regist(Ptr shader_type);
-		static inline Iter Begin() { return shader_repos_.begin(); }
-		static inline Iter End() { return shader_repos_.end(); }
+		static inline Iter Begin() { return shader_type_repos_.begin(); }
+		static inline Iter End() { return shader_type_repos_.end(); }
+		static Ptr GetShaderType(const HashType& hash);
 	public:
 		RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq);
+		const uint32_t GetPermutationCount()const;
+		const String& GetName()const;
+		const HashType& GetHashName()const;
+		const String& GetFileName()const;
+		const String& GetEntryName()const;
+		const HashType& GetHashFileName()const;
 		void Compile(uint32_t permutation_id);
-		RtRenderShader::SharedPtr CreateShader(uint32_t permutation_id);
+		FORCE_INLINE void SetCreateShaderFunc(const CreateShaderFunc& func) {
+			shader_creator_ = func;
+		}
+		FORCE_INLINE void SetCreateShaderFromArchiveFunc(const CreateShaderFromArchiveFunc& func) {
+			shader_archive_creator_ = func;
+		}
+		FORCE_INLINE void SetShouldCompilePermutationFunc(const ShouldCompilePermutationFunc& func) {
+			should_compile_decider_ = func;
+		}
+		template<typename T, typename=void>
+		bool BindTraitsFuncDelegate() {
+			return false;
+		}
+		template<typename T>
+		requires std::conditional_t<std::is_function_v<typename T::Create>, std::conditional_t<typename T::CreateFromArchive, std::conditional_t<typename T::ShouldCompile, std::true_type, std::false_type>, std::false_type>, std::false_type>>::value
+		bool BindTraitsFuncDelegate<T>() {
+			SetCreateShaderFunc(typename T::Create);
+			SetCreateShaderFromArchiveFunc(typename T::CreateFromArchive);
+			SetShouldCompilePermutationFunc(typename T::ShouldCompile);
+			return true;
+		}
+
 	private:
 		String	name_;
-		String	hash_name_;
-		String	file_path_;
+		HashType	hash_name_;
+		String	file_name_;
+		HashType	file_name_hash_;
 		//FIXME remember to save include file paths to a extra meta file
 		String	entry_func_{ "Main" };
 		EShaderFrequency	frequency_;
+		CreateShaderFunc	shader_creator_{ nullptr };
+		CreateShaderFromArchiveFunc	shader_archive_creator_{ nullptr };
+		ShouldCompilePermutationFunc	should_compile_decider_{ nullptr };
 	};
 
 #define REGIST_SHADER_IMPL(name, file, func, freq, shader_class) \
@@ -51,10 +88,12 @@ namespace MetaInit::Renderer
 		String	entry_;
 		uint32_t	permutation_;
 		EShaderModel	shader_model_;
+		EIRBackend	ir_lang_{ EIRBackend::eSPIRV };
 		SmallVector<String> include_path_;
 		SmallVector<String>	defines_;
 		SmallVector<String> extra_cli_;
 		void ComputeHash()const;
+		void InitByShaderType(const RtShaderType& shader_type, uint32_t permutation_id);
 	};
 
 	bool operator==(const ShaderCompileJobIn& lhs, const ShaderCompileJobIn& rhs);
@@ -72,17 +111,19 @@ namespace MetaInit::Renderer
 		EJobStat	stat_;
 		RtRenderShaderCode	shader_code_;
 		String	compile_message_;
-		//other data
+		//get output shader parameters
+		RtShaderParameterInfosMap	shader_params_;
 	};
 
 	class RtShaderCompileWorker
 	{
 	public:
 		using Ptr = RtShaderCompileWorker*;
-		explicit RtShaderCompileWorker(ShaderCompileJobIn&& job_in) :compile_input_(std::move(job_in)) {}
+		explicit RtShaderCompileWorker(ShaderCompileJobIn&& job_in, class RtShaderCompiledFileMap* owner):compile_input_(std::move(job_in)), filemap_owner_(owner) {}
 		virtual ~RtShaderCompileWorker() {}
 		virtual void Compile() = 0;
-		FORCE_INLINE const ShaderCompileJobOutput& GetOutput()const { return compile_output_; }
+		FORCE_INLINE ShaderCompileJobOutput& GetOutput(){ return compile_output_; }
+		FORCE_INLINE class RtShaderCompiledFileMap* GetOwner() { return filemap_owner_; }
 		FORCE_INLINE const ShaderCompileJobIn::HashType GetHash()const { 
 			compile_input_.ComputeHash();
 			return compile_input_.hash_; 
@@ -90,6 +131,7 @@ namespace MetaInit::Renderer
 	protected:
 		ShaderCompileJobIn	compile_input_;
 		ShaderCompileJobOutput	compile_output_;
+		class RtShaderCompiledFileMap*	filemap_owner_ { nullptr };
 	};
 
 #ifdef _WIN32
@@ -97,7 +139,7 @@ namespace MetaInit::Renderer
 	{
 	public:
 		using Ptr = RtShaderDXCCompileWorker*;
-		RtShaderDXCCompileWorker();
+		explicit RtShaderDXCCompileWorker(ShaderCompileJobIn&& job_in, class RtShaderCompiledFileMap* owner);
 		~RtShaderDXCCompileWorker();
 		void Compile() override;
 		FORCE_INLINE CComPtr<IDxcUtils> GetDxcUtils() { return utils_; }
@@ -120,8 +162,9 @@ namespace MetaInit::Renderer
 		}
 		uint32_t Submit(RtShaderCompileWorker::Ptr work);
 		uint32_t Wait(uint32_t work_id)const;
-		void FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output)const;
-		void WaitAllJobsDone()const;
+		void FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output);
+		void FinalizeAllJobs();
+		void Clear();
 	private:
 		RtGlobalCompileWorkManager() = default;
 		DISALLOW_COPY_AND_ASSIGN(RtGlobalCompileWorkManager);
@@ -139,11 +182,62 @@ namespace MetaInit::Renderer
 		std::atomic_uint32_t	successed_works_{ 0u };
 	};
 
-	struct ShaderKey
+	using ShaderKey = RtRenderShader::HashType;
+	using ShaderHandle = Utils::Handle<RtRenderShader>;
+	using ShaderHandleManager = Utils::HandleManager<RtRenderShader>;
+
+	class RtShaderContent
 	{
+	public:
+		BEGIN_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
+		size_t GetShaderCount()const {
+			return shaders_.size();
+		}
+		FORCE_INLINE void AddShader(RtRenderShader::Ptr shader) {
+			shaders_.emplace_back(shader);
+		}
+		FORCE_INLINE RtRenderShader::Ptr GetShader(const ShaderHandle& handle) {
+			return shaders_[uint32_t(handle)];
+		}
+		END_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
+	private:
+		LAYOUT_FIELD(Vector<,RtRenderShader::Ptr>, shaders_);
+	};
+
+	//shader map for single hlsl file
+	class MINIT_API RtShaderCompiledFileMap
+	{
+	public:
+		using Ptr = RtShaderCompiledFileMap*;
+		using SharedPtr = std::shared_ptr<RtShaderCompiledFileMap>;
 		using HashType = Utils::Blake3Hash64;
-		HashType	shader_type_;
-		uint32_t	permutation_{ 0 };
+		RtRenderShader::Ptr GetShader(const ShaderHandle& handle);
+		RtRenderShader::Ptr GetShader(const ShaderKey& key);
+		RHI::RHIShader::Ptr GetRHIShader(const ShaderHandle& handle);
+		RHI::RHIShader::Ptr	GetRHIShader(const ShaderKey& key);
+		//check file hash changed
+		bool IsReCompileNeeded()const;
+		const HashType& GetHash()const;
+		const HashType& GetFileNameHash()const;
+		const String& GetFileName()const;
+		RtRenderShaderArchive::Ptr GetShaderArchive();
+		void Serialize(FileArchive& ar);
+		void UnSerialize(FileArchive& ar);
+		~RtShaderCompiledFileMap();
+	private:
+		//how to deal with compile work
+		void CreateRHIShader(const ShaderKey& key);
+	private:
+		String	file_name_;
+		HashType	file_name_hash_;
+		HashType	hash_;
+		HashType	precalc_hash_; //to save pre calc hash for next use
+		RtShaderContent	shader_content_;
+		RtRenderShaderArchive::Ptr	shader_archive_;
+		RHI::RHIShaderLibraryInterface::SharedPtr	shader_library_;
+		//handle allocator logic
+		Map<ShaderKey, ShaderHandle>	shader_handle_lut_;
+		ShaderHandleManager	shader_hande_generator_;
 	};
 
 	class MINIT_API RtShaderCompiledRepo
@@ -153,14 +247,17 @@ namespace MetaInit::Renderer
 			static RtShaderCompiledRepo repo;
 			return repo;
 		}
-		RHI::RHIShader::Ptr	GetRHIShader(const ShaderKey& key);
-		RHI::RHIShader::Ptr GetRHIShaderWait(const ShaderKey& key);
 		RtRenderShader::SharedPtr GetShader(const ShaderKey& key);
-		/*read a shader if not found wait*/
-		RtRenderShader::SharedPtr GetShaderWait(const ShaderKey& key);
-		//force_rebuild: whether a shader code exist in shader archive or not force to rebuild it
-		void StartAllCompileWorkers(bool force_rebuild = false);
-		void WaitForAllCompileWorkers()const;
+		RtShaderCompiledFileMap::Ptr FindOrCreateSection(const RtShaderType::HashType hash_name);
+		RtShaderCompiledFileMap::Ptr FindSection(const RtShaderType::HashType hash_name);
+		~RtShaderCompiledRepo();
+		void Serialize(FileArchive& ar)const;
+		void UnSerialize(FileArchive& ar);
+		/*begin and end async compile work*/
+		void BeginCompile();
+		void EndCompile();
+		/*compile shader map and wait util finished*/
+		void Compile();
 	private:
 		RtShaderCompiledRepo() = default;
 		DISALLOW_COPY_AND_ASSIGN(RtShaderCompiledRepo);
@@ -170,16 +267,8 @@ namespace MetaInit::Renderer
 		//void BeginCompileShader();
 		//void WaitCompileShaderDone();
 	private:
-		RtShaderCompileWorker::Ptr	compile_worker_;
-		mutable std::shared_mutex	compile_mutex_;
+		Map<RtShaderCompiledFileMap::HashType, RtShaderCompiledFileMap::Ptr>	shader_sections_;
 	};
 
-	class MINIT_API RtShaderPipelineRepo
-	{
-	public:
 
-	private:
-		RHI::RHIShaderLibraryInterface::SharedPtr	shader_cache_;
-
-	};
 }

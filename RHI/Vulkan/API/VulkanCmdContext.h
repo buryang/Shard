@@ -89,7 +89,7 @@ namespace MetaInit
 		void End();
 		//compute pipeline must be bound to a command buffer before any dispatch commands are recorded
 		void Dispatch(vec3 group_size);
-		void DispatchIndirect( VulkanBuffer& buffer, const VkDeviceSize offset);
+		void DispatchIndirect(VulkanBuffer& buffer, const VkDeviceSize offset);
 		void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);
 		void DrawIndirect(const  VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
 		void DrawIndexed(uint32_t first_instance, uint32_t instance_count, uint32_t vertex_offset, uint32_t first_index, uint32_t index_count);

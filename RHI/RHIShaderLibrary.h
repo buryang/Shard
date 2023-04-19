@@ -15,7 +15,7 @@ namespace MetaInit::RHI {
 			eNative,
 			ePseudo,
 		};
-		virtual void AddRHIShader(RHIShader::Ptr shader) {};
+		virtual void AddRHIShader(RHIShader::Ptr shader) { LOG(ERROR) << "add shader not implemented"; };
 		virtual RHIShader::Ptr GetRHIShader(uint32_t shader_index) { return nullptr; }
 		virtual RHIShader::Ptr GetRHIShader(RHIShader::HashVal shader_hash) { return nullptr; }
 		virtual uint32_t GetRHIShaderIndex(RHIShader::HashVal shader_hash) { return -1; }
@@ -39,20 +39,21 @@ namespace MetaInit::RHI {
 	{
 	public:
 		RHIPseudoShaderLibrary() :library_model_(ELibrayType::ePseudo) {}
-		explicit RHIPseudoShaderLibrary(RtRenderShaderArchive& archive) :library_model_(ELibrayType::ePseudo) {
+		explicit RHIPseudoShaderLibrary(const RtRenderShaderArchive::Ptr archive) :library_model_(ELibrayType::ePseudo) {
 			BindArchive(archive);
 		}
-		void BindArchive(RtRenderShaderArchive& archive) {
-
+		void BindArchive(const RtRenderShaderArchive::Ptr archive) {
+			shader_archive_ = archive;
+			//todo whether create rhi shaders
 		}
 		RHIShader::Ptr GetRHIShader(uint32_t shader_index)override {
 			if (auto iter = shader_cache_.find(shader_index); iter != shader_cache_.end()) {
 				return iter->second;
 			}
 
-			//
-			auto shader_code = shader_archive_.;// get shader code
-			auto shader_ptr = RHIEntity::CreateShader(shader_code); // create shader
+			auto shader_code = shader_archive_->GetShaderCode(shader_index);
+			auto* shader_ptr = RHIEntity::CreateShader(shader_code); // create shader
+			assert(shader_ptr != nullptr);
 			shader_cache_.insert({ shader_index, shader_ptr });
 			return shader_ptr;
 		}
@@ -64,6 +65,16 @@ namespace MetaInit::RHI {
 			shader_archive_.
 		}
 	private:
-		RtRenderShaderArchive shader_archive_;
+		RtRenderShaderArchive::Ptr shader_archive_{ nullptr };
+		Map<uint32_t, RHIShader::Ptr>	shader_cache_;
+	};
+
+	class RHIPipelineStateObjectLibraryInterface
+	{
+	public:
+		enum EPSOType {
+			e
+		};
+		virtual Get() = 0;
 	};
 }

@@ -44,8 +44,8 @@ namespace MetaInit
 			};
 			std::atomic<uint32_t>	ref_count_{ 0 };
 			JobEntry*				parent_{ nullptr };
-			//task can streal by other thread?
-			bool					stealable_{ false };
+			//task can stealed by other thread?
+			bool					stealable_{ true };
 			Task*					task_{ nullptr };
 
 			void operator()(void) {
@@ -80,19 +80,20 @@ namespace MetaInit
 			SmallVector<RingBuffer<JobEntry*> >		global_queues_;
 			Vector<std::thread>			thread_pool_;
 			std::atomic<bool>			is_terminated_{ false };
-			const uint32_t				max_try_count_{ 15 };
+			const uint32_t				max_try_count_{ 15u };
 			Allocator					allocator_; //FIXME
 		};
 
 		template<typename F>
 		requires std::is_convertible_v<std::decay_t<F>, std::function<void(void)>>
-		uint32_t Schedule(F&& function, JobEntry* parent = nullptr)
+		uint32_t Schedule(F&& function, JobEntry* parent = nullptr, bool stealable = true)
 		{
 			//fixme life time of task and entry
 			JobEntry::TaskEntry<F> job_task{ function };
 			JobEntry job_entry;
 			job_entry.SetTask(job_task);
 			job_entry.parent_ = parent;
+			job_entry.stealable_ = stealable;
 			SimpleJobSystem::Instance().Execute(job_entry);
 			return 0u;
 		}
