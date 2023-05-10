@@ -1,5 +1,4 @@
 #pragma once
-#include "Utils/Reflection.h"
 #include "Utils/FileArchive.h"
 
 //mainly copy from unreal engine
@@ -7,8 +6,8 @@ namespace MetaInit::Utils {
 
 	struct VTblPointer {
 		Blake3Hash64 hash_name_; //hash for parent class
-		uint32_t	derived_offset_{ 0 };
-		uint32_t	offset_{ 0 };
+		uint32_t	derived_offset_{ 0u };
+		uint32_t	offset_{ 0u };
 	};
 
 	struct FrozenPointer {
@@ -17,13 +16,14 @@ namespace MetaInit::Utils {
 	};
 
 	class ImageObject;
+	class TypeLayoutDesc;
 	class ImageObjectSection {
 	public:
 		using Ptr = ImageObjectSection*;
 		struct SectionPointer {
-			uint32_t	section_index_{ 0 };
-			uint32_t	dervied_offset_{ 0 }; //pointer offset to parent class
-			uint32_t	offset_{ 0 }; //pointer value in byte buffer
+			uint32_t	section_index_{ 0u };
+			uint32_t	dervied_offset_{ 0u }; //pointer offset to parent class
+			uint32_t	offset_{ 0u }; //pointer value in byte buffer
 		};
 		uint32_t WriteBytes(const uint8_t* bytes, size_t size);
 		template<typename PlainStruct>
@@ -37,7 +37,7 @@ namespace MetaInit::Utils {
 		uint32_t WriteRawPointerSizedBytes(uint64_t pointer);
 		uint32_t WriteVTble(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc);
 		ImageObjectSection& WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base);
-		uint32_t Flatten(ImageFreezeObject& object, bool to_merge_sections = true);
+		uint32_t Flatten(ImageFreezeObject& object, bool to_merge_sections = true)const;
 		FORCE_INLINE uint32_t GetOffset()const { return data_.size(); }
 		FORCE_INLINE ImageObject::Ptr GetParent() { return parent_; }
 		void ComputeHash();
@@ -90,7 +90,7 @@ namespace MetaInit::Utils {
 		FORCE_INLINE void SetPlatform(const PlatformTypeLayoutParameters& platform) {
 			platform_ = platform;
 		}
-		uint32_t Flatten(ImageFreezeObject& object);
+		uint32_t Flatten(ImageFreezeObject& object)const;
 	private:
 		SmallVector<ImageObjectSection> sections_;
 		PlatformTypeLayoutParameters	platform_{ PlatformTypeLayoutParameters::CurrentParameters() };
@@ -98,13 +98,13 @@ namespace MetaInit::Utils {
 
 	class ImageWriter {
 	public:
-		explicit ImageWriter(ImageObjectSection& section) :section_(section_) {} 
+		explicit ImageWriter(ImageObjectSection& section) :section_(section) {}
 		explicit ImageWriter(ImageObject& object) :section_(object.NewObjectSection()) {}
 		void WriteBytes(const uint8_t* object, size_t size);
 		void WriteObject(const void* object, const TypeLayoutDesc& desc);
 		void WriteRootObject(const void* object, const TypeLayoutDesc& desc);
 		void WriteObjectArray(const void* object, const TypeLayoutDesc& desc, uint32_t num_array);
-		ImageWriter& WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base);
+		ImageWriter* WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base);
 		uint32_t WriteAlignment(uint32_t alignment);
 		uint32_t WritePadSize(uint32_t pad_size);
 		uint32_t WriteVTble(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc);
@@ -196,6 +196,6 @@ namespace MetaInit::Utils {
 	template<typename T>
 	inline ImageFreezeObjectContainer<T>::~ImageFreezeObjectContainer()
 	{
-		//Destroy();
+		Destroy();
 	}
 }

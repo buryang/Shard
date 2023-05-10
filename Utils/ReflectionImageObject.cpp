@@ -1,4 +1,5 @@
 #include "Utils/ReflectionImageObject.h"
+#include "Utils/Reflection.h"
 #include "eastl/sort.h"
 
 namespace MetaInit::Utils {
@@ -15,7 +16,7 @@ namespace MetaInit::Utils {
 		pointer_dst = (void const**)pointer; //fixme
 	}
 
-	uint32_t ImageObjectSection::Flatten(ImageFreezeObject& object)
+	uint32_t ImageObjectSection::Flatten(ImageFreezeObject& object, bool to_merge_sections = true) const
 	{
 		const auto offset = object.AppendData(data_.data(), data_.size(), max_align_);
 		//merge section pointers to object
@@ -46,7 +47,7 @@ namespace MetaInit::Utils {
 
 	uint32_t ImageObjectSection::WriteArray(const void* object, size_t size, const TypeLayoutDesc& desc)
 	{
-		const auto& write_func = desc.write_func;
+		const auto& write_func = desc.write_func_;
 		const auto alignment = std::min(desc.alignment_func_(), 0u);
 		const auto element_size = desc.size_;
 		for (auto n = 0; n < size; ++n) {
@@ -99,7 +100,7 @@ namespace MetaInit::Utils {
 		blake3_hasher_finalize(&hasher, hash_.GetBytes(), hash_.GetHashSize());
 	}
 
-	uint32_t ImageObject::Flatten(ImageFreezeObject& object, bool to_merge_sections)
+	uint32_t ImageObject::Flatten(ImageFreezeObject& object, bool to_merge_sections)const
 	{
 		SmallVector<ImageObjectSection::Ptr> unique_sections;
 		Map<uint32_t, uint32_t> section_remap;
@@ -182,8 +183,8 @@ namespace MetaInit::Utils {
 	void ImageFreezeObject::ApplyPatches(void* frozen_obj)
 	{
 		for (auto vtbl : vtbls_) {
-			const auto& type_desc = TypeLayoutDesc::GetTypeLayout(vtbl.hash_name_);
-			ApplyVTblValue(frozen_obj, type_desc, vtbl.derived_offset_, vtbl.offset_);
+			auto type_desc = TypeLayoutDesc::GetTypeLayout(vtbl.hash_name_);
+			ApplyVTblValue(frozen_obj, *type_desc, vtbl.derived_offset_, vtbl.offset_);
 		}
 	}
 
@@ -194,26 +195,27 @@ namespace MetaInit::Utils {
 
 	void ImageWriter::WriteObject(const void* object, const TypeLayoutDesc& desc)
 	{
-		desc.write_func(*this, object, desc, desc);
+		desc.write_func_(*this, object, desc, desc);
 	}
 
 	void ImageWriter::WriteRootObject(const void* object, const TypeLayoutDesc& desc)
 	{
 		//other work
-		desc.write_func(*this, object, desc, desc);
+		desc.write_func_(*this, object, desc, desc);
 	}
 
 	void ImageWriter::WriteObjectArray(const void* object, const TypeLayoutDesc& desc, uint32_t num_array)
 	{
-		const auto& write_func = desc.write_func;
+		const auto write_func = desc.write_func_;
 		const auto* curr_object = reinterpret_cast<const uint8_t*>(object);
 		for (auto n = 0; n < num_array; ++n) {
 			write_func(*this, curr_object+desc.size_*n, desc, desc);
 		}
 	}
-	ImageWriter& ImageWriter::WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base)
+	
+	ImageWriter* ImageWriter::WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base)
 	{
-		return ImageWriter(section_.WritePointer(desc, derived_desc, offset_to_base));
+		return new ImageWriter(section_.WritePointer(desc, derived_desc, offset_to_base));
 	}
 	uint32_t ImageWriter::WriteAlignment(uint32_t alignment)
 	{
@@ -241,5 +243,10 @@ namespace MetaInit::Utils {
 
 		//todo unfreeze work
 		return unfreeze_memory;
+	}
+	
+	uint32_t ImageObject::Flatten(ImageFreezeObject& object)const
+	{
+		return uint32_t();
 	}
 }

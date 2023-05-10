@@ -103,12 +103,15 @@ namespace MetaInit::RHI {
 
 	struct RHIDispatchPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eDispatch);
+		RHIShader::Ptr	shader_{ nullptr };
 		vec3 thread_grp_size_;
 	};
 
 	struct RHIDispatchIndirectPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eDispatchIndirect);
-		uint32_t offset_{ 0 };
+		RHIShader::Ptr	shader_{ nullptr };
+		RHIBuffer::Ptr	args_buffer_{ nullptr };
+		uint32_t	args_offset_{ 0u };
 	};
 
 	struct RHIBarrierPacket final : public RHICommandPacketInterface {

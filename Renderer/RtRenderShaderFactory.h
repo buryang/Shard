@@ -3,9 +3,9 @@
 #include "Utils/FileArchive.h"
 #include "Utils/Hash.h"
 #include "Utils/Handle.h"
-#include "RHI/RHIShader.h"
-#include "RHI/RHIShaderLibrary.h"
+#include "Utils/Reflection.h"
 #include "Renderer/RtRenderShader.h"
+#include "delegate/delegate/multicastdelegate.h"
 #include <functional>
 #include <shared_mutex>
 #include <condition_variable>
@@ -16,9 +16,12 @@
 #include <d3d12shader.h> 
 #endif
 
+REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
+REGIST_PARAM_TYPE(UINT, PSO_COMPILE_BACTH_SIZE, 128);
+
 namespace MetaInit::Renderer
 {
-	REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
+	struct ShaderCompileEnv;
 	class MINIT_API RtShaderType
 	{
 	public:
@@ -26,12 +29,16 @@ namespace MetaInit::Renderer
 		using HashType = Utils::Blake3Hash64;
 		using CreateShaderFunc = std::function<RtRenderShader::SharedPtr(const RtRenderShaderInitializeInput&)>;
 		using CreateShaderFromArchiveFunc = std::function<RtRenderShader::SharedPtr()>;
-		using ShouldCompilePermutationFunc = std::function<bool(uint32_t permutation_id)>;
-		static Map<HashType, Ptr>	shader_type_repos_;
+		using ValidShaderCompileOutputFunc = std::function<bool(const ShaderCompileEnv& env, uint32_t permutation_id, const RtShaderParameterInfosMap& parameter_map)>;
+		using ShouldCompilePermutationFunc = std::function<bool(const ShaderCompileEnv& env, uint32_t permutation_id)>;
+		static List<Ptr>	shader_type_repos_;
 		using Iter = decltype(shader_type_repos_.begin());
 		static bool Regist(Ptr shader_type);
 		static inline Iter Begin() { return shader_type_repos_.begin(); }
 		static inline Iter End() { return shader_type_repos_.end(); }
+		static Ptr FindShaderTypeByName(const String& name);
+		static Ptr FindShaderTypeByHashName(const HashType& hash);
+		static Vector<Ptr> FindShaderTypeByFileName(const String& file_name);
 		static Ptr GetShaderType(const HashType& hash);
 	public:
 		RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq);
@@ -41,6 +48,7 @@ namespace MetaInit::Renderer
 		const String& GetFileName()const;
 		const String& GetEntryName()const;
 		const HashType& GetHashFileName()const;
+		EShaderFrequency GetFrequency()const;
 		void Compile(uint32_t permutation_id);
 		FORCE_INLINE void SetCreateShaderFunc(const CreateShaderFunc& func) {
 			shader_creator_ = func;
@@ -50,6 +58,10 @@ namespace MetaInit::Renderer
 		}
 		FORCE_INLINE void SetShouldCompilePermutationFunc(const ShouldCompilePermutationFunc& func) {
 			should_compile_decider_ = func;
+		}
+		FORCE_INLINE bool ShouldCompile(const ShaderCompileEnv& env, uint32_t permutation_id)const {
+			PCHECK(should_compile_decider_ != nullptr) << "should compile func not set correctly";
+			return should_compile_decider_(env, permutation_id);
 		}
 		template<typename T, typename=void>
 		bool BindTraitsFuncDelegate() {
@@ -75,10 +87,17 @@ namespace MetaInit::Renderer
 		CreateShaderFunc	shader_creator_{ nullptr };
 		CreateShaderFromArchiveFunc	shader_archive_creator_{ nullptr };
 		ShouldCompilePermutationFunc	should_compile_decider_{ nullptr };
+		ValidShaderCompileOutputFunc	shader_compile_output_validator_{ nullptr };
 	};
 
 #define REGIST_SHADER_IMPL(name, file, func, freq, shader_class) \
 	static RtShaderType shader_class##ShaderType(name, file, function, freq);
+
+	struct ShaderCompileEnv
+	{
+		ShaderPlatform	platform;
+		//other related parameters todo 
+	};
 
 	struct ShaderCompileJobIn
 	{
@@ -87,7 +106,7 @@ namespace MetaInit::Renderer
 		String	file_;
 		String	entry_;
 		uint32_t	permutation_;
-		EShaderModel	shader_model_;
+		ShaderCompileEnv	compile_env_;
 		EIRBackend	ir_lang_{ EIRBackend::eSPIRV };
 		SmallVector<String> include_path_;
 		SmallVector<String>	defines_;
@@ -180,6 +199,7 @@ namespace MetaInit::Renderer
 		std::atomic_uint32_t	total_works_{ 0u };
 		std::atomic_uint32_t	failed_works_{ 0u };
 		std::atomic_uint32_t	successed_works_{ 0u };
+		std::atomic_uint64_t	total_compile_time_{ 0u };
 	};
 
 	using ShaderKey = RtRenderShader::HashType;
@@ -188,8 +208,8 @@ namespace MetaInit::Renderer
 
 	class RtShaderContent
 	{
-	public:
 		BEGIN_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
+	public:
 		size_t GetShaderCount()const {
 			return shaders_.size();
 		}
@@ -199,9 +219,9 @@ namespace MetaInit::Renderer
 		FORCE_INLINE RtRenderShader::Ptr GetShader(const ShaderHandle& handle) {
 			return shaders_[uint32_t(handle)];
 		}
-		END_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
 	private:
-		LAYOUT_FIELD(Vector<,RtRenderShader::Ptr>, shaders_);
+		LATIYT_VECTOR_FIELD(,RtRenderShader::Ptr, shaders_);
+		END_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
 	};
 
 	//shader map for single hlsl file
@@ -254,7 +274,7 @@ namespace MetaInit::Renderer
 		void Serialize(FileArchive& ar)const;
 		void UnSerialize(FileArchive& ar);
 		/*begin and end async compile work*/
-		void BeginCompile();
+		void BeginCompile(const ShaderCompileEnv& compile_env);
 		void EndCompile();
 		/*compile shader map and wait util finished*/
 		void Compile();
@@ -270,5 +290,51 @@ namespace MetaInit::Renderer
 		Map<RtShaderCompiledFileMap::HashType, RtShaderCompiledFileMap::Ptr>	shader_sections_;
 	};
 
-
+	class MINIT_API RtPipelineCompiledRepo
+	{
+	public:
+		using PSORepoOnLoadDelegate = DelegateLib::MulticastDelegate<void()>;
+		using PSORepoOnSaveDelegate = DelegateLib::MulticastDelegate<void()>;
+		using PSORepoPreCompileReportProgressDelegate = DelegateLib::MulticastDelegate<void(float percentage)>;
+		static RtPipelineCompiledRepo& Instance() {
+			static RtPipelineCompiledRepo instance;
+			return instance;
+		}
+		void Serialize(const String& path);
+		void UnSerialize(const String& path);
+		bool IsPreCompileNeeded()const;
+		void PreCompile(bool async = false);
+		float GetPreCompileCompletePercentage()const;
+		RtRenderShaderPipeline::SharedPtr GetPipeline(const PipelineStateObjectDesc& desc);
+	private:
+		struct CompileJob
+		{
+			//priority of each pso object
+			enum EPriority
+			{
+				eLow,
+				eMedium,
+				eHigh,
+				eNum,
+			};
+			EPriority	prior_;
+			PipelineStateObjectDesc	desc_;
+		};
+		RtPipelineCompiledRepo() = default;
+		DISALLOW_COPY_AND_ASSIGN(RtPipelineCompiledRepo);
+		void CompileBatch(const Span<CompileJob>& job_batch);
+		void Compile(const CompileJob& job);
+	private:
+		std::atomic_uint64_t	total_precompile_works_{ 0u };
+		std::atomic_uint64_t	finish_precompile_works_{ 0u };
+		Set<PipelineStateObjectDesc>	new_pso_;
+		Set<PipelineStateObjectDesc>	record_pso_;
+		Vector<CompileJob>	compile_jobs_;
+		std::shared_mutex	compile_mutex_;
+		std::shared_mutex	utility_mutex_;
+		//delegate like unreal
+		PSORepoPreCompileReportProgressDelegate compile_report_delegate_;
+		PSORepoOnLoadDelegate	repo_load_delegate_;
+		PSORepoOnSaveDelegate	repo_save_delegate_;
+	};
 }

@@ -99,6 +99,7 @@ namespace MetaInit
 					uint32_t				max_depth_{ 4 };
 				}raytrace_;
 			};
+			VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };
 		}Desc;
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc_params);
 		//pipeline resource 

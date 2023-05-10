@@ -47,14 +47,14 @@ namespace MetaInit::RHI {
 	};
 
 	struct RHIBindLessPushRange {
-		uint32_t	offset_{ 0 };
-		uint32_t	size_{ 0 };
+		uint32_t	offset_{ 0u };
+		uint32_t	size_{ 0u };
 	};
 
 	//type and max size for each descrptor table entity
 	struct RHIBindLessTableDesc {
-		uint32_t	tag_{ 0 };
-		uint32_t	max_size_{ 0 };
+		uint32_t	tag_{ 0u };
+		uint32_t	max_size_{ 0u };
 		void*	extra_info_{ nullptr };
 	};
 

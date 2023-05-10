@@ -97,6 +97,11 @@ namespace MetaInit::Renderer {
 		}
 	}
 	
+	FileArchive& operator<<(FileArchive& ar, PipelineStateObjectDesc& pso)
+	{
+		// TODO: 在此处插入 return 语句
+	}
+
 	FileArchive& operator<<(FileArchive& ar, ShaderArchiveHeader& archive_header)
 	{
 		PCHECK(!archive_header.IsHeaderFull()) << "shader archive header overflow";

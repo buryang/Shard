@@ -1,7 +1,10 @@
 #pragma once
 #include "Utils/Hash.h"
 #include "Utils/FileArchive.h"
+#include "Core/PixelInfo.h"
+#include "Scene/Primitive.h"
 #include "RHI/RHIGlobalEntity.h"
+#include "RHI/RHIShaderLibrary.h"
 #include "Renderer/RtRenderShader.h"
 #include <shared_mutex>
 
@@ -10,13 +13,14 @@ namespace MetaInit::Renderer {
 	struct PipelineStateObjectDesc {
 		using HashVal = RtRenderShader::HashType;
 		union {
-			struct ComputePipelineObject {
+			struct ComputePipelineDesc {
 				HashVal	compute_shader_;
 			} compute_desc_;
-			struct GFXPipelineObject {
-				HashVal stage_shaders[EShaderFrequency::eNum];
+			struct GraphicsPipelineDesc {
+				HashVal stage_shaders[Utils::EnumToInteger(EShaderFrequency::eNum)];
+				EInputTopoType	primitive_topology_;
 			} gfx_desc_;
-			struct RayTracingPipelinObject {
+			struct RayTracePipelineDesc {
 
 			} raytracing_desc_;
 		};
@@ -27,6 +31,12 @@ namespace MetaInit::Renderer {
 			eRayTracing,
 		};
 		EPSOType	type_{ EPSOType::eUnkown };
+		uint32_t	user_flags_{ 0u };
+	};
+
+	struct PSOArchiveHeader
+	{
+		//todo whether need a header 
 	};
 
 	FileArchive& operator<<(FileArchive& ar, PipelineStateObjectDesc& pso);

@@ -1,6 +1,7 @@
 #include "Utils/FileArchive.h"
 #include "Utils/SimpleJobSystem.h"
 #include "Core/RenderGlobalParams.h"
+#include "RHI/RHIShaderLibrary.h"
 #include "Renderer/RtRenderShaderFactory.h"
 #include <filesystem>
 #include <string>
@@ -10,24 +11,61 @@ namespace MetaInit::Renderer {
 
 	REGIST_PARAM_TYPE(UINT, RENDER_COMPILE_WORKERS, 128);
 
+	//class layout define here
+	IMPLEMENT_TYPE_LAYOUT_DEF(RtShaderContent);
+
 	bool RtShaderType::Regist(Ptr shader_type)
 	{
-		if (auto iter = shader_type_repos_.find(shader_type->hash_name_); iter == End()) {
-			shader_type_repos_.insert({shader_type->hash_name_, shader_type});
+		auto iter = eastl::find_if(Begin(), End(), [](const auto* val) { return val->hash_name_ >= shader_type->hash_name_; });
+		if (iter == End() || (*iter)->hash_name_ != shader_type->hash_name_) {
+			shader_type_repos_.insert(iter, shader_type);
 		}
 		return false;
 	}
 
-	RtShaderType::Ptr RtShaderType::GetShaderType(const HashType& hash)
+	RtShaderType::Ptr RtShaderType::FindShaderTypeByName(const String& name)
 	{
-		if (auto iter = shader_type_repos_.find(hash); iter != End()) {
-			return iter->second;
+		const auto hash_name = Utils::CalcBlake3HashForBytes<RtShaderType::HashType::GetHashSize()>(reinterpret_cast<const uint8_t*>(name.data()), name.size());
+		const auto iter = eastl::find(Begin(), End(), hash_name);
+		if (iter != End() && (*iter)->GetName() == name) {
+			return *iter;
 		}
-		LOG(ERROR) << std::format("try to get type :{} not exsit", hash.ToString());
 		return nullptr;
 	}
 
-	RtShaderType::RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq):name_(name), file_name_(file),entry_func_(func)
+	//whether hash unique?
+	RtShaderType::Ptr RtShaderType::FindShaderTypeByHashName(const HashType& hash) 
+	{
+		const auto iter = eastl::find(Begin(), End(), hash);
+		if (iter != End()) 
+		{
+			return *iter;
+		}
+		return nullptr;
+	}
+
+	Vector<RtShaderType::Ptr> RtShaderType::FindShaderTypeByFileName(const String& file_name)
+	{
+		Vector<RtShaderType::Ptr> shader_types;
+		for (auto iter = Begin();  iter != End(); ++iter) {
+			if ((*iter)->GetFileName() == file_name) {
+				shader_types.push_back(*iter);
+			}
+		}
+		return shader_types;
+	}
+
+	RtShaderType::Ptr RtShaderType::GetShaderType(const HashType& hash)
+	{
+		auto* shader_type = FindShaderTypeByHashName(hash);
+		if (shader_type != nullptr) {
+			return shader_type;
+		}
+		LOG(ERROR) << fmt::format("try to get type :{} not exsit", hash.ToString());
+		return nullptr;
+	}
+
+	RtShaderType::RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq):name_(name), file_name_(file),entry_func_(func), frequency_(freq)
 	{
 	}
 
@@ -51,18 +89,17 @@ namespace MetaInit::Renderer {
 		}
 	}
 
-	void RtShaderCompiledRepo::BeginCompile() {
+	void RtShaderCompiledRepo::BeginCompile(const ShaderCompileEnv& compile_env) {
 		for (auto& [key, sec] : shader_sections_) {
 			if (sec->IsReCompileNeeded()) {
 				shader_sections_.erase(key);
 			}
 		}
-		
 		decltype(shader_sections_) candidate_sections;
 		//traverse shader types to do compile extra work 
 		for (auto iter = RtShaderType::Begin(); iter != RtShaderType::End(); ++iter) {
 			//check wether need compile file
-			const auto* shader_type = iter->second;
+			const auto* shader_type = *iter;
 			const auto& section_file_name = shader_type->GetHashFileName();
 			RtShaderCompiledFileMap::Ptr shader_section = nullptr;
 			if (auto* section = FindSection(section_file_name); section != nullptr) {
@@ -81,7 +118,7 @@ namespace MetaInit::Renderer {
 			}
 			//iterator permutation ids
 			for (auto n = 0; n < shader_type->GetPermutationCount(); ++n) {
-				if (shader_type->ShouldCompile(n)) {
+				if (shader_type->ShouldCompile(compile_env, n)) {
 					ShaderCompileJobIn job;
 					job.InitByShaderType(*shader_type, n);
 #ifdef _WIN32
@@ -99,11 +136,12 @@ namespace MetaInit::Renderer {
 
 	void RtShaderCompiledRepo::EndCompile() {
 		//sync compile work
-		RtGlobalCompileWorkManager::Instance().WaitAllJobsDone();
+		RtGlobalCompileWorkManager::Instance().FinalizeAllJobs();
 	}
 
 	void RtShaderCompiledRepo::Compile() {
-		BeginCompile();
+		ShaderCompileEnv env; //todo how to set env parameters
+		BeginCompile(env);
 		EndCompile();
 	}
 
@@ -357,4 +395,92 @@ namespace MetaInit::Renderer {
 		}
 	}
 
+	void RtPipelineCompiledRepo::Serialize(const String& path)
+	{
+		Utils::FileArchive pso_ar(path.c_str(), Utils::FileArchive::EArchiveMode::eWrite);
+		{
+			//read logic
+		}
+		if (repo_load_delegate_) {
+			repo_load_delegate_();
+		}
+	}
+
+	void RtPipelineCompiledRepo::UnSerialize(const String& path)
+	{
+		Utils::FileArchive pso_ar(path.c_str(), Utils::FileArchive::EArchiveMode::eWrite);
+		//todo fixme
+		for (const pso : new_pso_) {
+			pso_ar << pso;
+		}
+		if (repo_save_delegate_) {
+			repo_save_delegate_();
+		}
+	}
+
+	void RtPipelineCompiledRepo::PreCompile(bool async)
+	{
+		const auto batch_size = GET_PARAM_TYPE_VAL(UINT, PSO_COMPILE_BACTH_SIZE);
+		const auto batch_num = std::ceil(record_pso_.size() / batch_size);
+		if (!async) {
+			for (auto n = 0; n < batch_num; ++n) {
+				const auto batch_begin = n * batch_size;
+				const auto batch_real_size = batch_begin + batch_size > record_pso_.size() ? record_pso_.size() - batch_begin : batch_size;
+				CompileBatch({ record_pso_.data()+n*batch_begin, batch_real_size });
+				//report compile progress
+				float ratio = float(n) / batch_num;
+				finish_precompile_works_.fetch_add(1u);
+				if (compile_report_delegate_) {
+					compile_report_delegate_(ratio);
+				}
+			}
+		}
+		else
+		{
+			//begin async compile work
+			for (auto n = 0; n < batch_num; ++n) {
+				const auto batch_begin = n * batch_size;
+				const auto batch_real_size = batch_begin + batch_size > record_pso_.size() ? record_pso_.size() - batch_begin : batch_size;
+				Span<CompileJob> compile_batch{ record_pso_.data() + n * batch_begin, batch_real_size };
+				const auto compile_batch_func = [this, compile_batch]() {
+					CompileBatch(compile_batch);
+					{
+						std::unique_lock<std::shared_mutex> lock(utility_mutex_);
+						auto proc_num = finish_precompile_works_.fetch_add(1u);
+						float ratio = float(proc_num) / batch_num;
+						if (compile_report_delegate_) {
+							compile_report_delegate_(ratio);//todo fix sync work
+						}
+					}
+				};
+				Utils::Schedule(compile_batch_func);
+			}
+		}
+	}
+
+	RtRenderShaderPipeline::SharedPtr MetaInit::Renderer::RtPipelineCompiledRepo::GetPipeline(const PipelineStateObjectDesc& desc)
+	{
+		RtRenderShaderPipeline::SharedPtr pso;
+		auto rhi = xxx;
+		pso.reset(new RtRenderShaderPipeline(pso, rhi));
+		return pso;
+	}
+
+	void RtPipelineCompiledRepo::CompileBatch(const Span<CompileJob>& job_batch)
+	{
+		for (const auto& job : job_batch) {
+			Compile(job);
+		}
+	}
+
+	void RtPipelineCompiledRepo::Compile(const CompileJob& job)
+	{
+		const auto pso_desc_to_rhi = [this, &](const PipelineStateObjectDesc& desc){
+			return RHIPipelineStateObjectInitializer();
+		};
+
+		const auto rhi_initializer = pso_desc_to_rhi(job.desc_);
+		auto pos_rhi = RHIGlobalEntity::Instance()->GetOrGetOrCreatePSOLibrary()->GetOrCreatePipeLine(rhi_initializer); //todo 
+		PCHECK(pso_rhi != nullptr) << "compile pso failed";
+	}
 }

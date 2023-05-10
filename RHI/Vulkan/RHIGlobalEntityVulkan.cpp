@@ -1,6 +1,8 @@
 #include "RHI/Vulkan/RHICommandVulkan.h"
 #include "RHI/Vulkan/RHIResourcesVulkan.h"
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
+#include "RHI/Vulkan/RHIShaderLibraryVulkan.h"
+#include "RHI/RHITypeTraits.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
 #define ADD_LAYER_IF(CONDITION, LAYER_NAME) if (CONDITION) { layers.emplace_back(LAYER_NAME); }
@@ -99,6 +101,18 @@ namespace MetaInit::RHI::Vulkan {
 
 	void RHIGlobalEntityVulkan::InitInstance()
 	{
+	}
+
+	RHIShaderLibraryInterface::Ptr RHIGlobalEntityVulkan::GetOrCreateShaderLibrary()
+	{
+		static RHITypeConcreteTraits<EnumToInteger(ERHIBackEnd::eVulkan)>::RHIShaderLibraryInterface shader_library;
+		return static_cast<RHIShaderLibraryInterface::Ptr>(&shader_library);
+	}
+
+	RHIPipelineStateObjectLibraryInterface::Ptr RHIGlobalEntityVulkan::GetOrCreatePSOLibrary()
+	{
+		static RHITypeConcreteTraits<EnumToInteger(ERHIBackEnd::eVulkan)>::RHIPipelineStateObjectLibraryInterface pso_library;
+		return static_cast<RHIPipelineStateObjectLibraryInterface::Ptr>(&pso_library);
 	}
 
 	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::CreateResourceBindlessHeap()

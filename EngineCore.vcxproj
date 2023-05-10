@@ -35,6 +35,7 @@
     <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
     <ClCompile Include="RHI\RHIGlobalEntity.cpp" />
     <ClCompile Include="RHI\RHIResources.cpp" />
+    <ClCompile Include="RHI\RHIShaderLibrary.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanStat.cpp" />
     <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIGlobalEntityVulkan.cpp" />
@@ -51,6 +52,7 @@
     <ClCompile Include="RHI\Vulkan\API\VulkanWindowSystem.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceBindingVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourcesVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIShaderLibraryVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHISyncVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHISyncVulkan.h" />
     <ClCompile Include="Runtime\MyToySimpleRenderer.cpp" />
@@ -100,6 +102,7 @@
     <ClInclude Include="RHI\RHIShader.h" />
     <ClInclude Include="RHI\RHIShaderLibrary.h" />
     <ClInclude Include="RHI\RHISync.h" />
+    <ClInclude Include="RHI\RHITypeTraits.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanCmdContext.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanFrameBuffer.h" />
     <ClInclude Include="RHI\Vulkan\API\VulkanHelperStruct.h" />
@@ -117,6 +120,7 @@
     <ClInclude Include="RHI\Vulkan\RHIResourceAllocatorVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceBindingVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourcesVulkan.h" />
+    <ClInclude Include="RHI\Vulkan\RHIShaderLibraryVulkan.h" />
     <ClInclude Include="Runtime\MyToySimpleRenderer.h" />
     <ClInclude Include="Runtime\RuntimeSceneRender.h" />
     <ClInclude Include="Runtime\RuntimeShaderPermunation.h" />
@@ -201,22 +205,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\tinygltf;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\tinygltf;.\Externals\googletest\include;.\Externals\vma;.\;;D:\Exp\Source\MetaInit\ThirdParty</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\tinygltf;.\Externals\googletest\include;.\Externals\vma;.\;</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;.\Externals\abseil\include;.\Externals\folly;.\Externals\GLFW\include;.\Externals\GLM\;.\Externals\Assimp\include;.\Externals\tinygltf;.\Externals\googletest\include;.\Externals\vma;.\;;D:\Exp\Source\MetaInit\ThirdParty</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;..\MetaInit</IncludePath>
+    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;..\MetaInit;D:\Exp\Source\MetaInit\ThirdParty</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);D:\VulkanSDK\1.2.162.0\Lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;..\MetaInit</IncludePath>
+    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;..\MetaInit;D:\Exp\Source\MetaInit\ThirdParty</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);D:\VulkanSDK\1.2.162.0\Lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

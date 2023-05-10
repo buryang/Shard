@@ -7,7 +7,6 @@
 
 //more information from https://shaharmike.com/cpp/vtable-part3/
 namespace MetaInit::Utils {
-
 	enum ELayoutFlags {
 		eNone = 0x0,
 		eInitialized = 0x1,
@@ -140,17 +139,17 @@ namespace MetaInit::Utils {
 		SmallVector<FieldLayoutDesc> fields_;
 
 		//utility function pointer define
-		using LayoutDestroyFunc = void(*)(void* object, const TypeLayoutDesc& desc);
-		using LayoutWriteFunc = uint32_t(*)(ImageWriter& writer, const void* object, const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc);
-		using LayoutHashAppendFunc = uint32_t(*)(const TypeLayoutDesc& desc, blake3_hasher& hasher);
-		using LayoutGetAlignmentFunc = uint32_t(*)(const TypeLayoutDesc& desc);
-		using LayoutUnfreezeCopyFunc = uint32_t(*)(const void* object, const TypeLayoutDesc& desc, void* dst_obj);
-		using LayoutGetOffsetFromBaseFunc = uint32_t(*)(const TypeLayoutDesc& desc);
-		using LayoutGetDefaultInstanceFunc = void* (*)();
+		using LayoutDestroyFunc = std::function<void(void* object, const TypeLayoutDesc& desc, bool is_frozen)>;
+		using LayoutWriteFunc = std::function<uint32_t(ImageWriter& writer, const void* object, const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc)>;
+		using LayoutHashAppendFunc = std::function<uint32_t(const TypeLayoutDesc& desc, const PlatformTypeLayoutParameters& platform, blake3_hasher& hasher)>;
+		using LayoutGetAlignmentFunc = std::function<uint32_t(const TypeLayoutDesc& desc, const PlatformTypeLayoutParameters& platform)>;
+		using LayoutUnfreezeCopyFunc = std::function<uint32_t(const void* object, const TypeLayoutDesc& desc, const PlatformTypeLayoutParameters& platform, void* dst_obj)>;
+		using LayoutGetOffsetFromBaseFunc = std::function<uint32_t(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc)>;
+		using LayoutGetDefaultInstanceFunc = std::function<void*()>;
 
 		LayoutWriteFunc	write_func_{ DefaultLayoutWrite };
 		LayoutDestroyFunc	destroy_func_{ DefaultLayoutDestroy };
-		LayoutHashAppendFunc	hash_func_{ DefaultLayoutHashAppend  };
+		LayoutHashAppendFunc	hash_func_{ DefaultLayoutHashAppend };
 		LayoutGetAlignmentFunc	alignment_func_{ DefaultLayoutGetAlignment };
 		LayoutUnfreezeCopyFunc	unfreeze_copy_func_{ DefaultUnfreezeCopy };
 		LayoutGetOffsetFromBaseFunc	offset_to_base_func_{ DefaultGetOffsetFromBase };
@@ -264,12 +263,11 @@ namespace MetaInit::Utils {
 		return string_desc;
 	}
 
-
 	template<typename, typename = void>
-	struct HasLayoutDef :public std::false_type {};
+	struct HasLayoutDef : std::false_type {};
 
 	template<typename T>
-	struct HasLayoutDef<T, std::void_t<decltype(T::g_static_desc)>> : public std::true_type {};
+	struct HasLayoutDef<T, std::void_t<decltype(&T::g_static_desc)> > : std::true_type {};
 
 	struct TypeLayoutResolver {
 		template<typename T, typename = std::enable_if_t<HasLayoutDef<T>::value>>
@@ -281,12 +279,40 @@ namespace MetaInit::Utils {
 			return GetPrimitiveLayout<T>();
 		}
 	};
+}
 
-	//***macros that layout regist needed***
+using namespace MetaInit::Utils;
+//***macros that layout regist needed***
+#define	STATIC_DESC_DECLARE()\
+static TypeLayoutDesc g_static_desc; \
+template<uint32_t index> \
+static bool InternalLinkFunc() { LOG(ERROR)<<"typedesc failed to init"; }
+
+#define INTERNAL_TYPE_CONSTRUCTOR_DEFAULT(TYPE, COUNTER)\
+template<> static bool InternalLinkFunc<COUNTER>() { \
+{\
+	g_static_desc.hash_name_ = CalcStringHash(#TYPE);\
+	g_static_desc.size_ = sizeof(TYPE) };\
+	return InternalLinkFunc<COUNTER+1>(); \
+}
+
 #define TYPE_CONSTRUCTOR_DEFAULT(TYPE)\
-static TypeLayoutDesc g_static_desc{.hash_name_ = CalcStringHash(#TYPE), .size_ = sizeof(TYPE)};
+STATIC_DESC_DECLARE();\
+INTERNAL_TYPE_CONSTRUCTOR_DEFAULT(TYPE, 0);
+
+#define INTERNAL_TYPE_CONSTRUCTOR_WITH_INTERFACE(TYPE, COUNTER, ...)\
+template<> static bool InternalLinkFunc<COUNTER>() { \
+{\
+	g_static_desc.hash_name_ = CalcStringHash(#TYPE);\
+	g_static_desc.size_ = sizeof(TYPE) };\
+	g_static_desc..interface_ = __VA_ARGS__;\
+	return InternalLinkFunc<COUNTER+1>(); \
+}
+
 #define TYPE_CONSTRUCTOR_WITH_INTERFACE(TYPE, ...)\
-static TypeLayoutDesc g_static_desc{.hash_name_ = CalcStringHash(#TYPE), .size_ = sizeof(TYPE), .interface_ = __VA_ARGS__};
+STATIC_DESC_DECLARE();\
+INTERNAL_TYPE_CONSTRUCTOR_WITH_INTERFACE(TYPE, 0, __VA_ARGS__);
+
 //puzzled from https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros
 #define FUNCTION_CHOOSER(FUNC0, FUNC1, ...) FUNC1
 #define FUNCTION_RECOMPOSER(XXX) FUNCTION_CHOOSER XXX
@@ -295,57 +321,94 @@ static TypeLayoutDesc g_static_desc{.hash_name_ = CalcStringHash(#TYPE), .size_ 
 #define TYPE_CONSTRUCTOR_CHOOSE(TYPE, ...) CHOOSE_FROM_ARG_COUNT(NO_ARG_EXPANDER __VA_ARGS__ ())
 
 #define BEGIN_DECLARE_TYPE_LAYOUT_DEF(TYPE, ...)\
-private:\
-	using ThisType = TYPE;\
-	static constexpr uint32_t g_index_base = __COUNTER__;\
-	TYPE_CONSTRUCTOR_CHOOSE(TYPE, __VA_ARGS__)(TYPE, __VA_ARGS__)\
-	static bool TypeLayoutDescAddField(const String& field_name, uint32_t offset, uint32_t array_size, TypeLayoutDesc& field_type)\
-	{\
-		FieldLayoutDesc field_desc{ .index_ = __COUNTER__ - g_index_base, .name_ = field_name, .offset_=offset, .type_ = field_type};\
-		static_desc.fields_.emplace_back(field_desc);\
-		return true;\
-	}\
-	template<class BASE_TYPE>\
-	static bool TypeLayoutDescAddBaseClassField()\
-	{\
+public:\
+	using ThisType = TYPE; \
+	static constexpr uint32_t g_index_base{__COUNTER__};\
+	TYPE_CONSTRUCTOR_CHOOSE(TYPE, __VA_ARGS__)(TYPE, __VA_ARGS__);\
+	static bool TypeLayoutDescAddField(const String& field_name, uint32_t index, uint32_t offset, uint32_t array_size, TypeLayoutDesc& field_type) \
+	{ \
+		FieldLayoutDesc field_desc{ .index_ = index, .name_ = field_name, .offset_=offset, .type_ = field_type}; \
+		g_static_desc.fields_.emplace_back(field_desc); \
+		return true; \
+	} \
+	template<class BASE_TYPE> \
+	static bool TypeLayoutDescAddBaseClassField(uint32_t index) \
+	{ \
 		ThisType temp; \
 		const auto offset = (uint32_t)((uint64_t)static_cast<BASE_TYPE*>(&temp)-(uint64_t)(&temp)); \
-		FieldLayoutDesc base_desc{.index_ = __COUNTER__ - g_index_base, .name_ = "BASE", .offset_=offset, .type_ = TypeLayoutResolver::Get<BASE_TYPE>() };\
-		++g_static_desc.num_bases_;\
-		return true;\
-	}\
-	static bool const void* GetDefaultEntity(){\
-		static const ThisType instance;\
-		return &instance;\
+		FieldLayoutDesc base_desc{.index_ = index, .name_ = "BASE", .offset_=offset, .type_ = TypeLayoutResolver::Get<BASE_TYPE>() }; \
+		g_static_desc.fields_.emplace_back(base_desc); \
+		++g_static_desc.num_bases_; \
+		return true; \
+	} \
+	static const ThisType* GetDefaultEntity(){ \
+		static const ThisType instance; \
+		return &instance; \
 	}
 
 #define END_DECLARE_TYPE_LAYOUT_DEF(TYPE)\
-private:\
-	static auto g_declare_##TYPE##_end = InitializeTypeLayout(g_static_desc, PlatformTypeLayoutParameters::CurrentParameters());
+public:\
+	template<> static bool InternalLinkFunc<__COUNTER__ - g_index_base>(){\
+		TypeLayoutDesc::InitializeTypeLayout(g_static_desc, PlatformTypeLayoutParameters::CurrentParameters()); \
+		return true;\
+	}
+
+//local type to avoid "::" 
+#define IMPLEMENT_TYPE_LAYOUT_DEF(TYPE)\
+	namespace { using LOCAL_TYPE = TYPE; static const auto g_return_dummy = LOCAL_TYPE::InternalLinkFunc<0>(); }
 
 /*for each base class*/
+#define INTERNAL_DECLARE_BASE_TYPE_LAYOUT(BASE_TYPE, COUNTER)\
+	template<> static bool InternalLinkFunc<COUNTER>()\
+		TypeLayoutDescAddBaseClassField<BASE_TYPE>(COUNTER-1);\
+		return InternalLinkFunc<COUNTER+1>();\
+	}
+
 #define DECLARE_BASE_TYPE_LAYOUT_FUNC(BASE_TYPE)\
-	static constexpr g_xxx_##BASE_TYPE = TypeLayoutDescAddBaseClassField<BASE_TYPE>();
+	INTERNAL_DECLARE_BASE_TYPE_LAYOUT(BASE_TYPE, __COUNTER__ - g_index_base);
 
 #define DECLARE_BASE_TYPE_LAYOUT_EXPLCIT(...)\
 	FOR_EARCH(DECLARE_BASE_TYPE_LAYOUT_FUNC, __VA_ARGS__)	
 
+//counter - 1 for base from 0
+#define INTERNAL_LAYOUT_FIELD(TYPE, NAME, OFFSET, COUNTER, ARRAY_SIZE)\
+	template<> static bool InternalLinkFunc<COUNTER>(){\
+		TypeLayoutDescAddField(#NAME, COUNTER-1, OFFSET, ARRAY_SIZE, TypeLayoutResolver::Get<TYPE>());\
+		return InternalLinkFunc<COUNTER+1>();\
+	}
+
 #define LAYOUT_FIELD(PREFIX, TYPE, NAME)\
-	PREFIX TYPE NAME;\
-	static auto g_temp_##TYPE##_##NAME = TypeLayoutDescAddField(#NAME, std::offsetof(ThisType, NAME), 1, TypeLayoutResolver::Get<TYPE>());
+	PREFIX TYPE NAME; \
+	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
 
 #define LAYOUT_FIELD_DEFAULT(PREFIX, TYPE, NAME, VALUE)\
-	PREFIX TYPE NAME{VALUE};\
-	static auto g_temp_##TYPE##_##NAME = TypeLayoutDescAddField(#NAME, std::offsetof(ThisType, NAME), 1, TypeLayoutResolver::Get<TYPE>());
+	PREFIX TYPE NAME{VALUE}; \
+	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
+
+#define LATIYT_VECTOR_FIELD(PREFIX, TYPE, NAME)\
+	PREFIX Vector<TYPE>	NAME; \
+	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
 
 #define LAYOUT_ARRAY_FIELD(PREFIX, TYPE, NAME, ARRAY_SIZE)\
-	PREFIX TYPE NAME[ARRAY_SIZE];\
-	static auto g_temp_##TYPE##_##NAME = TypeLayoutDescAddField(#NAME, std::offsetof(ThisType, NAME), ARRAY_SIZE, TypeLayoutResolver::Get<TYPE>());
+	PREFIX TYPE NAME[ARRAY_SIZE]; \
+	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, ARRAY_SIZE);
 
 /*for cannot get bit-filed offset from class*/
 #define LAYOUT_BIT_FIELD(PREFIX, TYPE, NAME, BIT_SIZE)\
-	PREFIX TYPE NAME:BIT_SIZE;\
-	static auto g_temp_##TYPE##_##NAME##_BIT_SIZE = TypeLayoutDescAddField(#NAME, -1, 1, TypeLayoutResolver::Get<TYPE>());
+	PREFIX TYPE NAME:BIT_SIZE; \
+	NTERNAL_LAYOUT_FIELD(TYPE, NAME, -1, __COUNTER__-g_index_base, 1);
+
+#if 0
+//macro usage example
+namespace MetaInit {
+	class Usage {
+		BEGIN_DECLARE_TYPE_LAYOUT_DEF(Usage);
+		LAYOUT_FIELD(, uint32_t, dummy_);
+		END_DECLARE_TYPE_LAYOUT_DEF();
+	};
+	IMPLEMENT_TYPE_LAYOUT_DEF(Usage);
+}
+#endif
 
 #ifdef RAY_TRACING //to do
 #define LAYOUT_FIELD_RAYTRACING(PREFIX, TYPE, NAME) 
@@ -354,5 +417,3 @@ private:\
 #define LAYOUT_FIELD_RAYTRACING(PREFIX, TYPE, NAME) 
 #define LAYOUT_FIELD_RAYTRACING_DEFAULT(PREFIX, TYPE, NAME, VALUE)
 #endif
-
-}

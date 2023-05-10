@@ -5,12 +5,22 @@
 namespace MetaInit
 {
 
-	enum class InputTopoType :uint8_t
+	enum class EInputTopoType :uint8_t
 	{
+		eUnkown,
+		ePointList,
 		eLineList,
 		eLineStrip,
 		eTriangleList,
 		eTriangleStrip,
+		eTriangleFAN,
+		eLineListAdj,
+		eLineStripAdj,
+		eTriangleListAdj,
+		eTriangleStripAdj,
+		//to do d3d control pointer patch list
+		ePatchList,
+		eNum,
 	};
 
 	//copy from falcor

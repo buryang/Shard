@@ -28,14 +28,14 @@ namespace MetaInit::Utils {
 	void DefaultLayoutDestroy(void* object, const TypeLayoutDesc& desc, bool is_frozen)
 	{
 		if (desc.destroy_func_) {
-			desc.alignment_func_();
+			desc.destroy_func_();
 		}
 		if (!is_frozen) {
 			::operator delete(object);
 		}
 	}
 
-	uint32_t DefaultLayoutWrite(ImageWriter& writer, void* object, const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc)
+	uint32_t DefaultLayoutWrite(ImageSectionWriter& writer, void* object, const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc)
 	{
 		const auto& platform = writer.GetPlatform();
 		if (!IsNonVirtualClass(desc.interface_)&&!desc.num_vbases_) {
@@ -272,7 +272,7 @@ namespace MetaInit::Utils {
 	{
 		ImageObject image_obj;
 		image_obj.SetPlatform(frozen_platform);
-		ImageWriter image_writer(image_obj);
+		ImageSectionWriter image_writer(image_obj);
 		image_writer.WriteRootObject(object, desc);
 
 		ImageFreezeObject frozen_obj;
@@ -307,7 +307,7 @@ namespace MetaInit::Utils {
 			return false;
 		}
 
-		uint32_t offset{ 0 };
+		uint32_t offset{ 0u };
 		const TypeLayoutDesc* prev_type_layout_t{ nullptr };
 		uint32_t curr_bit_field_bits{ 0u };
 		if (!IsNonVirtualClass(desc.interface_) && desc.num_vbases_) {
@@ -365,17 +365,18 @@ namespace MetaInit::Utils {
 
 	uint32_t TypeLayoutDesc::GetOffsetFromBase(const TypeLayoutDesc& derived, const TypeLayoutDesc& base)
 	{
-		uint32_t offset{ 0 };
+		uint32_t offset{ 0u };
 		auto ret = TryToGetOffsetFromBase(base, derived, offset);
 		return ret ? offset : -1;//FIXME
 	}
 
 	bool TypeLayoutDesc::IsDerivedFrom(const TypeLayoutDesc& probe_derived, const TypeLayoutDesc& probe_base)
 	{
-		uint32_t offset;
+		uint32_t offset{ 0u };
 		auto ret = TryToGetOffsetFromBase(probe_base, probe_derived, offset);
 		return ret;
 	}
+	
 	bool TypeLayoutDesc::IsEmptyType(const TypeLayoutDesc& desc)
 	{
 		if (desc.fields_.empty() && IsNonVirtualClass(desc.interface_)) {

@@ -14,10 +14,10 @@ namespace MetaInit::RHI {
 			static Ptr Instance();
 			void Init() override;
 			void UnInit() override;
-			void CreateGFXPipelineState() override;
-			void CreateComputePipelineState() override;
 			void CreateSampler() override;
 			void CreateViewPoint() override;
+			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
+			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
 			RHIResourceBindlessHeap::Ptr CreateResourceBindlessHeap() override;
 			RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc) override;
 			RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc) override;

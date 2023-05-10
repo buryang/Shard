@@ -21,7 +21,8 @@ namespace MetaInit::Utils {
 		WString ToWString()const;
 		constexpr bool IsZero()const;
 		FORCE_INLINE uint8_t* GetBytes() { return hash_; }
-		FORCE_INLINE constexpr uint32_t GetHashSize()const { return MAX_HASH_SIZE; }
+		FORCE_INLINE static constexpr uint32_t GetHashSize() { return MAX_HASH_SIZE; }
+		FORCE_INLINE static const HashSignature& Zero() { static HashSignature zero; return zero; }
 		FORCE_INLINE constexpr bool operator==(const HashSignature& rhs) const {
 			auto ret = std::memcmp(hash_, rhs.hash_, size_);
 			return !ret;
@@ -33,7 +34,7 @@ namespace MetaInit::Utils {
 			return ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
 		}
 	private:
-		alignas(32) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0 };
+		alignas(32) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0u };
 	};
 
 	//hash conainters
@@ -152,12 +153,15 @@ namespace MetaInit::Utils {
 	template<typename HashType, uint32_t hash_size>
 	constexpr bool HashSignature<HashType, hash_size>::IsZero() const
 	{
+		/*
 		for (auto n = 0; n < MAX_HASH_SIZE; ++n) {
 			if (hash_[n] != 0) {
 				return false;
 			}
 		}
 		return true;
+		*/
+		return *this == Zero();
 	}
 
 	template<uint32_t hash_size=64>

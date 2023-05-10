@@ -12,9 +12,12 @@ namespace MetaInit::RHI
 	{
 		eNone,
 		eVulkan, //now only support vulkan
+		eD3D,
+		eMetal,
 	};
 
 	static inline constexpr bool IsBackEndSupported(ERHIBackEnd back_end) {
+		LOG(INFO) << "current only support vulkan backend";
 		return back_end == ERHIBackEnd::eVulkan;
 	}
 
@@ -42,12 +45,11 @@ namespace MetaInit::RHI
 		virtual ~RHIGlobalEntity() {}
 		virtual void Init();
 		virtual void UnInit();
-		virtual void CreateGFXPipelineState();
-		virtual void CreateComputePipelineState();
 		virtual void CreateSampler();
 		virtual void CreateViewPoint();
 		//only metal support shader library
-		virtual RHIShaderLibraryInterface::Ptr CreateShaderLibrary();
+		virtual RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary();
+		virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
 		virtual RHIResourceBindlessHeap::SharedPtr CreateResourceBindlessHeap();
 		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc);

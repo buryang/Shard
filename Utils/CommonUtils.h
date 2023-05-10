@@ -34,6 +34,7 @@
 #include "eastl/internal/thread_support.h"
 #include "folly/format.h"
 #include "folly/poly.h"
+#include "fmt/format.h"
 #include <memory>
 #include <algorithm>
 #include <cassert>
@@ -152,6 +153,11 @@ namespace MetaInit::Utils {
 	constexpr Enum LogicOrFlags(Enum lhs, Enum rhs) {
 		auto res = std::underlying_type_t<Enum>(lhs) | std::underlying_type_t<Enum>(rhs);
 		return static_cast<Enum>(res);
+	}
+
+	template <typename Enum>
+	constexpr auto EnumToInteger(Enum enum_var) {
+		return std::underlying_type_t<Enum>(enum_var);
 	}
 
 	template <typename T>

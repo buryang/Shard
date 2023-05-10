@@ -4,16 +4,21 @@
 #include "Utils/FileArchive.h"
 #include "Utils/ReflectionImageObject.h"
 #include "RHI/RHIGlobalEntity.h"
+#include "RHI/RHIShader.h"
 #include "Renderer/RtRenderShaderUtils.inl"
 #include "Renderer/RtRenderShaderParameters.h"
+#include "Renderer/RtRenderShader.h"
+#include "Renderer/RtREnderShaderFactory.h"
 #include "eastl/shared_ptr.h"
+#include <atomic>
 
 namespace MetaInit::Renderer
 {
-	struct RtRendererShaderParamBinding
+	struct RtRendererShaderParamBindings
 	{
 		struct BindEntity
 		{
+			BEGIN_DECLARE_TYPE_LAYOUT_DEF(BindEntity);
 			enum class EType : uint8_t
 			{
 				eScalarOrVec,
@@ -21,17 +26,18 @@ namespace MetaInit::Renderer
 				eBuffer,
 				eSampler,
 			};
-			EType		type_;
-			uint32_t	base_index_{ 0u };
-			uint32_t	buffer_index_{ 0u };
-			uint32_t	byte_offset_{ 0u };
+			LAYOUT_FIELD_DEFAULT(EType, type_);
+			LAYOUT_FIELD_DEFAULT(,uint32_t,base_index_,0u);
+			LAYOUT_FIELD_DEFAULT(,uint32_t,buffer_index_,0u);
+			LAYOUT_FIELD_DEFAULT(,uint32_t,byte_offset_,0u);
+			END_DECLARE_TYPE_LAYOUT_DEF(BindEntity);
 		};
 		//binding entities
-		SmallVector<BindEntity>	entities_;
+		enum { MAX_PARAM_BINDINGS = 8u };
+		BEGIN_DECLARE_TYPE_LAYOUT_DEF(RtRendererShaderParamBindings);
+		LAYOUT_ARRAY_FIELD(, BindEntity, entities_, MAX_PARAM_BINDINGS);
+		END_DECLARE_TYPE_LAYOUT_DEF(RtRendererShaderParamBindings)
 	};
-
-	static constexpr uint32_t MAX_PARAM_BINDINGS = 8;
-	using RtRendererShaderParamBindings = SmallVector<RtRendererShaderParamBinding, MAX_PARAM_BINDINGS>;
 
 	enum class EShaderFrequency :uint8_t
 	{
@@ -121,62 +127,6 @@ namespace MetaInit::Renderer
 		Vector<uint8_t>	code_binary_;
 	};
 
-	/*data to initialize shader infos*/
-	struct RtRenderShaderInitializeInput
-	{
-		RtShaderType::HashType	shader_type_;
-		RtRenderShaderCode	shader_code_;
-		RtShaderParameterInfosMap	shader_params_;
-	};
-
-	class MINIT_API RtRenderShader
-	{
-	public:
-		BEGIN_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
-		using Ptr = RtRenderShader*;
-		using SharedPtr = eastl::shared_ptr<RtRenderShader>;
-		using PermutationVec = PermutationTupleNULL;
-		using HashType = Utils::Blake3Hash64;
-
-		static Ptr Create(const RtRenderShaderInitializeInput& input) {
-			return nullptr;
-		}
-
-		static Ptr CreateFromArchive() {
-			return nullptr;
-		}
-
-		static bool ShouldCompile(uint32_t permutation_id) {
-			return false;
-		}
-
-		struct ShaderParam
-		{
-			virtual ~ShaderParam() {}
-		};
-		RtRenderShader() = default;
-		//initial render from compiled code
-		RtRenderShader(const RtRenderShaderInitializeInput& initializer) {};
-		virtual ~RtRenderShader() {}
-		const HashType& GetShaderHash()const;
-		const uint32_t GetResourceIndex()const;
-		const RtShaderType::Ptr GetShaderType()const;
-		virtual void Compile(const RtRenderShaderCode& shader_code) = 0;
-		virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
-	protected:
-		void BindShaderParameters(const RtShaderParameterInfosMap& param_infos);
-		void ComputeHash();
-	public:
-		LAYOUT_FIELD(RtRendererShaderParamBindings, bindings_);
-	protected:
-		//indentify shader type by hash
-		LAYOUT_FIELD(RtShaderType::HashType, shader_type_);
-		LAYOUT_FIELD(HashType, shader_hash_);
-		LAYOUT_FIELD(uint32_t, resource_index_);
-		LAYOUT_FIELD(uint32_t, permutation_id_);
-		END_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
-	};
-
 	struct RtRenderShaderParametersMeta
 	{
 		struct Element
@@ -211,8 +161,89 @@ namespace MetaInit::Renderer
 		explicit RtRenderShaderParameterBindHelper(RtRendererShaderParamBindings& bindings) :bindings_(bindings) {}
 		void Bind(const RtRenderShaderParametersMeta& param_meta, const RtShaderParameterInfosMap& param_map);
 	private:
-		void Bind(const Span<RtRenderShaderParametersMeta::Element>& param_meta, const RtShaderParameterInfosMap& param_map, const String& prefix_name, uint32_t prefix_offset = 0u);
+		void BindImpl(const Span<RtRenderShaderParametersMeta::Element>& param_meta, const RtShaderParameterInfosMap& param_map, const String& prefix_name=String(""), uint32_t prefix_offset = 0u);
 	private:
 		RtRendererShaderParamBindings& bindings_;
+	};
+
+	/*data to initialize shader infos*/
+	struct RtRenderShaderInitializeInput
+	{
+		RtShaderType::HashType	shader_type_;
+		RtRenderShaderCode	shader_code_;
+		RtShaderParameterInfosMap	shader_params_;
+	};
+
+	class ShaderCompileEnv;
+	class MINIT_API RtRenderShader
+	{
+		BEGIN_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
+	public:
+		using Ptr = RtRenderShader*;
+		using SharedPtr = eastl::shared_ptr<RtRenderShader>;
+		using PermutationVec = PermutationTupleNULL;
+		using HashType = Utils::Blake3Hash64;
+
+		static Ptr Create(const RtRenderShaderInitializeInput& input) {
+			return nullptr;
+		}
+
+		static Ptr CreateFromArchive() {
+			return nullptr;
+		}
+
+		static bool ShouldCompile(const ShaderCompileEnv& env, uint32_t permutation_id) {
+			return false;
+		}
+
+		struct ShaderParam
+		{
+			virtual ~ShaderParam() {}
+		};
+		RtRenderShader() = default;
+		//initial render from compiled code
+		RtRenderShader(const RtRenderShaderInitializeInput& initializer);
+		virtual ~RtRenderShader() {}
+		const HashType& GetShaderHash()const;
+		const uint32_t GetResourceIndex()const;
+		const RtShaderType::Ptr GetShaderType()const;
+		FORCE_INLINE bool IsReady()const { return resource_index_ != -1; }
+		virtual void Compile(const RtRenderShaderCode& shader_code) = 0;
+		virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
+		virtual RtRenderShaderParametersMeta* GetShaderParametersMeta() = 0;
+	protected:
+		void BindShaderParameters(const RtShaderParameterInfosMap& param_infos);
+		void ComputeHash()const;
+	public:
+		LAYOUT_FIELD(,RtRendererShaderParamBindings, bindings_);
+	protected:
+		//indentify shader type by hash
+		LAYOUT_FIELD(,RtShaderType::HashType, shader_type_);
+		LAYOUT_FIELD(mutable,HashType, shader_hash_);
+		LAYOUT_FIELD_DEFAULT(,uint32_t, resource_index_, -1);
+		LAYOUT_FIELD_DEFAULT(,uint32_t, permutation_id_, 0u);
+		END_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
+	};
+
+	class MINIT_API RtRenderShaderPipeline
+	{
+	public:
+		using SharedPtr = eastl::shared_ptr<RtRenderShaderPipeline>;
+		explicit RtRenderShaderPipeline(const PipelineStateObjectDesc& desc, RHI::RHIPipelineStateObject::Ptr rhi) :desc_(desc), rhi_entity_(rhi) {
+		}
+		void AddShader(RtRenderShader::Ptr shader);
+		RtRenderShader::Ptr FindShader(EShaderFrequency freq);
+		bool IsValid()const;
+		FORCE_INLINE const PipelineStateObjectDesc& GetPipelineDesc() const {
+			return desc_;
+		}
+	private:
+		PipelineStateObjectDesc	desc_;
+		RHI::RHIPipelineStateObject::Ptr	rhi_entity_{ nullptr };
+		//fixme not need this?
+		//RtRenderShader::Ptr shaders_[Utils::EnumToInteger(EShaderFrequency::eNum)];
+		//to do whehter define here
+		std::atomic_uint32_t	use_times_{ 0u };
+		std::atomic_uint32_t	last_use_time_{ 0u };
 	};
 }

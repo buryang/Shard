@@ -341,11 +341,8 @@ namespace MetaInit
 			pipeline_info.pDynamicState = &dynamic_info;
 		}
 		
-		auto ret = vkCreateGraphicsPipelines(device_->Get(), device->GetPipelineCache(), 1, &pipeline_info, g_host_alloc, &handle_);
-		if (VK_SUCCESS != ret)
-		{
-			throw std::runtime_error("graphics pipeline contruct failed");
-		}
+		auto ret = vkCreateGraphicsPipelines(device_->Get(), param.pipeline_cache_, 1, &pipeline_info, g_host_alloc, &handle_);
+		PCHECK(VK_SUCCESS != ret) << "graphics pipeline contruct failed";
 	}
 
 	VulkanShaderModule::Ptr VulkanGraphicsPipeline::GetShader(VulkanShaderModule::EType shader_type)

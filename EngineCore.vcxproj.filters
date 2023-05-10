@@ -131,6 +131,8 @@
     <ClCompile Include="Utils\Reflection.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIShaderLibraryVulkan.cpp" />
+    <ClCompile Include="RHI\RHIShaderLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -254,6 +256,8 @@
     <ClInclude Include="RHI\RHIShaderLibrary.h" />
     <ClInclude Include="Renderer\RtRenderShaderArchive.h" />
     <ClInclude Include="Renderer\RtRenderShaderParameters.h" />
+    <ClInclude Include="RHI\Vulkan\RHIShaderLibraryVulkan.h" />
+    <ClInclude Include="RHI\RHITypeTraits.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">

@@ -212,9 +212,7 @@ private: static constexpr uint32_t counter_base = __COUNTER__; \
 protected:\
 	template <uint32_t index> class InternalLinkType { \
 	public:\
-		operator() {\
-		\
-		}\
+	static bool operator() {}\
 	};
 
 
@@ -226,12 +224,19 @@ public:\
 	{\
 		return meta_info_;\
 	}\
+private:\
+	static constexpr auto meta_linked = InternalLinkType<0>::operator(); \
 };
 
 #define INTERNAL_INIT_SHADER_PARAMETER_LAYOUT(MemberName, Type, ...)\
 protected: \
 template <> class InternalLinkType<__COUNTER__-counter_base> { \
-	meta_info_.xxx();\
+public:\
+	static bool operator(){\
+		RtRenderShaderParametersMeta::Element el{ .type_  = Type, .name = MemberName, .byte_offset_ = 0u };\
+		meta_info_.AddElement(el);\
+		InternalLinkType<__COUNTER__-counter_base+1>::operator();
+	}\
 }; 
 
 #define SHARER_PARAMETER(T, Member) \
