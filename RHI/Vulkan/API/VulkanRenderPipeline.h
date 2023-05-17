@@ -1,8 +1,8 @@
 #pragma once
-#include "RHI/VulkanRHI.h"
-#include "RHI/VulkanResource.h"
-#include "RHI/VulkanRenderShader.h"
-#include "RHI/VulkanFrameBuffer.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
+#include "RHI/Vulkan/API/VulkanResources.h"
+#include "RHI/Vulkan/API/VulkanRenderShader.h"
+#include "RHI/Vulkan/API/VulkanFrameBuffer.h"
 #include <unordered_map>
 
 namespace MetaInit
@@ -20,88 +20,25 @@ namespace MetaInit
 			eRayTrace,
 			eNum,
 		};
-		using Ptr = std::unique_ptr<VulkanRenderPipeline>;
-		typedef struct _VulkanRenderPipelineDescs
+		typedef struct _PiplineSetLayoutCreateInfo
 		{
-			EPipeType						pipe_type_;
-			VkPipelineCreateFlags			flags_;
-			//pipeline layout create info params
-			PipelineLayout					layout_;
-			typedef struct _VulkanShaderInfo
-			{
-				VulkanShaderModule::EType shader_type_;
-				std::string				  shader_path_;
-				std::string				  shader_name_;
-			}ShaderDesc;
-			typedef struct _VulkanRayTraceGroupInfo
-			{
-				uint32_t			group_type_{ VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR };
-				uint32_t			general_{ 0 };
-				uint32_t			close_hit_{ 0 };
-				uint32_t			any_hit_{ 0 };
-				uint32_t			intersect_{ 0 };
-			}GroupDesc;
-			typedef struct _VulkanBlendAttatchment
-			{
-				bool				blend_;
-				uint8_t				color_op_;
-				uint8_t				src_color_factor_;
-				uint8_t				dst_color_factor_;
-				uint8_t				alpha_op_;
-				uint8_t				src_alpha_factor_;
-				uint8_t				dst_alpha_factor_;
-				uint8_t				color_mask_;
-			}BlendDesc;
+
+		}RootSignature;
+
+		typedef struct _PipelineCreateInfo
+		{
+			EPipeType	pipe_type_{ EPipeType::eGraphics };
 			union {
-				struct {
-					VkRenderPass			pass_{ VK_NULL_HANDLE };
-					uint32_t				topology_{ VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST };
-					uint32_t				subpass_;
-					Vector<ShaderDesc>		stages_;
-					//color blend arguments
-					vec4					blend_const_;
-					Vector<BlendDesc>		blend_attachs_;
-					//rasterization arguments
-					uint32_t				polygon_mode_{ VK_POLYGON_MODE_FILL };
-					uint32_t				cull_mode_{ VK_CULL_MODE_BACK_BIT };
-					uint32_t				front_face_{ VK_FRONT_FACE_COUNTER_CLOCKWISE };
-					float					line_width_{ 1.0f};
-					//multisample arguments
-					uint32_t				sample_count_ = 1;
-					bool					use_alpha_coverage_ = false;
-					//viewpoint arguments
-					Vector<VkViewport>		view_points_;
-					Vector<VkRect2D>		scissors_;
-					//depth stencil
-					vec2					depth_bounds_;
-					bool					depth_test_;
-					bool					depth_write_;
-					bool					depth_bound_test_;
-					bool					stencil_test_;
-					VkCompareOp				depth_compare_{ VK_COMPARE_OP_LESS };
-					VkStencilOpState		front_;
-					VkStencilOpState		back_;
-					//dynamic state arguments
-					//VkPipelineDynamicStateCreateInfo::pDynamicStates 
-					//property of the currently active pipeline
-					Vector<VkDynamicState>	dyn_stats_;
-					//vertex attribution arguments
-					Vector<VkVertexInputBindingDescription>		vertex_descs_;
-					Vector<VkVertexInputAttributeDescription>	attribute_descs_;
-				}gfx_;
-				struct {
-					ShaderDesc				stage_;
-				}compute_;
-				struct {
-					//todo 
-					Vector<ShaderDesc>		stages_;
-					Vector<GroupDesc>		groups_;
-					uint32_t				max_depth_{ 4 };
-				}raytrace_;
+				VkGraphicsPipelineCreateInfo	gfx_;
+				VkComputePipelineCreateInfo	compute_;
+				VkRayTracingPipelineCreateInfoKHR	raytrace_;
 			};
-			VkPipelineCache	pipeline_cache_{ VK_NULL_HANDLE };
+			RootSignature	root_signatue_;
 		}Desc;
-		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc_params);
+		using Ptr = VulkanRenderPipeline*;
+		VulkanRenderPipeline() = default;
+		explicit VulkanRenderPipeline(VulkanDevice::Ptr device, const Desc& desc_params);
+		virtual void Init(VulkanDevice::Ptr device, const Desc& desc_params) = 0;
 		//pipeline resource 
 		void Bind(VulkanCmdBuffer& cmd_buffer);
 		//constant data 
@@ -122,22 +59,26 @@ namespace MetaInit
 		EPipeType						pipe_type_;
 		VkPipelineLayout				layout_{ VK_NULL_HANDLE };
 		Vector<VkDescriptorSetLayout>	ds_layouts_;
-		//VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
+		VkDescriptorUpdateTemplate		desc_template_{ VK_NULL_HANDLE };
 		DescSetList						descs_;
-		ShaderList						stages_;
+		//ShaderList						stages_;
 	};
 
 	
 	class VulkanComputePipeline : public VulkanRenderPipeline
 	{
 	public:
+		VulkanComputePipeline() = default;
 		explicit VulkanComputePipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
+		void Init(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) override;
 	};
 
 	class VulkanGraphicsPipeline : public VulkanRenderPipeline
 	{
 	public:
+		VulkanGraphicsPipeline() = default;
 		explicit VulkanGraphicsPipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
+		void Init(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) override;
 		VulkanShaderModule::Ptr GetShader(VulkanShaderModule::EType shader_type);
 		//bind vertex info
 		void SetVAO(const VulkanVertexAttributes& vao);
@@ -161,8 +102,10 @@ namespace MetaInit
 	class VulkanRayTracingPipeline : public VulkanRenderPipeline
 	{
 	public:
+		VulkanRayTracingPipeline() = default;
 		explicit VulkanRayTracingPipeline(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param);
+		void Init(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& param) override;
 	};
 
-	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(VkPipelineCacheCreateFlags flags, const Vector<uint8_t>& initial_data);
+	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(const Span<uint8_t>& initial_data);
 }

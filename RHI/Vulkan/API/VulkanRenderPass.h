@@ -97,7 +97,7 @@ namespace MetaInit
 				uint32_t			dst_access_mask_;
 				uint32_t			flags_;
 			};
-			Vector<SubpassDepend>	subpass_depends_;
+			SmallVector<SubpassDepend>	subpass_depends_;
 		}Desc;
 		using Ptr = std::shared_ptr<VulkanRenderPass>;
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc);

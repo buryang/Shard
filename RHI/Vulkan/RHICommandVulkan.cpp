@@ -27,7 +27,7 @@ namespace MetaInit::RHI {
 		return;
 	}
 
-	void Vulkan::RHICommandContextVulkan::Submit()
+	void RHICommandContextVulkan::Submit()
 	{
 		VulkanQueue::EQueueType queue_type{ VulkanQueue::EQueueType::eAllIn };
 		if (GET_PARAM_TYPE_VAL(BOOL, DEVICE_ASYNC_COMPUTE) && GetFlags() == EFlags::eAsyncCompute) {
@@ -38,7 +38,7 @@ namespace MetaInit::RHI {
 		LOG(INFO) << "processed " << cmd_count_ << " commands";
 	}
 
-	void Vulkan::RHICommandContextVulkan::SetStreamSource(uint32_t stream_index, uint32_t offset)
+	void RHICommandContextVulkan::SetStreamSource(uint32_t stream_index, uint32_t offset)
 	{
 		//todo 
 	}

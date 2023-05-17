@@ -1,25 +1,26 @@
-#include "RHI/VulkanRenderPipeline.h"
 #include "Utils/CommonUtils.h"
-#include "RHI/VulkanCmdContext.h"
+#include "RHI/Vulkan/API/VulkanRenderPipeline.h"
+#include "RHI/Vulkan/API/VulkanCmdContext.h"
 
 
 namespace MetaInit
 {
 
-	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(VkPipelineCacheCreateFlags flags, const Vector<uint8_t>& initial_data)
+	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(const Span<uint8_t>& initial_data)
 	{
-		VkPipelineCacheCreateInfo cache_info;
+		VkPipelineCacheCreateInfo cache_info{};
 		memset(&cache_info, 0, sizeof(VkPipelineCacheCreateInfo));
-		cache_info.flags = flags;
+		cache_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 		cache_info.initialDataSize = initial_data.size();
 		cache_info.pInitialData = initial_data.data();
 		return cache_info;
 	}
 
-	static inline VkPipelineLayoutCreateInfo MakePipelineLayoutCreateInfo(const Vector<VkPushConstantRange>& push_range, const Vector<VkDescriptorSetLayout>& ds_layout)
+	static inline VkPipelineLayoutCreateInfo MakePipelineLayoutCreateInfo(const Span<VkPushConstantRange>& push_range, const Span<VkDescriptorSetLayout>& ds_layout)
 	{
 		VkPipelineLayoutCreateInfo layout_info;
 		memset(&layout_info, 0, sizeof(VkPipelineLayoutCreateInfo));
+		layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		if (!push_range.empty())
 		{
 			layout_info.pushConstantRangeCount = push_range.size();
@@ -112,12 +113,14 @@ namespace MetaInit
 		return color_info;
 	}
 
-	static inline void InitialVkPipelineDynamicStateCreateInfo(VkPipelineDynamicStateCreateInfo& dyn_info, const VkDynamicState* states, const uint32_t count)
+	static inline VkPipelineDynamicStateCreateInfo MakeVkPipelineDynamicStateCreateInfo(const VkDynamicState* states, const uint32_t count)
 	{
+		VkPipelineDynamicStateCreateInfo dyn_info{};
 		memset(&dyn_info, 0, sizeof(dyn_info));
 		dyn_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dyn_info.dynamicStateCount = count;
 		dyn_info.pDynamicStates = states;
+		return dyn_info;
 	}
 
 	static inline VkPipelineBindPoint TransPipeTypeToBindPoint(VulkanRenderPipeline::EPipeType type)
@@ -132,14 +135,14 @@ namespace MetaInit
 		case SrcType::eRayTrace:
 			return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
 		default:
-			throw std::invalid_argument("no such bind point");
+			LOG(ERROR) << "no such bind point";
 		}
 	}
 
 	VulkanRenderPipeline::Ptr VulkanRenderPipeline::Create(VulkanDevice::Ptr device, const VulkanRenderPipeline::Desc& desc)
 	{
 		VulkanRenderPipeline::Ptr pipe_handle;
-		if (EPipeType::eCompute == desc.pipe_type_)
+		if (VulkanRenderPipeline::EPipeType::eCompute == desc.pipe_type_)
 		{
 			pipe_handle.reset(new VulkanComputePipeline(device, desc));
 		}
@@ -168,19 +171,19 @@ namespace MetaInit
 		SmallVector<VkDescriptorSet> bind_sets;
 		for (auto& desc : descs_)
 		{
-			bind_sets.push_back(desc.Get());
+			bind_sets.emplace_back(desc.Get());
 		}
 		vkCmdBindDescriptorSets(cmd_buffer.Get(), bind_point, layout_, 0, bind_sets.size(), bind_sets.data(), 0, nullptr);
 	}
 
 	VulkanDescriptorSet& VulkanRenderPipeline::operator[](const std::string& set_name)
 	{
-		auto iter = std::find_if(descs_.begin(), descs_.end(), [&](VulkanDescriptorSet& pred) {return pred.Name() == set_name;});
+		auto iter = std::find_if(descs_.begin(), descs_.end(), [&](const auto& pred) {return pred.Name() == set_name;});
 		if (descs_.end() != iter)
 		{
 			return *iter;
 		}
-		throw std::runtime_error("wrong descriptor name");
+		LOG(ERROR) << "wrong descriptor name";
 	}
 
 	VulkanRenderPipeline::VulkanRenderPipeline(VulkanDevice::Ptr device, const Desc& desc, EPipeType pipe_type) : device_(device), pipe_type_(pipe_type)
@@ -217,7 +220,7 @@ namespace MetaInit
 
 		for (auto& ds_layout : ds_layouts_)
 		{
-			if (VK_NULL_HANDLE £¡ = ds_layout)
+			if (VK_NULL_HANDLE != ds_layout)
 			{
 				vkDestroyDescriptorSetLayout(device_->Get(), ds_layout, g_host_alloc);
 			}

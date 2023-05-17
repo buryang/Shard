@@ -28,6 +28,7 @@ namespace MetaInit
 	class VulkanDevice : public std::enable_shared_from_this<VulkanDevice>
 	{
 	public:
+		using Ptr = VulkanDevice*;
 		using SharedPtr = std::shared_ptr<VulkanDevice>;
 		using Handle = VkDevice;
 		using PhyHandle = VkPhysicalDevice;

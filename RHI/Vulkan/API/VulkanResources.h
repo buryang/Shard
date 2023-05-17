@@ -33,7 +33,9 @@ namespace MetaInit
 		using Ptr = VulkanImage*;
 		using SharedPtr = eastl::shared_ptr<VulkanImage>;
 		using Handle = VkImage;
+		VulkanImage() = default;
 		explicit VulkanImage(const VkImageCreateInfo& create_info);
+		void Init(const VkImageCreateInfo& create_info);
 		~VulkanImage();
 		Handle Get();
 		FORCE_INLINE VkFormat GetFormat()const { return format_; }
@@ -64,8 +66,11 @@ namespace MetaInit
 	class VulkanImageView
 	{
 	public:
+		VulkanImageView() = default;
 		VulkanImageView(VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t level,
 							uint32_t layer, uint32_t mip_levels, uint32_t array_layers);
+		void Init((VulkanImage::Ptr image, VkImageViewType view_type, VkFormat format, uint32_t level,
+			uint32_t layer, uint32_t mip_levels, uint32_t array_layers);
 		VkImageSubresourceRange GetSubResourceRange()const { return sub_res_range_; }
 		~VulkanImageView();
 		VkImageView	Get();
@@ -117,7 +122,9 @@ namespace MetaInit
 	public:
 		using Handle = VkBuffer;
 		using SharedPtr = eastl ::shared_ptr<VulkanBuffer>;
+		VulkanBuffer() = default;
 		explicit VulkanBuffer(const VkBufferCreateInfo& create_info);
+		void Init(const VkBufferCreateInfo& create_info);
 		~VulkanBuffer();
 		Handle Get()const;
 		VkDeviceSize GetSize()const;
@@ -146,8 +153,11 @@ namespace MetaInit
 	{
 	public:
 		using Handle = VkBufferView;
+		VulkanBufferView() = default;
 		explicit VulkanBufferView(VulkanBuffer::SharedPtr buffer, VkBufferViewCreateFlags flags,
 									VkFormat format, uint32_t offset, uint32_t range);
+		void Init(VulkanBuffer::SharedPtr buffer, VkBufferViewCreateFlags flags,
+			VkFormat format, uint32_t offset, uint32_t range);
 		~VulkanBufferView();
 		Handle Get();
 		operator VulkanBuffer::SharedPtr() { return buffer_; }

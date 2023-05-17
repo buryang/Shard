@@ -21,8 +21,13 @@ namespace MetaInit::RHI
 		return true;
 	}
 	
-	RHIShaderLibraryInterface::Ptr RHIGlobalEntity::CreateShaderLibrary()
+	RHIShaderLibraryInterface::Ptr RHIGlobalEntity::GetOrCreateShaderLibrary()
 	{
+		LOG(ERROR) << "current backend not support shader library";
 		return nullptr;
 	}
+
+	/*---------event function define here------*/
+	RHIEvent::~RHIEvent() {}
+	RHIFence::~RHIFence() {}
 }

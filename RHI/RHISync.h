@@ -4,6 +4,33 @@
 #include "RHI/RHICommand.h"
 
 namespace MetaInit::RHI {
+
+	struct RHIEventInitializer
+	{
+
+	};
+
+	class RHIEvent
+	{
+	public:
+		using Ptr = RHIEvent*;
+		RHIEvent(const RHIEventInitializer& initializer);
+		virtual ~RHIEvent() = 0;
+	};
+
+	struct RHIFenceInitializer
+	{
+
+	};
+
+	class RHIFence
+	{
+	public:
+		using Ptr = RHIFence*;
+		RHIFence(const RHIFenceInitializer& initializer);
+		virtual ~RHIFence() = 0;
+	};
+
 	/*max buffer size for transition info*/
 	static constexpr uint32_t MAX_TRANSITION_INFO_SIZE = 128;
 	extern constexpr uint32_t __declspec(selectany) ALIGN_TRANSITION_INFO_SIZE = -1; //FIXME

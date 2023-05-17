@@ -58,7 +58,7 @@ namespace MetaInit
 		};
 
 
-		struct RHITextureDesc
+		struct RHITextureInitializer
 		{
 			enum class EType : uint8_t
 			{
@@ -72,8 +72,8 @@ namespace MetaInit
 			{
 
 			};
-			static RHITextureDesc Create(const Renderer::RtField& field) {
-				RHITextureDesc desc{
+			static RHITextureInitializer Create(const Renderer::RtField& field) {
+				RHITextureInitializer desc{
 					.layout_ = field.GetLayout(),
 					.access_ = field.GetSubField().access_,
 					.is_dedicated_ = field.IsDedicated(),
@@ -91,26 +91,26 @@ namespace MetaInit
 			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
-		FORCE_INLINE RHITextureDesc::EType GetTextureType(const RHITextureDesc& desc) {
+		FORCE_INLINE RHITextureInitializer::EType GetTextureType(const RHITextureInitializer& desc) {
 			assert(desc.layout_.width_ != 0 && "at least one dimension nonzero");
 			if (desc.layout_.array_slices_ != 0) {
-				return  RHITextureDesc::EType::eTextureArray;
+				return  RHITextureInitializer::EType::eTextureArray;
 			}
 			if (desc.layout_.depth_ != 0) {
-				return RHITextureDesc::EType::eTexture3D;
+				return RHITextureInitializer::EType::eTexture3D;
 			}
 			if (desc.layout_.width_ != 0 && desc.layout_.height_ != 0) {
-				return  RHITextureDesc::EType::eTexture2D;
+				return  RHITextureInitializer::EType::eTexture2D;
 			}
-			return  RHITextureDesc::EType::eTexture1D;
+			return  RHITextureInitializer::EType::eTexture1D;
 		}
 		//FIXME
-		FORCE_INLINE bool operator==(const RHITextureDesc& lhs, const RHITextureDesc& rhs) {
+		FORCE_INLINE bool operator==(const RHITextureInitializer& lhs, const RHITextureInitializer& rhs) {
 			return lhs.layout_ == rhs.layout_ && lhs.format_ == rhs.format_
 				&& lhs.access_ == rhs.access_;
 		}
 
-		FORCE_INLINE bool operator!=(const RHITextureDesc& lhs, const RHITextureDesc& rhs) {
+		FORCE_INLINE bool operator!=(const RHITextureInitializer& lhs, const RHITextureInitializer& rhs) {
 			return !(lhs == rhs);
 		}
 
@@ -119,16 +119,16 @@ namespace MetaInit
 		public:
 			using Ptr = RHITexture*;
 			using SharedPtr = eastl::shared_ptr<RHITexture>;
-			explicit RHITexture(RHIGlobalEntity::Ptr parent, const RHITextureDesc& desc) :RHIResource(parent), desc_(desc) {}
+			explicit RHITexture(RHIGlobalEntity::Ptr parent, const RHITextureInitializer& desc) :RHIResource(parent), desc_(desc) {}
 			virtual ~RHITexture() {}
-			FORCE_INLINE const RHITextureDesc& GetTextureDesc() const {
+			FORCE_INLINE const RHITextureInitializer& GetTextureDesc() const {
 				return desc_;
 			}
 		protected:
-			const RHITextureDesc& desc_;
+			const RHITextureInitializer& desc_;
 		};
 
-		struct RHIBufferDesc
+		struct RHIBufferInitializer
 		{
 			enum class Type : uint8_t
 			{
@@ -137,9 +137,9 @@ namespace MetaInit
 				eStructedBuffer = 0x4,
 				eUniformStructed = eUniform | eStructedBuffer,
 			};
-			static RHIBufferDesc Create(const Renderer::RtField& field) {
+			static RHIBufferInitializer Create(const Renderer::RtField& field) {
 				assert(field.GetType() == Renderer::RtField::EType::eBuffer);
-				RHIBufferDesc desc{ .size_ = field.GetLayout().width_, .is_dedicated_ = field.IsDedicated(), .is_transiant_ = field.IsTransiant() };
+				RHIBufferInitializer desc{ .size_ = field.GetLayout().width_, .is_dedicated_ = field.IsDedicated(), .is_transiant_ = field.IsTransiant() };
 				return desc;
 			}
 			Type	type_;
@@ -151,12 +151,12 @@ namespace MetaInit
 			eastl::pair<uint32_t, uint32_t> life_time_;
 		};
 
-		FORCE_INLINE bool operator==(const RHIBufferDesc& lhs, const RHIBufferDesc& rhs) {
+		FORCE_INLINE bool operator==(const RHIBufferInitializer& lhs, const RHIBufferInitializer& rhs) {
 			return lhs.type_ == rhs.type_ && lhs.size_ == rhs.size_
 				&& lhs.pipeline_ == rhs.pipeline_
 				&& lhs.access_ == rhs.access_;
 		}
-		FORCE_INLINE bool operator!=(const RHIBufferDesc& lhs, const RHIBufferDesc& rhs) {
+		FORCE_INLINE bool operator!=(const RHIBufferInitializer& lhs, const RHIBufferInitializer& rhs) {
 			return !(lhs == rhs);
 		}
 
@@ -164,14 +164,14 @@ namespace MetaInit
 		{
 		public:
 			using Ptr = RHIBuffer*;
-			explicit RHIBuffer(RHIGlobalEntity::Ptr parent, const RHIBufferDesc& desc) :RHIResource(parent), desc_(desc) {}
+			explicit RHIBuffer(RHIGlobalEntity::Ptr parent, const RHIBufferInitializer& desc) :RHIResource(parent), desc_(desc) {}
 			virtual ~RHIBuffer() {};
-			FORCE_INLINE const RHIBufferDesc& GetBufferDesc() const {
+			FORCE_INLINE const RHIBufferInitializer& GetBufferDesc() const {
 				return desc_;
 			}
 			size_t GetOccupySize() const override;
 		protected:
-			const RHIBufferDesc& desc_;
+			const RHIBufferInitializer& desc_;
 		};
 
 		struct RHIAccelerateDesc
@@ -195,7 +195,7 @@ namespace MetaInit
 			const RHIAccelerateDesc& desc_;
 		};
 
-		struct RHITextureSRVDesc
+		struct RHITextureSRVInitializer
 		{
 			RHITexture::Ptr	texture_{ nullptr };
 			EPixFormat	format_{ EPixFormat::eUnkown };
@@ -205,13 +205,13 @@ namespace MetaInit
 		class RHITextureSRV : public RHIResource
 		{
 		public:
-			RHITextureSRV(const RHITextureSRVDesc& desc);
+			RHITextureSRV(const RHITextureSRVInitializer& desc);
 			virtual ~RHITextureSRV() {}
 		private:
-			const RHITextureSRVDesc& desc_;
+			const RHITextureSRVInitializer& desc_;
 		};
 
-		struct RHITextureUAVDesc
+		struct RHITextureUAVInitializer
 		{
 			RHITexture::Ptr	texture_;
 			EPixFormat	format_{ EPixFormat::eUnkown };
@@ -221,7 +221,7 @@ namespace MetaInit
 		class RHITextureUAV : public RHIResource
 		{
 		public:
-			RHITextureUAV(const RHITextureUAVDesc& desc);
+			RHITextureUAV(const RHITextureUAVInitializer& desc);
 			virtual ~RHITextureUAV() {}
 		};
 

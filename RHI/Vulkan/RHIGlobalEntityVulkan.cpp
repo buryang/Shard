@@ -112,15 +112,20 @@ namespace MetaInit::RHI::Vulkan {
 	RHIPipelineStateObjectLibraryInterface::Ptr RHIGlobalEntityVulkan::GetOrCreatePSOLibrary()
 	{
 		static RHITypeConcreteTraits<EnumToInteger(ERHIBackEnd::eVulkan)>::RHIPipelineStateObjectLibraryInterface pso_library;
+		static std::atomic_bool is_inited{ false }; //todo
+		if (!is_inited) {
+			pso_library.Init();
+			is_inited.exchange(true);
+		}
 		return static_cast<RHIPipelineStateObjectLibraryInterface::Ptr>(&pso_library);
 	}
 
-	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::CreateResourceBindlessHeap()
+	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetOrCreateResourceBindlessHeap()
 	{
 		return RHIResourceBindlessHeap::Ptr();
 	}
 
-	RHIResource::Ptr RHIGlobalEntityVulkan::CreateConstBuffer(const RHIBufferDesc& desc)
+	RHIResource::Ptr RHIGlobalEntityVulkan::CreateConstBuffer(const RHIBufferInitializer& desc)
 	{
 		RHIBufferVulkan::Ptr 
 	}

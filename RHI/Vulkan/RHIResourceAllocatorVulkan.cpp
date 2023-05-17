@@ -74,7 +74,7 @@ namespace MetaInit::RHI::Vulkan {
 		return PreProcessAllocRequirements(alloc_req);
 	}
 
-	bool RHIPooledTextureAllocatorVulkan::AllocTexture(const RHITextureDesc& desc, RHITextureVulkan::Ptr texture)
+	bool RHIPooledTextureAllocatorVulkan::AllocTexture(const RHITextureInitializer& desc, RHITextureVulkan::Ptr texture)
 	{
 		RHIPooledTextureAllocatorVulkan::PooledResource pooled_resource;
 		if (auto ret = FindSuitAbleResource(true, &desc, pooled_resource)) {
@@ -106,7 +106,7 @@ namespace MetaInit::RHI::Vulkan {
 		return true;
 	}
 
-	bool RHIPooledTextureAllocatorVulkan::AllocBuffer(const RHIBufferDesc& desc, RHIBufferVulkan::Ptr buffer)
+	bool RHIPooledTextureAllocatorVulkan::AllocBuffer(const RHIBufferInitializer& desc, RHIBufferVulkan::Ptr buffer)
 	{
 		RHIPooledTextureAllocatorVulkan::PooledResource resource;
 		if(auto ret = FindSuitAbleResource(false, &desc, resource))
@@ -176,8 +176,8 @@ namespace MetaInit::RHI::Vulkan {
 		bool found = false;
 		if (is_texture) {
 			auto try_time = 2;
-			const auto texture_desc = *reinterpret_cast<const RHITextureDesc*>(desc);
-			const auto is_texture_convertable = [&](const RHITextureDesc& rhs) {
+			const auto texture_desc = *reinterpret_cast<const RHITextureInitializer*>(desc);
+			const auto is_texture_convertable = [&](const RHITextureInitializer& rhs) {
 				return rhs.layout_ == texture_desc.layout_ && rhs.format_ == texture_desc.format_;
 			};
 			while (try_time-- > 0 && !found) {
@@ -199,7 +199,7 @@ namespace MetaInit::RHI::Vulkan {
 		}
 		else
 		{
-			const auto buffer_desc = *reinterpret_cast<const RHIBufferDesc*>(desc);
+			const auto buffer_desc = *reinterpret_cast<const RHIBufferInitializer*>(desc);
 			//find best fit buffer block
 			VkDeviceSize best_fit_size = VK_WHOLE_SIZE;
 			auto best_fit_iter = pooled_repo_.begin();

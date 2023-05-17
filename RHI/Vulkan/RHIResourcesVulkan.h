@@ -11,7 +11,7 @@ namespace MetaInit::RHI::Vulkan
 	public:
 		using Ptr = RHITextureVulkan*;
 		using SharedPtr = eastl::shared_ptr<RHITextureVulkan>;
-		RHITextureVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHITextureDesc& desc) :RHITexture(parent, desc) {}
+		RHITextureVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHITextureInitializer& desc) :RHITexture(parent, desc) {}
 		void operator=(RHITextureVulkan&& rhs);
 		void SetUp() override;
 		void Release() override;
@@ -34,7 +34,7 @@ namespace MetaInit::RHI::Vulkan
 	public:
 		using Ptr = RHIBufferVulkan*;
 		using SharedPtr = eastl::shared_ptr<RHIBufferVulkan>;
-		RHIBufferVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHIBufferDesc& desc) :RHIBuffer(parent, desc) {}
+		RHIBufferVulkan(RHIGlobalEntityVulkan::Ptr parent, const RHIBufferInitializer& desc) :RHIBuffer(parent, desc) {}
 		void operator=(RHIBufferVulkan&& rhs);
 		void SetUp() override;
 		void Release() override;

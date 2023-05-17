@@ -50,12 +50,12 @@ namespace MetaInit::RHI
 		//only metal support shader library
 		virtual RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary();
 		virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
-		virtual RHIResourceBindlessHeap::SharedPtr CreateResourceBindlessHeap();
-		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc);
-		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc);
-		virtual RHIResource::Ptr CreateTexture(const RHITextureDesc& desc);
-		virtual RHIResource::Ptr CreateUAV(const RHITextureUAVDesc& desc);
-		virtual RHIResource::Ptr CreateSRV(const RHITextureSRVDesc& desc);
+		virtual RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap();
+		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferInitializer& desc);
+		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc);
+		virtual RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc);
+		virtual RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc);
+		virtual RHIResource::Ptr CreateSRV(const RHITextureSRVInitializer& desc);
 		//virtual RHIResource::Ptr CreateRayTracingAccelerateStruct();
 		virtual RHICommandContext::Ptr CreateCommandBuffer();
 		//calculate resource video memory size

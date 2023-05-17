@@ -3,6 +3,7 @@
 #include "Renderer/RtRenderShaderParameters.h"
 #include "RHI/RHISync.h"
 #include "RHI/RHIResources.h"
+#include "RHI/RHIShader.h"
 
 namespace MetaInit::RHI {
 
@@ -17,8 +18,10 @@ namespace MetaInit::RHI {
 			eSetScissorRect,
 			eSetPipelineState,
 			eSetShader,
+			eBindPSO,
 			eBeginPass,
 			eEndPass,
+			eNextSubPass,
 			eDraw,
 			eDrawIndirect,
 			eDrawIndexed,
@@ -32,16 +35,29 @@ namespace MetaInit::RHI {
 			eClearTexture,
 			eFillBuffer,
 			eUpdateBuffer,
+			//todo deal with descriptor set update
+			eSetTexture,
+			eSetSRV,
+			eSetUAV,
+			eSetBuffer,
+			eSetUniformBuffer,
+			eSetRawParameter,
 			eBlitImage,
 			ePushConstant,
+			//for event
+			eSetEvent,
+			eWaitEvent,
+			eResetEvent,
 		};
-		enum {
-			Type = ECommandType::eNone,
-		};
+		virtual ECommandType GetType() = 0;
 		virtual ~RHICommandPacketInterface() {}
 	};
 
-#define IMPLEMENT_TYPE(type) enum { Type = (type), }
+#define IMPLEMENT_TYPE(type) \
+	RHICommandPacketInterface::ECommandType GetType() override \
+	{\
+		return type;\
+	}
 
 	struct RHISetStreamSourcePacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eSetStreamSource);
@@ -65,8 +81,13 @@ namespace MetaInit::RHI {
 
 	struct RHISetViewPointPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eSetViewPoint);
-		vec3 min_dims_;
-		vec3 max_dims_;
+		vec3	min_dims_;
+		vec3	max_dims_;
+	};
+
+	struct RHISetScissorPacket final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eSetScissorRect);
+		vec4	scissor_;
 	};
 
 	struct RHISetPipelineStatePacket final : public RHICommandPacketInterface {
@@ -77,13 +98,32 @@ namespace MetaInit::RHI {
 		IMPLEMENT_TYPE(ECommandType::eSetShader);
 	};
 
+	struct RHIBindPSOPacket final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eBindPSO);
+		enum EBindPoint {
+			eGFX,
+			eAsync,
+			eRayTrace
+		};
+		RHI::RHIPipelineStateObject::Ptr	pso_{ nullptr };
+		EBindPoint	bind_point_{ EBindPoint::eGFX };
+	};
+
 	struct RHIBeginRenderPassPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eBeginPass);
+		RHI::RHITexture::Ptr	render_target_;
+		vec4	roi_; //offset.x offset.y wxh
+		vec4	clear_val_;
 		//other data
 	};
 
 	struct RHIEndRenderPassPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eEndPass);
+	};
+
+	struct RHINextSubPassPacket final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eNextSubPass);
+		uint32_t	reserved_flags_{ 0u };
 	};
 
 	struct RHIDrawIndexedPacket final : public RHICommandPacketInterface {

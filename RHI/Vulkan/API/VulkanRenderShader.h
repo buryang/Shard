@@ -1,12 +1,11 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "RHI/VulkanRHI.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
 
 namespace MetaInit
 {
 	class VulkanShaderModule;
 	VkShaderModuleCreateInfo MakeShaderModuleCreateInfo(const Span<char>& code);
-	VkPipelineShaderStageCreateInfo MakeShaderStageCreateInfo(VulkanShaderModule& module);
 
 	struct VulkanResourceDiscriptors
 	{
@@ -36,16 +35,17 @@ namespace MetaInit
 			eCallable,
 		};
 		using Ptr = std::shared_ptr<VulkanShaderModule>;
-		VulkanShaderModule(VulkanDevice::Ptr device, EType type, const std::string& shader_file, const std::string& name);
+		VulkanShaderModule() = default;
+		explicit VulkanShaderModule(VulkanDevice::Ptr device, const VkShaderModuleCreateInfo& create_info);
+		explicit VulkanShaderModule(VulkanDevice::Ptr device, const Span<char>& code);
+		void Init(VulkanDevice::Ptr device, const VkShaderModuleCreateInfo& create_info);
 		DISALLOW_COPY_AND_ASSIGN(VulkanShaderModule);
 		~VulkanShaderModule();
 		VkShaderModule Get();
 		EType Type()const;
-		const std::string& GetName()const;
 	private:
-		VkShaderModule			handle_{ VK_NULL_HANDLE };
-		VulkanDevice::Ptr		device_;
-		EType					shader_type_;
-		std::string				shader_name_;
+		VkShaderModule	handle_{ VK_NULL_HANDLE };
+		VulkanDevice::Ptr	device_;
+		EType	shader_type_;
 	};
 }

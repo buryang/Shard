@@ -18,12 +18,12 @@ namespace MetaInit::RHI {
 			void CreateViewPoint() override;
 			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
 			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
-			RHIResourceBindlessHeap::Ptr CreateResourceBindlessHeap() override;
-			RHIResource::Ptr CreateConstBuffer(const RHIBufferDesc& desc) override;
-			RHIResource::Ptr CreateStructedBuffer(const RHIBufferDesc& desc) override;
-			RHIResource::Ptr CreateTexture(const RHITextureDesc& desc) override;
-			RHIResource::Ptr CreateUAV(const RHITextureUAVDesc& desc) override;
-			RHIResource::Ptr CreateSRV(const RHITextureSRVDesc& desc) override;
+			RHIResourceBindlessHeap::Ptr GetOrCreateResourceBindlessHeap() override;
+			RHIResource::Ptr CreateConstBuffer(const RHIBufferInitializer& desc) override;
+			RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
+			RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc) override;
+			RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc) override;
+			RHIResource::Ptr CreateSRV(const RHITextureSRVInitializer& desc) override;
 			//RHIResource::Ptr CreateRayTracingAccelerateStruct() override;
 			RHICommandContext::Ptr CreateCommandBuffer() override;
 			//calculate resource video memory size
@@ -48,6 +48,8 @@ namespace MetaInit::RHI {
 			FORCE_INLINE const VkAllocationCallbacks* GetVulkanCallBack() const {
 				return alloc_clk_;
 			}
+		protected:
+
 		private:
 			RHIGlobalEntityVulkan();
 			void InitInstance();

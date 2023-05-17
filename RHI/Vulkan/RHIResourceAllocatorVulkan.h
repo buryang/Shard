@@ -234,15 +234,15 @@ namespace MetaInit::RHI::Vulkan
 				alloc_.reset(new RHILinearHeapMemoryBulkVulkanSubAllocator);
 			}
 		}
-		bool AllocBuffer(const RHIBufferDesc& desc, RHIBufferVulkan::Ptr buffer);
-		bool AllocTexture(const RHITextureDesc& desc, RHITextureVulkan::Ptr texture);
+		bool AllocBuffer(const RHIBufferInitializer& desc, RHIBufferVulkan::Ptr buffer);
+		bool AllocTexture(const RHITextureInitializer& desc, RHITextureVulkan::Ptr texture);
 		void Free(RHIResource::Ptr resource);
 		bool Tick(float time);
 	private:
 		struct PooledResource
 		{
-			RHITextureDesc	texture_desc_;
-			RHIBufferDesc	buffer_desc_;
+			RHITextureInitializer	texture_desc_;
+			RHIBufferInitializer	buffer_desc_;
 			RHIResource::Ptr	handle_{ nullptr };
 			uint32_t	last_stamp_{ 0 };
 			operator RHIResource::Ptr() {
@@ -269,8 +269,8 @@ namespace MetaInit::RHI::Vulkan
 	public:
 		using Ptr = RHITransientResourceAllocatorVulkan*;
 		using SharedPtr = eastl::shared_ptr<RHITransientResourceAllocatorVulkan>;
-		RHIResource::Ptr AllocTexture(const RHITextureDesc& desc);
-		RHIResource::Ptr AllocBuffer(const RHIBufferDesc& desc);
+		RHIResource::Ptr AllocTexture(const RHITextureInitializer& desc);
+		RHIResource::Ptr AllocBuffer(const RHIBufferInitializer& desc);
 		void Free(RHIResource::Ptr resource);
 		void Tick(float time);
 		~RHITransientResourceAllocatorVulkan();

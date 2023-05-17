@@ -4,14 +4,14 @@
 
 namespace MetaInit::RHI::Vulkan {
 
-	static inline EBindLessTag ConvertBufferDescToBindTag(const RHIBufferDesc& buffer_desc) {
+	static inline EBindLessTag ConvertBufferDescToBindTag(const RHIBufferInitializer& buffer_desc) {
 		if (Utils::LogicAndFlags(buffer_desc.access_, Renderer::EAccessFlags::eReadOnly) == buffer_desc.access_) {
 			return eBufferSRVTag;
 		}
 		return eBufferUAVTag;
 	}
 	
-	static inline EBindLessTag ConvertTextureDescToBindTag(const RHITextureDesc& texture_desc) {
+	static inline EBindLessTag ConvertTextureDescToBindTag(const RHITextureInitializer& texture_desc) {
 		if (Utils::LogicAndFlags(texture_desc.access_, Renderer::EAccessFlags::eUAV) == texture_desc.access_) {
 			return eTextureUAVTag;
 		}
