@@ -174,6 +174,12 @@ namespace MetaInit
 			const RHIBufferInitializer& desc_;
 		};
 
+		class RHIVertexBuffer : public RHIBuffer
+		{
+		public:
+			using Ptr = RHIVertexBuffer*;
+		};
+
 		struct RHIAccelerateDesc
 		{
 

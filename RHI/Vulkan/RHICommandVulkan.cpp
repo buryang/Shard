@@ -1,8 +1,6 @@
 #include "RHI/Vulkan/RHICommandVulkan.h"
 
-namespace MetaInit::RHI {
-
-	using namespace Vulkan;
+namespace MetaInit::RHI::Vulkan {
 	using CommandType = RHICommandPacketInterface::ECommandType;
 
 	RHICommandContextVulkan::RHICommandContextVulkan():RHICommandContext(EFlags::eGraphics)
@@ -43,4 +41,21 @@ namespace MetaInit::RHI {
 		//todo 
 	}
 
+	void RHICommandContextVulkan::SignalEvent(RHIEvent::Ptr event)
+	{
+		rhi_handle_->SignalEvent(dynamic_cast<RHIEventVulkan*>(event)->GetHandle());
+	}
+
+	/*maybe vulkan c++ warper not good*/
+	void RHICommandContextVulkan::WaitEvent(Span<RHIEvent::Ptr>& events)
+	{
+		eastl::unique_ptr<VkEvent[]> raw_events{ new VkEvent[events.size()] };
+		for (auto n = 0; n < events.size(); ++n) {
+			raw_events[n] = dynamic_cast<RHIEventVulkan*>(events[n])->GetHandle();
+		}
+		rhi_handle_->WaitEvenets(raw_events.get(), events.size());
+	}
+
 }
+
+

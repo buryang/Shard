@@ -52,7 +52,7 @@ namespace MetaInit
 	class VulkanCmdBuffer
 	{
 	public:
-		using SharedPtr = std::unique_ptr<VulkanCmdBuffer>;
+		using SharedPtr = eastl::shared_ptr<VulkanCmdBuffer>;
 		using Handle = VkCommandBuffer;
 		static SharedPtr Create(VulkanCmdPool::SharedPtr cmd_pool);
 		~VulkanCmdBuffer();
@@ -100,10 +100,12 @@ namespace MetaInit
 		void Resolve(VulkanImage& dst,  VulkanImage& src);
 		void Execute(Vector<VulkanCmdBuffer>& cmd_buffers);
 		void Reset();
-		void Barrier( VulkanImage& image, EResourceState new_state);
-		void Barrier( VulkanBuffer& buffer, EResourceState new_state);
+		void Barrier(VulkanImage& image, EResourceState new_state);
+		void Barrier(VulkanBuffer& buffer, EResourceState new_state);
 		void Barrier(const RHI::VulkanTransitionInfo& barrier_info);
 		void PushConstants(const uint32_t flags, const uint32_t offset, const Span<uint8_t>& constants);
+		void SignalEvent(VkEvent event);
+		void WaitEvenets(VkEvent* events, uint32_t count);
 		void BeginRenderPass();
 		void EndRenderPass();
 		void UpdateTopLevel();

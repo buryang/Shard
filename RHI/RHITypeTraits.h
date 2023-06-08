@@ -1,6 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/RHIResources.h"
+#include "RHI/RHIImGuiLayer.h"
 #include "RHI/RHIShaderLibrary.h"
 #include "RHI/RHIGlobalEntity.h"
 
@@ -23,6 +24,7 @@ namespace MetaInit::RHI {
 		using RHITexture = RHITexture;
 		using RHIBuffer = RHIBuffer;
 		using RHISampler = RHISampler;
+		using RHIImGuiLayerWrapper = RHIImGuiLayerWrapper;
 	};
 
 	//pre declare vulkan releate class here to avoid include too mush headers
@@ -40,6 +42,8 @@ namespace MetaInit::RHI {
 		class RHIBufferVulkan;
 		class RHIShaderLibraryVulkan;
 		class RHIPipelineStateObjectLibraryVulkan;
+		class RHIResourceBindlessSetVulkan;
+		class RHIImGuiLayerWrapperVulkan;
 	}
 
 	template<>
@@ -59,5 +63,8 @@ namespace MetaInit::RHI {
 
 		using RHITexture = Vulkan::RHITextureVulkan;
 		using RHIBuffer = Vulkan::RHIBufferVulkan;
+		using RHIResourceBindlessHeap = Vulkan::RHIResourceBindlessSetVulkan;
+
+		using RHIImGuiLayerWrapper = RHIImGuiLayerWrapperVulkan;
 	};
 }

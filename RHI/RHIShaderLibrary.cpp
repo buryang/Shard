@@ -64,6 +64,13 @@ namespace MetaInit::RHI {
 			return pso_ptr;
 		}
 	}
+	
+	constexpr size_type RHIPipelineStateObjectLibraryInterface::GetPSOCount() const
+	{
+		std::shared_lock<std::shared_mutex> lock(cache_mutex_);
+		return pso_cache_.size();
+	}
+
 	RHIPipelineStateObjectLibraryInterface::~RHIPipelineStateObjectLibraryInterface()
 	{
 		for (auto [_, ptr] : pso_cache_) {

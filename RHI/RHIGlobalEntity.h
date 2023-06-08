@@ -51,7 +51,8 @@ namespace MetaInit::RHI
 		virtual RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary();
 		virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
 		virtual RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap();
-		virtual RHIResource::Ptr CreateConstBuffer(const RHIBufferInitializer& desc);
+		virtual RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper();
+		virtual RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc);
 		virtual RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc);
 		virtual RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc);

@@ -7,15 +7,20 @@ namespace MetaInit::RHI {
 
 	struct RHIEventInitializer
 	{
-
+		uint32_t	flags_;
+		String	name_;
 	};
 
 	class RHIEvent
 	{
 	public:
 		using Ptr = RHIEvent*;
-		RHIEvent(const RHIEventInitializer& initializer);
+		RHIEvent(const RHIEventInitializer& initializer) :name_(initializer.name_) {
+
+		}
 		virtual ~RHIEvent() = 0;
+	protected:
+		String	name_;
 	};
 
 	struct RHIFenceInitializer

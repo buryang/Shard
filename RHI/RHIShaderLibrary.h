@@ -22,6 +22,7 @@ namespace MetaInit::RHI {
 		virtual RHIShader::Ptr GetRHIShader(uint32_t shader_index) { return nullptr; }
 		virtual RHIShader::Ptr GetRHIShader(RHIShader::HashType shader_hash) {	return nullptr; }
 		virtual uint32_t GetRHIShaderIndex(RHIShader::HashType shader_hash) { return -1; }
+		virtual size_type GetShaderCount() const { return 0u; }
 		FORCE_INLINE ELibrayType GetLibrayType() const { return library_model_; }
 		FORCE_INLINE EShaderModel GetShaderModel() const { return shader_model_; }
 		virtual ~RHIShaderLibraryInterface() {}
@@ -78,7 +79,8 @@ namespace MetaInit::RHI {
 	public:
 		using Ptr = RHIPipelineStateObjectLibraryInterface*;
 		virtual void Init(void) {}
-		RHIPipelineStateObject::Ptr GetOrCreatePipeline(const RHIPipelineStateObjectInitializer& initializer);
+		virtual RHIPipelineStateObject::Ptr GetOrCreatePipeline(const RHIPipelineStateObjectInitializer& initializer);
+		constexpr size_type GetPSOCount()const;
 		virtual ~RHIPipelineStateObjectLibraryInterface();
 	protected:
 		virtual RHIPipelineStateObject::Ptr CreatePipelineImpl(const RHIPipelineStateObjectInitializer& initializer) = 0;

@@ -22,8 +22,6 @@ namespace MetaInit
 			using Ptr = RHICommandContext*;
 			RHICommandContext(EFlags flags) : flags_(flags) {}
 			//enqueue command sequeues
-			virtual void EnqueuePreEvent(const RHIEvent::Ptr event) = 0;
-			virtual void EnqueuePostEvent(const RHIEvent::Ptr event) = 0;
 			virtual void Enqueue(const RHICommandPacketInterface::Ptr cmd) = 0;
 			//submit command
 			virtual void Submit(RHIGlobalEntity::Ptr rhi) = 0;
@@ -37,7 +35,22 @@ namespace MetaInit
 		private:
 			DISALLOW_COPY_AND_ASSIGN(RHICommandContext);
 		private:
-			EFlags flags_{ EFlags::eUnkown };
+			EFlags	flags_{ EFlags::eUnkown };
+			uint32_t	device_mask_{ 0xFFFFFFFF };
+		};
+
+		/*a virtual command context, maybe usage: record command ir represent for reuse/debug*/
+		class MINIT_API RHIVirtualCommandContext: public RHICommandContext
+		{
+		public:
+			void Enqueue(const RHICommandPacketInterface::Ptr cmd) override;
+			//submit command
+			void Submit(RHIGlobalEntity::Ptr rhi) override;
+			/*re broadcast to other real command context*/
+			void ReplayByOther(RHICommandContext::Ptr other_context);
+			virtual ~RHIVirtualCommandContext() = default;
+		protected:
+			Vector<const RHICommandPacketInterface::Ptr> record_cmds_;
 		};
 	}
 }

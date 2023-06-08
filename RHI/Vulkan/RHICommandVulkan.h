@@ -11,13 +11,17 @@ namespace MetaInit::RHI {
 			RHICommandContextVulkan();
 			void Enqueue(const RHICommandPacketInterface::Ptr cmd) override;
 			void Submit(RHIGlobalEntity::Ptr rhi) override;
+			FORCE_INLINE VulkanCmdBuffer::SharedPtr Get() const {
+				return rhi_handle_;
+			}
 		private:
-			void SetStreamSource(uint32_t stream_index, uint32_t offset);
+			void BindVertexInput(const RHIVertexBuffer::Ptr stream_data, uint32_t offset, uint32_t stride);
+			void BindIndexInput(const RHIBuffer::Ptr index_buffer, uint32_t offset);
 			void BindPipeline(RHIPipelineStateObjectVulkan::Ptr pso);
 			void BeginRenderPass();
 			void EndRenderPass();
-			void PushEvent();
-			void PopEvent();
+			void SignalEvent(RHIEvent::Ptr event);
+			void WaitEvent(Span<RHIEvent::Ptr>& events);
 			void CopyTexture();
 			void CopyBuffer();
 		private:

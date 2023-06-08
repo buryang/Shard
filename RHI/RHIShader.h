@@ -62,7 +62,7 @@ namespace MetaInit::RHI {
 	enum
 	{
 		MAX_RENDER_TARGETS_NUM = 8,
-		MAX_VERTEX_DECLARATION_NUM = 17,
+		MAX_VERTEX_DECLARATION_NUM = 32, //my 1060 max input bind/attribute both 32
 	};
 
 	struct RHIBlendStateInitializer
@@ -183,7 +183,17 @@ namespace MetaInit::RHI {
 	struct RHIVertexInputStateInitializer
 	{
 		using HashType = Utils::Blake3Hash64;
-		struct Element
+		enum class EInputRate
+		{
+			eVertex,
+			eInstance,
+		};
+		struct StreamBind {
+			uint32_t	binding_{ 0u };
+			uint32_t	stride{ 0u };
+			EInputRate		nput_rate_{ EInputRate::eVertex };
+		};
+		struct StreamAttribute
 		{
 			uint32_t	binding_{ 0u };
 			uint32_t	stride_{ 0u };
@@ -191,12 +201,14 @@ namespace MetaInit::RHI {
 			uint32_t	offset_{ 0u };
 			EPixFormat	format_{ EPixFormat::eUnkown };
 		};
-		SmallVector<Element, MAX_VERTEX_DECLARATION_NUM>	declarations_;
+		SmallVector<StreamBind, MAX_VERTEX_DECLARATION_NUM>	bindings_;
+		SmallVector<StreamAttribute, MAX_VERTEX_DECLARATION_NUM>	declarations_;
 		static HashType ComputeHash(const RHIVertexInputStateInitializer& initializer);
 	};
 
 	struct RHIPipelineStateObjectInitializer
 	{
+		using HashType = Utils::Blake3Hash64;
 		enum class EType
 		{
 			eGFX,

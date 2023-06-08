@@ -349,11 +349,21 @@ namespace MetaInit
 		vkCmdPushConstants(handle_, nullptr, flags, offset, constants.size_bytes(), constants.data());
 	}
 
+	void VulkanCmdBuffer::SignalEvent(VkEvent event)
+	{
+		vkCmdSetEvent(handle_, event, 0u);//todo
+	}
+
+	void VulkanCmdBuffer::WaitEvenets(VkEvent* events, uint32_t count)
+	{
+		vkCmdWaitEvents(handle_, count, events, 0, 0, 0, nullptr, 0, nullptr, 0, nullptr);//todo
+	}
+
 	VulkanCmdBuffer::VulkanCmdBuffer(VulkanCmdPool::SharedPtr cmd_pool):parent_(cmd_pool)
 	{
 		//first to support primary command
-		auto& cmd_info = MakeCommandBufferAllocateInfo(cmd_pool->Get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-		auto ret = vkAllocateCommandBuffers(GetGlobalDevice(), parent_->Get(), &handle_);
+		const auto& cmd_info = MakeCommandBufferAllocateInfo(cmd_pool->Get(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		auto ret = vkAllocateCommandBuffers(GetGlobalDevice(), &cmd_info, &handle_);
 		PCHECK(VK_SUCCESS != ret) << "alloc command buffer failed";
 		state_ = EState::eInitial;
 	}

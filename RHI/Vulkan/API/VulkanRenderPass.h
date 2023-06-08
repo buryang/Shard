@@ -31,6 +31,7 @@ namespace MetaInit
 	class VulkanRenderPass
 	{
 	public:
+		using Ptr = VulkanRenderPass*;
 		typedef struct _VulkanRenderPassDesc
 		{
 			enum ELoadAction :uint8_t
@@ -99,7 +100,7 @@ namespace MetaInit
 			};
 			SmallVector<SubpassDepend>	subpass_depends_;
 		}Desc;
-		using Ptr = std::shared_ptr<VulkanRenderPass>;
+		using SharedPtr = std::shared_ptr<VulkanRenderPass>;
 		static Ptr Create(VulkanDevice::Ptr device, const Desc& desc);
 		VkRenderPass Get() { return handle_; }
 		void Begin(VulkanCmdBuffer& cmd, VulkanFrameBuffer& frame_buffer);

@@ -13,6 +13,7 @@ namespace MetaInit
 	class VulkanInstance
 	{
 	public:
+		using Ptr = VulkanInstance*;
 		using SharedPtr = std::shared_ptr<VulkanInstance>;
 		using Handle = VkInstance;
 		static SharedPtr Create();
@@ -99,7 +100,9 @@ namespace MetaInit
 	static inline VkDevice GetGlobalDevice() {
 		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->Get();
 	}
-
+	static inline VkInstance GetGlobalInstance() {
+		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanInstance()->Get();
+	}
 	static inline VkPhysicalDevice GetGlobalPhyDevice() {
 		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->GetPhyHandle();
 	}

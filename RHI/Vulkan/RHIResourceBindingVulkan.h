@@ -13,9 +13,11 @@ namespace MetaInit::RHI::Vulkan {
 	class RHIResourceBindlessSetVulkan : public RHIResourceBindlessHeap
 	{
 	public:
+		using Ptr = RHIResourceBindlessSetVulkan*;
+		using SharedPtr = eastl::shared_ptr<RHIResourceBindlessSetVulkan>;
 		RHIResourceBindlessSetVulkan() = default;
 		~RHIResourceBindlessSetVulkan();
-		void Init(const Span<RHIBindLessTableDesc>& desc)override;
+		void Init(const RHIBindLessTableInitializer& desc)override;
 		void Bind(RHICommandContext::Ptr command)override;
 		RHIResourceHandle WriteBuffer(RHIBuffer::Ptr buffer)override;
 		RHIResourceHandle WriteTexture(RHITexture::Ptr texture)override;
@@ -31,7 +33,7 @@ namespace MetaInit::RHI::Vulkan {
 		}
 	private:
 		uint32_t GetDescriptorHeapIndex(uint32_t tag_flags);
-		void CreateDescriptorHeap(const RHIBindLessTableDesc& desc, VulkanPipelineLayoutDesc& pipe_desc);
+		void CreateDescriptorHeap(const RHIBindLessTableInitializer::Member& desc, VulkanPipelineLayoutDesc& pipe_desc);
 	private:
 		Map<uint32_t, uint32_t>	tag_set_index_;
 		struct HeapData {

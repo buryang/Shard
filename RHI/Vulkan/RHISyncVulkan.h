@@ -1,7 +1,7 @@
 #include "RHI/RHISync.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
 
-namespace MetaInit::RHI {
+namespace MetaInit::RHI::Vulkan {
 
 	enum class EPipeline {
 		eGFX,
@@ -37,5 +37,18 @@ namespace MetaInit::RHI {
 
 		}
 	}
+
+	class RHIEventVulkan : public RHIEvent
+	{
+	public:
+		using Handle = VkEvent;
+		Handle GetHandle() {
+			return handle_;
+		}
+		RHIEventVulkan(const RHIEventInitializer& initializer);
+		~RHIEventVulkan();
+	private:
+		Handle	handle_;
+	};
 
 }

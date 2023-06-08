@@ -24,19 +24,20 @@ namespace MetaInit::RHI::Vulkan {
 	RHIResourceBindlessSetVulkan::~RHIResourceBindlessSetVulkan()
 	{
 	}
-	void RHIResourceBindlessSetVulkan::Init(const Span<RHIBindLessTableDesc>& desc)
+	void RHIResourceBindlessSetVulkan::Init(const RHIBindLessTableInitializer& initializer)
 	{
 		descriptor_heaps_.clear();
 		VulkanPipelineLayoutDesc pipe_desc;
-		for (auto n = 0; n < desc.size(); ++n) {
-			if (desc[n].tag_ < eNum) {
-				CreateDescriptorHeap(desc[n], pipe_desc);
-				tag_set_index_.emplace(eastl::make_pair(desc[n].tag_, n));
+		for (auto n = 0; n < initializer.num_member_; ++n) {
+			const auto& desc = initializer.members_[n];
+			if (desc.tag_ < eNum) {
+				CreateDescriptorHeap(desc, pipe_desc);
+				tag_set_index_.emplace(eastl::make_pair(desc.tag_, n));
 			}
-			else if (desc[n].tag_ == EBindLessRangeTag::ePushRangeTag) {
+			else if (desc.tag_ == EBindLessRangeTag::ePushRangeTag) {
 				//deal with push constant 
-				PCHECK(desc[n].extra_info_ != nullptr) << "push range is null";
-				auto push_range = *reinterpret_cast<RHIBindLessPushRange*>(desc[n].extra_info_);
+				PCHECK(desc.extra_info_ != nullptr) << "push range is null";
+				auto push_range = *reinterpret_cast<RHIBindLessPushRange*>(desc.extra_info_);
 				pipe_desc.AddConstRange(VkPushConstantRange{ VK_SHADER_STAGE_ALL, push_range.offset_, push_range.size_ });
 			}
 		}
@@ -91,14 +92,14 @@ namespace MetaInit::RHI::Vulkan {
 		return tag_set_index_[tag_flags];
 	}
 	
-	void RHIResourceBindlessSetVulkan::CreateDescriptorHeap(const RHIBindLessTableDesc& desc, VulkanPipelineLayoutDesc& pipe_desc)
+	void RHIResourceBindlessSetVulkan::CreateDescriptorHeap(const RHIBindLessTableInitializer::Member& desc, VulkanPipelineLayoutDesc& pipe_desc)
 	{
 		//create one pool for each descriptor set
 		VulkanPoolCreateDesc pool_desc;
 		pool_desc.flags_ = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 		VkDescriptorType desc_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 		uint32_t max_descriptor_count = 0;
-		const auto device_index_props = RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->GetPhysicalDeviceDescriptorIndexingProperties();
+		const auto device_index_props = GetGlobalDevice()->GetPhysicalDeviceDescriptorIndexingProperties();
 		switch (desc.tag_) {
 		case eBufferSRVTag:
 			desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

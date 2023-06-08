@@ -9,7 +9,7 @@
 
 namespace MetaInit::RHI::Vulkan {
 	
-	REGIST_GLOBAL_ENTITY(RHIGlobalEntityVulkan, ERHIBackEnd::eVulkan, [](void){ return static_cast<RHIGlobalEntity::Ptr>(RHIGlobalEntityVulkan::Instance()); });
+	REGIST_GLOBAL_ENTITY(RHIGlobalEntityVulkan, ERHIBackEnd::eVulkan, RHIGlobalEntityVulkan::Instance);
 
 	//instance and device extension config
 	REGIST_PARAM_TYPE(BOOL, INSTANCE_DEBUG_REPROT_EXT, true);
@@ -120,9 +120,17 @@ namespace MetaInit::RHI::Vulkan {
 		return static_cast<RHIPipelineStateObjectLibraryInterface::Ptr>(&pso_library);
 	}
 
+	RHIImGuiLayerWrapper::Ptr RHIGlobalEntityVulkan::GetImGuiLayerWrapper()
+	{
+		return static_cast<RHIImGuiLayerWrapper::Ptr>(&imgui_wrapper_);
+	}
+
 	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetOrCreateResourceBindlessHeap()
 	{
-		return RHIResourceBindlessHeap::Ptr();
+		if(bindless_heap_.get()==nullptr){
+			//todo 
+		}
+		return bindless_heap_;
 	}
 
 	RHIResource::Ptr RHIGlobalEntityVulkan::CreateConstBuffer(const RHIBufferInitializer& desc)

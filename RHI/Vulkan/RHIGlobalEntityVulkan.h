@@ -1,8 +1,10 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/RHIGlobalEntity.h"
+#include "RHI/RHITypeTraits.h"
+#include "RHI/Vulkan/RHIResourcesVulkan.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
-#include "RHI/Vulkan/RHIResourceAllocatorVulkan.h"
+
 
 namespace MetaInit::RHI {
 	namespace Vulkan
@@ -18,8 +20,9 @@ namespace MetaInit::RHI {
 			void CreateViewPoint() override;
 			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
 			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
-			RHIResourceBindlessHeap::Ptr GetOrCreateResourceBindlessHeap() override;
-			RHIResource::Ptr CreateConstBuffer(const RHIBufferInitializer& desc) override;
+			RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() override;
+			RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap() override;
+			RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc) override;
 			RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
 			RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc) override;
 			RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc) override;
@@ -34,12 +37,12 @@ namespace MetaInit::RHI {
 			bool SetUpTexture(RHITextureVulkan::Ptr texture);
 			bool SetUpBuffer(RHIBufferVulkan::Ptr buffer);
 			//special functions for vulkan
-			FORCE_INLINE VulkanInstance::SharedPtr GetVulkanInstance() {
-				assert(nullptr != instance_.get());
+			FORCE_INLINE VulkanInstance::Ptr GetVulkanInstance() {
+				assert(nullptr != instance_);
 				return instance_;
 			}
-			FORCE_INLINE VulkanDevice::SharedPtr GetVulkanDevice() {
-				assert(nullptr != device_.get());
+			FORCE_INLINE VulkanDevice::Ptr GetVulkanDevice() {
+				assert(nullptr != device_);
 				return device_;
 			}
 			FORCE_INLINE bool SetVulkanCallBack(VkAllocationCallbacks* clk) {
@@ -48,6 +51,9 @@ namespace MetaInit::RHI {
 			FORCE_INLINE const VkAllocationCallbacks* GetVulkanCallBack() const {
 				return alloc_clk_;
 			}
+			~RHIGlobalEntityVulkan() {
+				UnInit();
+			}
 		protected:
 
 		private:
@@ -55,8 +61,8 @@ namespace MetaInit::RHI {
 			void InitInstance();
 			void InitGlobalAllocationCallBacks();
 		private:
-			VulkanInstance::SharedPtr	instance_;
-			VulkanDevice::SharedPtr	device_;
+			VulkanInstance::Ptr	instance_;
+			VulkanDevice::Ptr	device_;
 			//viewport 
 
 			//memory resource manager
@@ -65,6 +71,12 @@ namespace MetaInit::RHI {
 			
 			//memory alloc wrapper for vulkan
 			VkAllocationCallbacks* alloc_clk_{ nullptr };
+
+			//bindless heap ?
+			RHIResourceBindlessSetVulkan::SharedPtr	bindless_heap_;
+
+			//imgui layer
+			RHIImGuiLayerWrapperVulkan	imgui_wrapper_;
 		}; 
 	}
 }

@@ -52,10 +52,17 @@ namespace MetaInit::RHI {
 	};
 
 	//type and max size for each descrptor table entity
-	struct RHIBindLessTableDesc {
-		uint32_t	tag_{ 0u };
-		uint32_t	max_size_{ 0u };
-		void*	extra_info_{ nullptr };
+	struct RHIBindLessTableInitializer {
+		enum {
+			MAX_BINDINGLESS_MEMBERS = EBindLessTag::eNum,
+		};
+		struct Member {
+			uint32_t	tag_{ 0u };
+			uint32_t	max_size_{ 0u };
+			void* extra_info_{ nullptr };
+		};
+		Member	members_[MAX_BINDINGLESS_MEMBERS];
+		uint32_t	num_member_{ 0u };
 	};
 
 	class RHIResourceBindlessHeap
@@ -63,7 +70,7 @@ namespace MetaInit::RHI {
 	public:
 		using Ptr = RHIResourceBindlessHeap*;
 		using SharedPtr = eastl::shared_ptr<RHIResourceBindlessHeap>;
-		virtual void Init(const Span<RHIBindLessTableDesc>& desc) {}
+		virtual void Init(const RHIBindLessTableInitializer& desc) {}
 		virtual void Bind(RHICommandContext::Ptr command) = 0;
 		virtual RHIResourceHandle WriteBuffer(RHIBuffer::Ptr buffer) = 0;
 		virtual RHIResourceHandle WriteTexture(RHITexture::Ptr texture) = 0;

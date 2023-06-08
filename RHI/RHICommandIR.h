@@ -13,7 +13,6 @@ namespace MetaInit::RHI {
 		enum class ECommandType :uint32_t {
 			eNone,
 			eSetStreamSource,
-			eSetResource,
 			eSetViewPoint,
 			eSetScissorRect,
 			eSetPipelineState,
@@ -47,36 +46,24 @@ namespace MetaInit::RHI {
 			//for event
 			eSetEvent,
 			eWaitEvent,
-			eResetEvent,
 		};
-		virtual ECommandType GetType() = 0;
+		virtual ECommandType Type() = 0;
 		virtual ~RHICommandPacketInterface() {}
 	};
 
 #define IMPLEMENT_TYPE(type) \
-	RHICommandPacketInterface::ECommandType GetType() override \
+	RHICommandPacketInterface::ECommandType Type() override \
 	{\
 		return type;\
 	}
 
+	/*for d3d*/
 	struct RHISetStreamSourcePacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eSetStreamSource);
 		uint32_t	stream_index_;
 		uint32_t	offset_;
-	};
-
-	struct RHISetReourcePacket final : public RHICommandPacketInterface {
-		using EResourceType = Renderer::EShaderResourceType;
-		IMPLEMENT_TYPE(ECommandType::eSetResource);
-		EResourceType	resource_type_;
-		uint32_t	base_index_{ 0u };
-		uint32_t	buffer_index_{ 0u };
-		union {
-			void* trival_data_{ nullptr };
-			RHIBuffer::Ptr	buffer_;
-			RHITexture::Ptr texture_;
-			RHISampler::Ptr	sampler_;
-		};
+		uint32_t	stride_;
+		RHIVertexBuffer::Ptr	stream_data_;
 	};
 
 	struct RHISetViewPointPacket final : public RHICommandPacketInterface {
@@ -126,12 +113,21 @@ namespace MetaInit::RHI {
 		uint32_t	reserved_flags_{ 0u };
 	};
 
+	struct RHIDrawPacket final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eDraw);
+		uint32_t	num_vertex_{ 0u };
+		uint32_t	num_instance_{ 0u };
+		uint32_t	first_vertex_{ 0u };
+		uint32_t	first_instance_{ 0u }
+	};
+
 	struct RHIDrawIndexedPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eDrawIndexed);
-		uint32_t base_vertex_{ 0 };
-		uint32_t first_instance_{ 0 };
-		uint32_t num_vertex_{ 0 };
-		uint32_t num_instance_{ 0 };
+		uint32_t base_vertex_{ 0u };
+		uint32_t first_index_{ 0u };
+		uint32_t first_instance_{ 0u };
+		uint32_t num_vertex_{ 0u }; //num of index too
+		uint32_t num_instance_{ 0u };
 	};
 
 	struct RHIDrawIndexedIndirectPacket final : public RHICommandPacketInterface {
@@ -184,10 +180,10 @@ namespace MetaInit::RHI {
 			eBufferToTexture,
 			eTextureToBuffer,
 		};
-		EType	type_:
+		EType	type_;
 		RHIBuffer::Ptr	buffer_{ nullptr };
 		RHITexture::Ptr	texture_{ nullptr };
-		TextureSubRange sub_range_;
+		Renderer::TextureSubRange sub_range_;
 	};
 
 	struct RHIClearBufferPacket final : public RHICommandPacketInterface {
@@ -206,7 +202,7 @@ namespace MetaInit::RHI {
 				uint32_t stentcil_;
 			}depth_stencil_;
 		};
-		TextureSubRange	sub_range_;
+		Renderer::TextureSubRange	sub_range_;
 	};
 
 	struct RHIFillBufferPacket final : public RHICommandPacketInterface {
@@ -228,5 +224,15 @@ namespace MetaInit::RHI {
 		uint32_t	flags_{ 0 };
 		uint32_t	offset_{ 0 };
 		Span<uint8_t>	user_data_;
+	};
+
+	struct RHIEventSet final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eSetEvent);
+		RHIEvent::Ptr	event_{ nullptr };
+	};
+
+	struct RHIEventWait final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eWaitEvent);
+		Span<RHIEvent::Ptr>	events_;
 	};
 }
