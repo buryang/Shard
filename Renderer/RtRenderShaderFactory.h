@@ -18,6 +18,8 @@
 
 REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
 REGIST_PARAM_TYPE(UINT, PSO_COMPILE_BACTH_SIZE, 128);
+REGIST_PARAM_TYPE(STRING, SHADER_CACHE_DIR, "/shaders/compiled/");
+REGIST_PARAM_TYPE(STRING, PSO_CACHE_DIR, "/pso.cache");
 
 namespace MetaInit::Renderer
 {
@@ -220,7 +222,7 @@ namespace MetaInit::Renderer
 			return shaders_[uint32_t(handle)];
 		}
 	private:
-		LATIYT_VECTOR_FIELD(,RtRenderShader::Ptr, shaders_);
+		LAYOUT_VECTOR_FIELD(,RHI::RHIShader::Ptr, shaders_);
 		END_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
 	};
 
@@ -231,10 +233,9 @@ namespace MetaInit::Renderer
 		using Ptr = RtShaderCompiledFileMap*;
 		using SharedPtr = std::shared_ptr<RtShaderCompiledFileMap>;
 		using HashType = Utils::Blake3Hash64;
-		RtRenderShader::Ptr GetShader(const ShaderHandle& handle);
-		RtRenderShader::Ptr GetShader(const ShaderKey& key);
-		RHI::RHIShader::Ptr GetRHIShader(const ShaderHandle& handle);
+		RHI::RHIShader::Ptr GetRHIShader(const uint32_t index);
 		RHI::RHIShader::Ptr	GetRHIShader(const ShaderKey& key);
+		uint32_t GetRHIShaderIndex(const ShaderKey& key);
 		//check file hash changed
 		bool IsReCompileNeeded()const;
 		const HashType& GetHash()const;
@@ -251,7 +252,7 @@ namespace MetaInit::Renderer
 		String	file_name_;
 		HashType	file_name_hash_;
 		HashType	hash_;
-		HashType	precalc_hash_; //to save pre calc hash for next use
+		mutable HashType	precalc_hash_; //to save pre calc hash for next use
 		RtShaderContent	shader_content_;
 		RtRenderShaderArchive::Ptr	shader_archive_;
 		RHI::RHIShaderLibraryInterface::SharedPtr	shader_library_;
@@ -263,11 +264,11 @@ namespace MetaInit::Renderer
 	class MINIT_API RtShaderCompiledRepo
 	{
 	public:
+		using Ptr = RtShaderCompiledRepo*;
 		static RtShaderCompiledRepo& Instance() {
 			static RtShaderCompiledRepo repo;
 			return repo;
 		}
-		RtRenderShader::SharedPtr GetShader(const ShaderKey& key);
 		RtShaderCompiledFileMap::Ptr FindOrCreateSection(const RtShaderType::HashType hash_name);
 		RtShaderCompiledFileMap::Ptr FindSection(const RtShaderType::HashType hash_name);
 		~RtShaderCompiledRepo();

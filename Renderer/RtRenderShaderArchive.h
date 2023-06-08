@@ -12,18 +12,27 @@ namespace MetaInit::Renderer {
 	using Utils::FileArchive;
 	struct PipelineStateObjectDesc {
 		using HashVal = RtRenderShader::HashType;
-		union {
+		//union {
 			struct ComputePipelineDesc {
 				HashVal	compute_shader_;
 			} compute_desc_;
 			struct GraphicsPipelineDesc {
-				HashVal stage_shaders[Utils::EnumToInteger(EShaderFrequency::eNum)];
-				EInputTopoType	primitive_topology_;
+				HashVal stage_shaders[Utils::EnumToInteger(EShaderFrequency::eGFXNum)];
+				RHI::RHIVertexInputStateInitializer	vertex_input_state_;
+				RHI::RHIBlendStateInitializer	blend_state_;
+				RHI::RHIDepthStencilStateInitializer	depth_stencil_state_;
+				RHI::RHIRasterizationStateInitializer	rasterization_state_;
+				//assembly state only has a topology flags
+				EInputTopoType	primitive_topology_{ EInputTopoType::eUnkown };
 			} gfx_desc_;
 			struct RayTracePipelineDesc {
-
+				HashVal	miss_hit_;
+				HashVal	any_hit_;
+				HashVal	closest_hit_;
+				HashVal	raygen_;
+				HashVal	callable_;
 			} raytracing_desc_;
-		};
+		//};
 		enum class EPSOType {
 			eUnkown,
 			eCompute,
@@ -32,6 +41,7 @@ namespace MetaInit::Renderer {
 		};
 		EPSOType	type_{ EPSOType::eUnkown };
 		uint32_t	user_flags_{ 0u };
+		static HashVal ComputeHash(const PipelineStateObjectDesc& desc);
 	};
 
 	struct PSOArchiveHeader

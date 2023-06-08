@@ -54,6 +54,7 @@ namespace MetaInit::Renderer
 		eRayMiss,
 		eCallAble,
 		eNum,
+		eGFXNum = eFrag + 1,
 	};
 
 	enum class EShaderModel :uint16_t
@@ -141,10 +142,8 @@ namespace MetaInit::Renderer
 			EType	type_;
 			String	name_;
 			uint16_t	byte_offset_{ 0u };
-			union {
-				uint16_t	size_{ 0u };
-				RtRenderShaderParametersMeta* sub_meta_{ nullptr };
-			};
+			uint16_t	size_{ 0u };
+			RtRenderShaderParametersMeta* sub_meta_{ nullptr };
 		};
 		const Element& operator[](uint32_t index)const;
 		FORCE_INLINE uint32_t ParameterCount()const {
@@ -207,8 +206,6 @@ namespace MetaInit::Renderer
 		const HashType& GetShaderHash()const;
 		const uint32_t GetResourceIndex()const;
 		const RtShaderType::Ptr GetShaderType()const;
-		FORCE_INLINE bool IsReady()const { return resource_index_ != -1; }
-		virtual void Compile(const RtRenderShaderCode& shader_code) = 0;
 		virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
 		virtual RtRenderShaderParametersMeta* GetShaderParametersMeta() = 0;
 	protected:
@@ -220,7 +217,6 @@ namespace MetaInit::Renderer
 		//indentify shader type by hash
 		LAYOUT_FIELD(,RtShaderType::HashType, shader_type_);
 		LAYOUT_FIELD(mutable,HashType, shader_hash_);
-		LAYOUT_FIELD_DEFAULT(,uint32_t, resource_index_, -1);
 		LAYOUT_FIELD_DEFAULT(,uint32_t, permutation_id_, 0u);
 		END_DECLARE_TYPE_LAYOUT_DEF(RtRenderShader);
 	};
@@ -229,21 +225,30 @@ namespace MetaInit::Renderer
 	{
 	public:
 		using SharedPtr = eastl::shared_ptr<RtRenderShaderPipeline>;
-		explicit RtRenderShaderPipeline(const PipelineStateObjectDesc& desc, RHI::RHIPipelineStateObject::Ptr rhi) :desc_(desc), rhi_entity_(rhi) {
-		}
-		void AddShader(RtRenderShader::Ptr shader);
-		RtRenderShader::Ptr FindShader(EShaderFrequency freq);
-		bool IsValid()const;
+		RtRenderShaderPipeline() = default;
+		explicit RtRenderShaderPipeline(const PipelineStateObjectDesc& desc);
+		void Init(const PipelineStateObjectDesc& desc);
 		FORCE_INLINE const PipelineStateObjectDesc& GetPipelineDesc() const {
 			return desc_;
 		}
+		FORCE_INLINE const PipelineStateObjectDesc::EPSOType GetPipelineTye() const {
+			return desc_.type_;
+		}
+		FORCE_INLINE const PipelineStateObjectDesc::HashVal GetHash()const {
+			return PipelineStateObjectDesc::ComputeHash(desc_);
+		}
+		/*
+		FORCE_INLINE RtRenderShader::Ptr operator[](EShaderFrequency freq) {
+			return shaders_[Utils::EnumToInteger(freq)];
+		}
+		*/
 	private:
 		PipelineStateObjectDesc	desc_;
 		RHI::RHIPipelineStateObject::Ptr	rhi_entity_{ nullptr };
 		//fixme not need this?
 		//RtRenderShader::Ptr shaders_[Utils::EnumToInteger(EShaderFrequency::eNum)];
 		//to do whehter define here
-		std::atomic_uint32_t	use_times_{ 0u };
-		std::atomic_uint32_t	last_use_time_{ 0u };
+		mutable std::atomic_uint32_t	use_counter_{ 0u };
+		mutable std::atomic_uint32_t	last_use_time_{ 0u };
 	};
 }

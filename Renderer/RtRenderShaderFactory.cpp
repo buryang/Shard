@@ -7,9 +7,13 @@
 #include <string>
  
 using Path = std::filesystem::path;
+namespace fs = std::filesystem;
+
 namespace MetaInit::Renderer {
 
 	REGIST_PARAM_TYPE(UINT, RENDER_COMPILE_WORKERS, 128);
+	REGIST_PARAM_TYPE(STRING, RENDER_SHADER_DIR, "/shaders");
+
 
 	//class layout define here
 	IMPLEMENT_TYPE_LAYOUT_DEF(RtShaderContent);
@@ -65,8 +69,13 @@ namespace MetaInit::Renderer {
 		return nullptr;
 	}
 
-	RtShaderType::RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq):name_(name), file_name_(file),entry_func_(func), frequency_(freq)
+	RtShaderType::RtShaderType(const String& name, const String& file, const String& func, EShaderFrequency freq) :name_(name), file_name_(file), entry_func_(func), frequency_(freq)
 	{
+	}
+
+	const uint32_t RtShaderType::GetPermutationCount() const
+	{
+		return uint32_t();
 	}
 
 	void RtShaderCompiledRepo::Serialize(Utils::FileArchive& archive) const
@@ -155,20 +164,20 @@ namespace MetaInit::Renderer {
 	}
 
 	bool RtShaderCompiledFileMap::IsReCompileNeeded()const {
-		using Path = std::filesystem::path;
-		const auto file_path = Path() / file_name_;
-		if (!std::filesystem::exists(file_path.string()) {
-			return false;
+		const auto shader_dir = fs::current_path() / GET_PARAM_TYPE_VAL(STRING, RENDER_SHADER_DIR).c_str();
+		const auto file_path =  shader_dir/file_name_.c_str();
+		if (!fs::exists(file_path)){
+			return true;
 		}
 		Vector<String> include_paths;
-		TraverseHLSLIncludePath(, file_name_, include_paths);
-		include_paths.emplace_back(file_path_.str());
+		TraverseHLSLIncludePath(shader_dir.c_str(), file_name_, include_paths);
+		include_paths.emplace_back(file_path.c_str());
 		HashType curr_hash;
 		blake3_hasher hasher;
 		blake3_hasher_init(&hasher);
 		for (const auto& path : include_paths) {
-			std::ifstream include_file(path. std::ios::in|std::ios::binary);
-			if (include_path.is_open()) {
+			std::ifstream include_file(path.c_str(), std::ios::binary);
+			if (include_file.is_open()) {
 					return false;
 			}
 			UpdateHasherOfFileStream(include_file, hasher);
@@ -178,19 +187,19 @@ namespace MetaInit::Renderer {
 		return curr_hash != hash_;
 	}
 
-	RtShaderCompiledFileMap::Ptr RtShaderCompiledRepo::FindOrCreateSection(const RtRenderShader& shader)
+	RtShaderCompiledFileMap::Ptr RtShaderCompiledRepo::FindOrCreateSection(const RtShaderType::HashType hash_name)
 	{
-		if (const auto& iter = shader_sections_.find(name); iter != shader_sections_.end()) {
+		const auto* shader_type = RtShaderType::FindShaderTypeByHashName(hash_name);
+		if (shader_type == nullptr) {
+			return nullptr;
+		}
+		const auto section_name = shader_type->GetHashFileName();
+		if (const auto& iter = shader_sections_.find(section_name); iter != shader_sections_.end()) {
 			return iter->second;
 		}
-		auto* section = new RtShaderCompiledFileMap(shader.);
-		shader_sections_.insert({name, section});
+		auto* section = new RtShaderCompiledFileMap();//todo
+		shader_sections_.insert({section_name, section});
 		return section;
-	}
-
-	RtRenderShader::SharedPtr MetaInit::Renderer::RtShaderCompiledRepo::GetShader(const ShaderKey& key)
-	{
-		return RtRenderShader::SharedPtr();
 	}
 
 	RtShaderCompiledRepo::~RtShaderCompiledRepo()
@@ -397,7 +406,11 @@ namespace MetaInit::Renderer {
 
 	void RtPipelineCompiledRepo::Serialize(const String& path)
 	{
-		Utils::FileArchive pso_ar(path.c_str(), Utils::FileArchive::EArchiveMode::eWrite);
+		const auto* cpath = path.c_str();
+		if (!fs::exists(path.c_str())) {
+			cpath = fs:
+		}
+		Utils::FileArchive pso_ar(cpath, Utils::FileArchive::EArchiveMode::eWrite);
 		{
 			//read logic
 		}
@@ -460,9 +473,7 @@ namespace MetaInit::Renderer {
 
 	RtRenderShaderPipeline::SharedPtr MetaInit::Renderer::RtPipelineCompiledRepo::GetPipeline(const PipelineStateObjectDesc& desc)
 	{
-		RtRenderShaderPipeline::SharedPtr pso;
-		auto rhi = xxx;
-		pso.reset(new RtRenderShaderPipeline(pso, rhi));
+		RtRenderShaderPipeline::SharedPtr  pso(new RtRenderShaderPipeline(desc));
 		return pso;
 	}
 
@@ -475,8 +486,52 @@ namespace MetaInit::Renderer {
 
 	void RtPipelineCompiledRepo::Compile(const CompileJob& job)
 	{
+		//todo
 		const auto pso_desc_to_rhi = [this, &](const PipelineStateObjectDesc& desc){
-			return RHIPipelineStateObjectInitializer();
+			RHI::RHIPipelineStateObjectInitializer initializer;
+			auto shader_library = RHIGlobalEntity::Instance()->GetOrCreateShaderLibrary();
+			if (desc.type_ == PipelineStateObjectDesc::EPSOType::eGFX) {
+				for (auto n = 0; n < EShaderFrequency::eGFXNum; ++n) {
+					const auto shader_hash = desc.stages_[n];
+					if (!shader_hash.IsZero()) {
+						auto rhi_shader = shader_library->GetRHIShader(shader_hash);
+						switch (EShaderFrequency(n)) {
+						case EShaderFrequency::eVertex:
+							initializer.gfx_.vertex_shader_ = rhi_shader;
+							break;
+						case EShaderFrequency::eHull:
+							initializer.gfx_.hull_shader_ = rhi_shader;
+							break;
+						case EShaderFrequency::eGeometry:
+							initializer.gfx_.geometry_shader_ = rhi_shader;
+							break;
+						case EShaderFrequency::eDomain:
+							initializer.gfx_.domain_shader_ = rhi_shader;
+							break;
+						case EShaderFrequency::eFrag:
+							initializer.gfx_.pixel_shader_ = rhi_shader;
+							break;
+						default:
+							LOG(ERROR) << "fault desc input";
+						}
+					}
+				}
+				initializer.type_ = RHIPipelineStateObjectInitializer::EType::eGFX;
+				initializer.gfx_.vertex_input_state_ = desc.gfx_desc_.vertex_input_state_;
+				initializer.gfx_.blend_state_ = desc.gfx_desc_.blend_state_;
+				initializer.gfx_.depth_stencil_state_ = desc.gfx_desc_.depth_stencil_state_;
+				initializer.gfx_.rasterization_state_ = desc.gfx_desc_.rasterization_state_;
+				initializer.gfx_.primitive_topology_ = descgfx_desc_..primitive_topology_;
+			}
+			else if (desc.type == PipelineStateObjectDesc::EPSOType::eCompute) {
+				initializer.type_ = RHIPipelineStateObjectInitializer::EType::eCompute;
+				PCHECK(!desc.compute_.compute_shader_.IsZero()) << "set an invalid compute shader";
+				initializer.compute_.compute_shader_ = shader_library->GetRHIShader(desc.compute_.compute_shader_);
+			}
+			else if (desc.type == PipelineStateObjectDesc::EPSOType::RayTrace) {
+				//todo
+			}
+			return initializer;
 		};
 
 		const auto rhi_initializer = pso_desc_to_rhi(job.desc_);

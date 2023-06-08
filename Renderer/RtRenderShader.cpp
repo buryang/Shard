@@ -1,4 +1,7 @@
 #include "Renderer/RtRenderShader.h"
+#include "Renderer/RtRenderShaderFactory.h"
+#include "RHI/RHIShader.h"
+#include "RHI/RHIGlobalEntity.h"
 #include <folly/Hash.h>
 #include <zlib.h>
 #include <filesystem>
@@ -66,6 +69,7 @@ namespace MetaInit::Renderer
         PCHECK(shader_type != nullptr) << "shader correspond type not found";
         return shader_type;
     }
+
 
     void RtRenderShader::BindShaderParameters(const RtShaderParameterInfosMap& param_infos)
     {
@@ -142,9 +146,54 @@ namespace MetaInit::Renderer
     {
         const auto* shader_type = shader->GetShaderType();
         auto freq = shader_type->GetFrequency();
-        const auto* required_shader_type = pipeline_type_->FindShaderType(freq);
-        PCHECK(required_shader_type == shader_type) << "shader type is not suitable";
         shaders_[Utils::EnumToInteger(freq)] = shader;
+    }
+
+    void RtRenderShaderPipeline::SetRHI()
+    {
+        const auto trans_pso2initializer_func = [this](const PipelineStateObjectDesc& desc) {
+            RHI::RHIPipelineStateObjectInitializer initializer;
+            initializer.reserved_flags_ = desc.user_flags_;
+            if (desc.type_ == PipelineStateObjectDesc::EPSOType::eGFX) {
+                //initializer.gfx_.
+            }
+            else if (desc.type_ == PipelineStateObjectDesc::EPSOType::eCompute) {
+
+            }
+            else if (desc.type_ == PipelineStateObjectDesc::EPSOType::eRayTracing) {
+
+            }
+            else {
+                LOG(ERROR) << "pso desc type is not supported";
+            }
+            //todo render shader and rhi shader relation
+            return initializer;
+        };
+        if (rhi_entity_ == nullptr) {
+            const auto& rhi_initializer = trans_pso2initializer_func(desc_);
+            RHI::RHIGlobalEntity::Instance()->GetOrCreatePSOLibrary()->GetOrCreatePipeline(rhi_initializer);
+        }
+    }
+
+    RtRenderShaderPipeline::RtRenderShaderPipeline(const PipelineStateObjectDesc& desc)
+    {
+        Init(desc);
+    }
+
+   
+    void RtRenderShaderPipeline::Init(const PipelineStateObjectDesc& desc)
+    {
+        desc_ = desc;
+        use_counter_ = 0;
+        last_use_time_ = 0; 
+
+        //add shader
+        RtShaderCompiledRepo::Instance().GetShader(desc.gfx_desc_.stage_shaders[]);
+        AddShader();
+
+
+        //set rhi
+        SetRHI();
     }
 
     RtRenderShader::Ptr RtRenderShaderPipeline::FindShader(EShaderFrequency freq)
@@ -154,19 +203,27 @@ namespace MetaInit::Renderer
 
     bool RtRenderShaderPipeline::IsValid() const
     {
-        if (pipeline_type_ == nullptr) {
-            return false;
-        }
-
+        //todo
         for (auto n = 0u; n < Utils::EnumToInteger(EShaderFrequency::eNum); ++n) {
-            const auto* pipe_shader_type = pipeline_type_->FindShaderType(n);
-            if (pipe_shader_type != nullptr && shaders_[n] != nullptr) {
-                if (shaders_[n]->GetShaderType() != pipe_shader_type) {
+            auto shader = shaders_[n];
+            if (shader != nullptr) {
+                const auto freq = shader->GetShaderType()->GetFrequency();
+                if (n < Utils::EnumToInteger(EShaderFrequency::eGFXNum)) {
+                    if (shader->GetShaderHash() != desc_.gfx_desc_.stage_shaders[freq]) {
+                        return false;
+                    }
+
+                }
+                else if (freq == EShaderFrequency::eCompute) {
+                    if (shader->GetShaderHash() != desc_.compute_desc_.compute_shader_) {
+                        return false;
+                    }
+                }
+                else 
+                {
+                    //to do ray trace pipeline 
                     return false;
                 }
-            }
-            else if (shaders_[n] != nullptr) {
-                return false;
             }
         }
         return true;
