@@ -97,56 +97,74 @@ namespace MetaInit
 
 	};
 
+	struct StaticMesh
+	{
+
+	};
+
+	struct SkinMesh
+	{
+
+	};
+
+	struct SkinBone
+	{
+
+	};
+
 	struct Curve
 	{
 		Vector<vec3>	ctrl_points_;
 		Vector<float>	segments_;
-		void ToSpherePorint() const;
-		Mesh ToMesh() const;
 	};
 
-	
-	enum class LightType:uint8_t
+	struct AABB
 	{
-		POINT,
-		SPOT,
-		DIRECTIONAL,
-		AREA,
-		DISTANT,
-		POLYGONAL,
+		vec3	xyz_;
+		vec3	size_;
+	};
+	
+	enum class ELightType:uint8_t
+	{
+		ePOINT,
+		eSPOT,
+		eDIRECTIONAL,
+		eAREA,
+		eDISTANT,
+		ePOLYGONAL,
 	};
 
 
 	struct PointLight
 	{
-		LightType Type() const { return LightType::POINT; }
+		enum { Type = ELightType::ePOINT };
 	};
 
 	struct SpotLight
 	{
-		LightType Type() const { return LightType::SPOT; }
+		enum { Type = ELightType::eSPOT };
 	};
 
 	struct DistantLight
 	{
-		LightType Type() const { return LightType::DISTANT; }
+		enum { Type = ELightType::eDISTANT };
 	};
 
 	struct PolygonalLight
 	{
-		LightType Type() const { return LightType::POLYGONAL; }
+		enum { Type = ELightType::ePOLYGONAL };
 	};
 
 	using LightPtr = folly::DiscriminatedPtr<PointLight, SpotLight, DistantLight>;
 
 	struct Camera
 	{
-		enum class Type:uint8_t{
+		enum class EType:uint8_t{
 			PERSPECTIVE,
 			ORTHO,
 		};
 
-		Type	type_;
+		EType	type_;
 		//intrisics
 		vec3	pos_{ 0.0f };
 		vec2	center_{ 0.0f };
@@ -265,6 +283,11 @@ namespace MetaInit
 		Material layers_[MAX_MATERIAL_LAYERS];
 	};
 
+	struct Terrain
+	{
+
+	};
+
 	struct Volumetric
 	{
 
@@ -276,6 +299,12 @@ namespace MetaInit
 	};
 
 	struct VolumetricCloud
+	{
+
+	};
+
+	//gui part
+	struct ImGuiWidget
 	{
 
 	};

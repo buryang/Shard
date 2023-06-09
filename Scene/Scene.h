@@ -1,4 +1,5 @@
 #pragma once
+#include "Utils/SimpleEntitySystem.h"
 #include "Scene/Primitive.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -69,6 +70,19 @@ namespace MetaInit
 		tinygltf::Model			gltf_model_;
 		tinygltf::TinyGLTF		gltf_loader_;
 		std::string				gltf_dir_;
+	};
+
+	class MINIT_API SceneLoadSystem
+	{
+
+	};
+
+	//ecs scene interface
+	class MINIT_API Scene : public Utils::ECSAdmin<>
+	{
+	public:
+		virtual void Tick(float dt);
+		virtual ~Scene() = default;
 	};
 
 }

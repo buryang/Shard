@@ -4,3 +4,6 @@
 [submodule "ThirdParty/delegate"]
 	path = ThirdParty/delegate
 	url = https://github.com/endurodave/AsyncMulticastDelegateModern.git
+[submodule "ThirdParty/bullet3"]
+	path = ThirdParty/bullet3
+	url = https://github.com/bulletphysics/bullet3.git
