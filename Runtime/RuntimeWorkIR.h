@@ -3,7 +3,7 @@
 #include "Utils/CommonUtils.h"
 #include "Scene/PrimitiveProxy.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

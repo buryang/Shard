@@ -2,7 +2,7 @@
 #include <optional>
 #include "Utils/CommonUtils.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{

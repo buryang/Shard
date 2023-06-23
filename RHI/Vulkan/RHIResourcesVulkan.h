@@ -4,7 +4,7 @@
 #include "RHI/Vulkan/API/VulkanResources.h"
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 
-namespace MetaInit::RHI::Vulkan
+namespace Shard::RHI::Vulkan
 {
 	class RHITextureVulkan final : public RHITexture
 	{

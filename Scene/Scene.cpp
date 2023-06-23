@@ -5,7 +5,7 @@
 *https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/1bfea2ae1e09a9b2429e1eab5a55a405751dc1d2/base/VulkanglTFModel.cpp
 */
 
-namespace MetaInit
+namespace Shard
 {
 
 	SceneProxyHelper& SceneProxyHelper::SetCamera(uint32_t index)

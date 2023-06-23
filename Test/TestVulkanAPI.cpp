@@ -5,7 +5,7 @@
 #include "absl/types/optional.h"
 #include <vector>
 
-//using namespace MetaInit;
+//using namespace Shard;
 
 TEST(TEST_RHI_MODULE, TEST_VULKAN_INIT)
 {

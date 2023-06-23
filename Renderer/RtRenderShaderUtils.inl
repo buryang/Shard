@@ -3,7 +3,7 @@
 #include "RHI/RHICommandIR.h"
 #include <type_traits>
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 
 	struct PermutaionBool {
 		using Type = bool;

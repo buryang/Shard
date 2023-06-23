@@ -4,7 +4,7 @@
 #include "RHI/VulkanRenderPass.h"
 #include "Scene/Scene.h"
 
-namespace MetaInit
+namespace Shard
 {
 	class MINIT_API VulkanFrameBuffer
 	{

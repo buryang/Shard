@@ -33,12 +33,15 @@
     <ClCompile Include="Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
+    <ClCompile Include="Renderer\RtRenderSystem.cpp" />
+    <ClCompile Include="RHI\RHICommand.cpp" />
     <ClCompile Include="RHI\RHIGlobalEntity.cpp" />
     <ClCompile Include="RHI\RHIResources.cpp" />
     <ClCompile Include="RHI\RHIShaderLibrary.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanStat.cpp" />
     <ClCompile Include="RHI\Vulkan\RHICommandVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIGlobalEntityVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIImGuiLayerVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourceAllocatorVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanCmdContext.cpp" />
     <ClCompile Include="RHI\Vulkan\API\VulkanFrameBuffer.cpp" />
@@ -53,6 +56,7 @@
     <ClCompile Include="RHI\Vulkan\RHIResourceBindingVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIResourcesVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIShaderLibraryVulkan.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIShaderVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHISyncVulkan.cpp" />
     <ClCompile Include="RHI\Vulkan\RHISyncVulkan.h" />
     <ClCompile Include="Runtime\MyToySimpleRenderer.cpp" />
@@ -61,20 +65,16 @@
     <ClCompile Include="Runtime\RuntimeWorkData.cpp" />
     <ClCompile Include="Runtime\RuntimeWorkIR.cpp" />
     <ClCompile Include="Runtime\RuntimeWorkProcessor.cpp" />
-    <ClCompile Include="Scene\Material.cpp" />
-    <ClCompile Include="Scene\Mesh.cpp" />
-    <ClCompile Include="Scene\Light.cpp" />
-    <ClCompile Include="Scene\GeometryProxy.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
-    <ClCompile Include="Scene\SceneComponent.cpp" />
-    <ClCompile Include="Scene\Volumetric.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
     <ClCompile Include="Utils\Memory.cpp" />
     <ClCompile Include="Utils\Reflection.cpp" />
     <ClCompile Include="Utils\ReflectionImageObject.cpp" />
+    <ClCompile Include="Utils\SimpleEntitySystemPrimitive.cpp" />
     <ClCompile Include="Utils\SimpleJobSystem.cpp" />
     <ClCompile Include="Utils\SimpleCoro.inl" />
+    <ClCompile Include="Utils\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\PixelInfo.h" />
@@ -94,9 +94,11 @@
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
+    <ClInclude Include="Renderer\RtRenderSystem.h" />
     <ClInclude Include="RHI\RHIGlobalEntity.h" />
     <ClInclude Include="RHI\RHICommand.h" />
     <ClInclude Include="RHI\RHICommandIR.h" />
+    <ClInclude Include="RHI\RHIImGuiLayer.h" />
     <ClInclude Include="RHI\RHIResourceBinding.h" />
     <ClInclude Include="RHI\RHIResources.h" />
     <ClInclude Include="RHI\RHIShader.h" />
@@ -117,10 +119,12 @@
     <ClInclude Include="RHI\Vulkan\API\VulkanWindowSystem.h" />
     <ClInclude Include="RHI\Vulkan\RHICommandVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIGlobalEntityVulkan.h" />
+    <ClInclude Include="RHI\Vulkan\RHIImGuiLayerVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceAllocatorVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourceBindingVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIResourcesVulkan.h" />
     <ClInclude Include="RHI\Vulkan\RHIShaderLibraryVulkan.h" />
+    <ClInclude Include="RHI\Vulkan\RHIShaderVulkan.h" />
     <ClInclude Include="Runtime\MyToySimpleRenderer.h" />
     <ClInclude Include="Runtime\RuntimeSceneRender.h" />
     <ClInclude Include="Runtime\RuntimeShaderPermunation.h" />
@@ -129,8 +133,6 @@
     <ClInclude Include="Runtime\RuntimeWorkProcessor.h" />
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
-    <ClInclude Include="Scene\GeometrytProxy.h" />
-    <ClInclude Include="Scene\SceneComponent.h" />
     <ClInclude Include="Utils\Algorithm.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
     <ClInclude Include="Utils\DataFileCache.h" />
@@ -141,11 +143,13 @@
     <ClInclude Include="Utils\ReflectionImageObject.h" />
     <ClInclude Include="Utils\SimpleCoro.h" />
     <ClInclude Include="Utils\SimpleEntitySystem.h" />
+    <ClInclude Include="Utils\SimpleEntitySystemPrimitive.h" />
     <ClInclude Include="Utils\SimpleJobSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="Renderer\RtRenderResources.inl" />
+    <None Include="Renderer\RtRenderShaderUtils.inl" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
@@ -156,7 +160,7 @@
     <ProjectGuid>{6f2d2b3f-7a7f-43cc-89bf-c87eacd6de09}</ProjectGuid>
     <RootNamespace>EngineCore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>MetaInit</ProjectName>
+    <ProjectName>Shard</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -1,6 +1,6 @@
 #include "RHI/Vulkan/RHIShaderVulkan.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	static inline VkShaderModuleCreateInfo TransformShaderInitializerToVulkanInfo(const RHIShaderInitializer& initializer) {
 		return MakeShaderModuleCreateInfo({ initializer.bytes_, initializer.byte_count_ });

@@ -1,6 +1,6 @@
 #include "Renderer/RtRenderGraph.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

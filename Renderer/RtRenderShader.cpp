@@ -6,7 +6,7 @@
 #include <zlib.h>
 #include <filesystem>
 
-namespace MetaInit::Renderer
+namespace Shard::Renderer
 {
     //layout define implement here
     IMPLEMENT_TYPE_LAYOUT_DEF(RtRenderShader);

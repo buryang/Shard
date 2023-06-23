@@ -2,7 +2,7 @@
 #include "imgui/imgui.h"
 #include "Utils/CommonUtils.h"
 
-namespace MetaInit::RHI
+namespace Shard::RHI
 {
 	class MINIT_API RHIImGuiLayerWrapper
 	{
@@ -14,7 +14,7 @@ namespace MetaInit::RHI
 		virtual void UnInit() {
 			ImGui::DestroyContext();
 		}
-		virtual void NewFrameGameThread() = 0; //in game thread
+		virtual void NewFrameGameThread() = 0; //in master thread
 		virtual void Render() = 0; //in render thread
 		virtual ~RHIImGuiLayerWrapper() = default;
 	};

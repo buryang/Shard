@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 #include <typeinfo>
 
-namespace MetaInit::RHI::Vulkan
+namespace Shard::RHI::Vulkan
 {
 	static inline VkFormat TransEPixFormatToVulkan(EPixFormat format) {
 		switch (format) {

@@ -1,7 +1,7 @@
 #include "Renderer/RtRenderGraphBuilder.h"
 #include "Utils/DirectedAcyclicGraph.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

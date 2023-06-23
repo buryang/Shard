@@ -21,7 +21,7 @@ REGIST_PARAM_TYPE(UINT, PSO_COMPILE_BACTH_SIZE, 128);
 REGIST_PARAM_TYPE(STRING, SHADER_CACHE_DIR, "/shaders/compiled/");
 REGIST_PARAM_TYPE(STRING, PSO_CACHE_DIR, "/pso.cache");
 
-namespace MetaInit::Renderer
+namespace Shard::Renderer
 {
 	struct ShaderCompileEnv;
 	class MINIT_API RtShaderType

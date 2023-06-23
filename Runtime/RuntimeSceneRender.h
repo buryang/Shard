@@ -2,7 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "Scene/Scene.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

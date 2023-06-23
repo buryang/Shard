@@ -8,7 +8,7 @@ namespace
 	constexpr auto max_subpass_count  = 8;
 }
 
-namespace MetaInit {
+namespace Shard {
 
 	static VkRenderPassCreateInfo MakeRenderPassCreateInfo(VkRenderPassCreateFlags flags, Vector<VkAttachmentDescription>& attach_descs,
 		Vector<VkSubpassDescription>& subpass_descs, Vector<VkSubpassDependency>& subpass_deps)

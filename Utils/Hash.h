@@ -4,7 +4,7 @@
 #include <folly/Hash.h>
 #include <blake3.h>
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 	template<typename Hash, uint32_t hash_size=20*8>
 	class HashSignature {
 	public:

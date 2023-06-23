@@ -2,7 +2,7 @@
 #include "RHI/Vulkan/RHIResourcesVulkan.h"
 #include "RHI/Vulkan/RHIResourceBindingVulkan.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	static inline EBindLessTag ConvertBufferDescToBindTag(const RHIBufferInitializer& buffer_desc) {
 		if (Utils::LogicAndFlags(buffer_desc.access_, Renderer::EAccessFlags::eReadOnly) == buffer_desc.access_) {

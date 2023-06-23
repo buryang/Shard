@@ -5,7 +5,7 @@
 #include "RHI/Vulkan/API/VulkanFrameBuffer.h"
 #include <unordered_map>
 
-namespace MetaInit
+namespace Shard
 {
 	class VulkanCmdBuffer;
 	class VulkanDescriptorSet;

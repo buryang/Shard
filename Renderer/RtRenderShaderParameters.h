@@ -3,7 +3,7 @@
 #include "Utils/Reflection.h"
 #include "Renderer/RtRenderShaderUtils.inl"
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 
 	struct ShaderParametersReflection
 	{

@@ -2,7 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "folly/DiscriminatedPtr.h"
 
-namespace MetaInit
+namespace Shard
 {
 
 	enum class EInputTopoType :uint8_t
@@ -179,6 +179,12 @@ namespace MetaInit
 		mat4	affine_{ 1.0f };
 	};
 	
+	/*entity sprite for render*/
+	struct Sprite
+	{
+
+	};
+
 	/*
 	struct Volume
 	{
@@ -306,7 +312,7 @@ namespace MetaInit
 	//gui part
 	struct ImGuiWidget
 	{
-
+		//dummy struct 
 	};
 
 }

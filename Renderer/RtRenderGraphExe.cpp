@@ -2,7 +2,7 @@
 #include "Renderer/RtRenderGraphExe.h"
 #include "RHI/RHI.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

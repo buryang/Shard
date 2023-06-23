@@ -1,7 +1,7 @@
 #include <algorithm>
 #include "DirectedAcyclicGraph.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{

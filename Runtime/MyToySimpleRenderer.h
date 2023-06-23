@@ -4,7 +4,7 @@
 #include "Utils/CommonUtils.h"
 #include "Renderer/RtRenderGraphBuilder.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

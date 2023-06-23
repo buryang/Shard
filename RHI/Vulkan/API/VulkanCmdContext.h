@@ -5,7 +5,7 @@
 #include "RHI/Vulkan/RHISyncVulkan.h"
 #include <mutex>
 
-namespace MetaInit
+namespace Shard
 {
 	VkCommandBufferAllocateInfo MakeCommandBufferAllocateInfo(VkCommandPool pool, VkCommandBufferLevel level, uint32_t buffer_count);
 	VkCommandBufferBeginInfo MakeCommandBufferBeginInfo(VkCommandBufferUsageFlags flags);

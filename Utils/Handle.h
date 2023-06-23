@@ -1,6 +1,6 @@
 #pragma once
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{

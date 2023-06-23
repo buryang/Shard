@@ -3,7 +3,7 @@
 #include "Utils/Hash.h"
 #include <fstream>
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 
 	class MINIT_API FileArchive {
 	public:

@@ -7,8 +7,15 @@
 #define TINYGLTF_USE_CPP14
 #include "tiny_gltf.h"
 
-namespace MetaInit
+namespace Shard
 {
+
+	template <typename Primitive>
+	struct PrimitiveComponent : public ECSCompoenent
+	{
+		using Type = Primitive;
+		Type	value_;
+	};
 
 	class MINIT_API SceneProxyHelper
 	{
@@ -49,14 +56,14 @@ namespace MetaInit
 	class MINIT_API ISceneParser
 	{
 	public:
-		virtual void Import(const std::string& file, SceneProxyHelper& helper) = 0;
-		virtual ~ISceneParser() {};
+		virtual void Import(const String& file, SceneProxyHelper& helper) = 0;
+		virtual ~ISceneParser() = default;
 	};
 
 	class MINIT_API SceneGltfParser:public ISceneParser
 	{
 	public:
-		void Import(const std::string& gltf_file, SceneProxyHelper& helper) override;
+		void Import(const String& gltf_file, SceneProxyHelper& helper) override;
 	private:
 		struct NodeCache {
 			mat4 affine_ = mat4{1.0f};
@@ -72,7 +79,7 @@ namespace MetaInit
 		std::string				gltf_dir_;
 	};
 
-	class MINIT_API SceneLoadSystem
+	class MINIT_API SceneLoadSystem : public 
 	{
 
 	};

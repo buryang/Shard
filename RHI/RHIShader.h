@@ -2,7 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "Utils/Hash.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
 	struct RHIShaderInitializer
 	{

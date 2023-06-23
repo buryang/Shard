@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 #include "RHI/Vulkan/RHIShaderVulkan.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 	namespace Vulkan {
 		class RHICommandContextVulkan final : public RHICommandContext
 		{

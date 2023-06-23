@@ -1,7 +1,7 @@
 #include "SimpleCoro.h"
 //https://github.com/hlavacs/ViennaGameJobSystem/blob/master/include/VGJSCoro.h
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{
@@ -24,50 +24,6 @@ namespace MetaInit
 		private:
 			std::atomic<bool>& atomic_{ false };
 		};
-
-		template<typename T>
-		RingBuffer<T>::RingBuffer(const uint32_t capacity) :capacity_(capacity)
-		{
-			LockGuard(lock_);
-			data_repo_.resize(capacity);
-		}
-
-		template<typename T>
-		std::optional<T> RingBuffer<T>::PopFront()
-		{
-			do
-			{
-				LockGuard(lock_);
-				if (head_ != tail_)
-				{
-					head_ = (head_ + 1) % capacity_;
-					return data_repo_.front();
-				}
-			} while (0);
-			return std::nullopt;
-		}
-
-		template<typename T>
-		RingBuffer<T>& RingBuffer<T>::PushBack(T& data)
-		{
-			do
-			{
-				LockGuard(lock_);
-				auto cursor = (tail_ + 1) % capacity_;
-				if (cursor != head_)
-				{
-					std::swap(data_repo_[cursor], data);
-					tail_ = cursor;
-				}
-			} while (0);
-			return *this;
-		}
-
-		template<typename T>
-		inline uint32_t RingBuffer<T>::Capacity() const
-		{
-			return capacity_;
-		}
 
 		template<typename RetVal>
 		inline bool Coro<RetVal>::ready()

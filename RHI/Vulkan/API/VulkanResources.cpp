@@ -4,7 +4,7 @@
 #include "RHI/Vulkan/API/VulkanDescriptor.h"
 #include "Scene/Primitive.h"
 
-namespace MetaInit
+namespace Shard
 {
 	VkImageCreateInfo MakeImageCreateInfo(VkImageCreateFlags flags, VkFormat format)
 	{

@@ -4,7 +4,7 @@
 
 #ifdef RENDER_GRAPH_DEBUG
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

@@ -6,7 +6,7 @@
 
 //https://github.com/ocornut/imgui/blob/master/examples/example_glfw_vulkan/main.cpp
 
-namespace MetaInit::RHI::Vulkan
+namespace Shard::RHI::Vulkan
 {
 	void RHIImGuiLayerWrapperVulkan::Init()
 	{

@@ -1,7 +1,7 @@
 #pragma once
 #include "eastl/tuple.h"
 
-namespace MetaInit {
+namespace Shard {
 
     template <typename X, typename Y>
     struct StructExtends

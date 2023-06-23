@@ -1,6 +1,6 @@
 #include "VulkanRayTraceKHR.h"
 
-namespace MetaInit
+namespace Shard
 {
 
 	/*return bind table information*/

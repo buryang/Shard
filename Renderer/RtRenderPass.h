@@ -5,7 +5,7 @@
 #include "Renderer/RtRenderGraph.h"
 #include "Renderer/RtRenderResources.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils {
 		class Allocator;

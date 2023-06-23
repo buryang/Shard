@@ -2,7 +2,7 @@
 #include "RHI/VulkanRHI.h"
 #include "RHI/VulkanFrameBuffer.h"
 
-namespace MetaInit
+namespace Shard
 {
 	VkRenderPassBeginInfo MakeRenderPassBeginInfo(VkRenderPass render_pass, VkFramebuffer frame_buffer, VkRect2D render_area, Span<VkClearValue> clear_values);
 

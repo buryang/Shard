@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 
 
-namespace MetaInit
+namespace Shard
 {
 
 	VkPipelineCacheCreateInfo MakePipelineCacheCreateInfo(const Span<uint8_t>& initial_data)

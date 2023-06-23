@@ -3,7 +3,7 @@
 #include "Renderer/RtRenderBarrier.h"
 #include "RHI/RHICommand.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
 	struct RHIEventInitializer
 	{

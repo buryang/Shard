@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanRenderShader.h"
 #include "RHI/Vulkan/API/VulkanRenderPipeline.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 	
 	//think about whether inherit from both top rhi level and bottom level good 
 	class RHIComputeShaderVulkan : public RHIComputeShader, public VulkanShaderModule {

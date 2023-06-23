@@ -5,7 +5,7 @@
 #include "volk/volk.h"
 #include "glfw/glfw3.h"
 
-namespace MetaInit
+namespace Shard
 {
 	extern VkAllocationCallbacks* g_host_alloc;
 	static constexpr uint32_t MAX_QUEUE_COUNT = 16;

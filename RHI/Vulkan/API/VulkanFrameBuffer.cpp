@@ -1,6 +1,6 @@
 #include "RHI/VulkanFrameBuffer.h"
 
-namespace MetaInit {
+namespace Shard {
 
 	using namespace Primitive;
 	static inline VkFramebufferCreateInfo MakeFramebufferCreateInfo(VkRenderPass pass, uint32_t width, uint32_t height, uint32_t layers,

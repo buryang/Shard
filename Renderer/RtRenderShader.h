@@ -12,7 +12,7 @@
 #include "eastl/shared_ptr.h"
 #include <atomic>
 
-namespace MetaInit::Renderer
+namespace Shard::Renderer
 {
 	struct RtRendererShaderParamBindings
 	{

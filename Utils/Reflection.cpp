@@ -1,6 +1,6 @@
 #include "Utils/Reflection.h"
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 
 	static Map<Blake3Hash64, TypeLayoutDesc> g_type_layout_map;
 

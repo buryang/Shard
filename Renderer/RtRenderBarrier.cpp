@@ -1,6 +1,6 @@
 #include "Renderer/RtRenderBarrier.h"
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 
 	void RtBarrierBatch::Submit(RHI::RHICommandContext& context)
 	{

@@ -2,7 +2,7 @@
 
 #include "Utils/CommonUtils.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

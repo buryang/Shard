@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

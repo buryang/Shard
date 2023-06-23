@@ -1,5 +1,5 @@
 #include "RHI/RHIResources.h"
 
-namespace MetaInit::RHI
+namespace Shard::RHI
 {
 }

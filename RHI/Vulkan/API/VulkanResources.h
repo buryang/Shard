@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 #include "RHI/RHIResources.h"
 
-namespace MetaInit
+namespace Shard
 {
 	/*resource state*/
 	enum class EResourceState : uint32_t

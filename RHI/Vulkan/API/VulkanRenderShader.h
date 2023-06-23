@@ -2,7 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
 
-namespace MetaInit
+namespace Shard
 {
 	class VulkanShaderModule;
 	VkShaderModuleCreateInfo MakeShaderModuleCreateInfo(const Span<char>& code);

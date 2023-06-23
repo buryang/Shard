@@ -2,7 +2,7 @@
 #include "Utils/Reflection.h"
 #include "eastl/sort.h"
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 
 	static inline void ApplyVTblValue(void* frozen_obj, const TypeLayoutDesc& derived_desc, uint32_t vtbl_offset, uint32_t offset) {
 		//all instance of a class vtbl pointer to a constant address

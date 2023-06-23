@@ -1,6 +1,6 @@
 #include "RHI/Vulkan/RHICommandVulkan.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 	using CommandType = RHICommandPacketInterface::ECommandType;
 
 	RHICommandContextVulkan::RHICommandContextVulkan():RHICommandContext(EFlags::eGraphics)

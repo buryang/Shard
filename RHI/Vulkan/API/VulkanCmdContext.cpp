@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanRayTraceKHR.h"
 #include "RHI/Vulkan/API/VulkanResources.h"
 
-namespace MetaInit
+namespace Shard
 {
 	/*copy from falcor*/
 	static inline VkPipelineStageFlags ResourceStateToStageFlags(EResourceState state, bool is_src)

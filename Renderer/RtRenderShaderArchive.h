@@ -8,7 +8,7 @@
 #include "Renderer/RtRenderShader.h"
 #include <shared_mutex>
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 	using Utils::FileArchive;
 	struct PipelineStateObjectDesc {
 		using HashVal = RtRenderShader::HashType;

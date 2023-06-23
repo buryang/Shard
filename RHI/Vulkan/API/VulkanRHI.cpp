@@ -8,7 +8,7 @@
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
 #define ADD_LAYER_IF(CONDITION, LAYER_NAME) if(CONDITION) { layers.emplace_back(LAYER_NAME); }
 
-namespace MetaInit
+namespace Shard
 {
 	/*for:"this feature is not used, the implementation will 
 	  perform its own memory allocations. Since most memory 
@@ -219,7 +219,7 @@ namespace MetaInit
 		VkApplicationInfo app_info;
 		memset(&app_info, 0, sizeof(app_info));
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		app_info.pEngineName = "MetaInit";
+		app_info.pEngineName = "Shard";
 		app_info.engineVersion = 1;
 		app_info.apiVersion = 0;
 

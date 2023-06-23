@@ -5,7 +5,7 @@
 #include "RHI/RHIShaderLibrary.h"
 #include "RHI/RHIGlobalEntity.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 	template <uint32_t backend>
 	struct RHITypeConcreteTraits
 	{

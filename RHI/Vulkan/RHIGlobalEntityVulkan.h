@@ -6,7 +6,7 @@
 #include "RHI/Vulkan/API/VulkanRHI.h"
 
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 	namespace Vulkan
 	{
 		class RHIGlobalEntityVulkan : public RHIGlobalEntity

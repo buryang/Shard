@@ -4,7 +4,7 @@
 #include "RHI/RHIGlobalEntity.h"
 #include "RHI/RHICommandIR.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace RHI
 	{

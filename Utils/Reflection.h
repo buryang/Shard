@@ -6,7 +6,7 @@
 #include <cstddef>
 
 //more information from https://shaharmike.com/cpp/vtable-part3/
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 	enum ELayoutFlags {
 		eNone = 0x0,
 		eInitialized = 0x1,
@@ -281,7 +281,7 @@ namespace MetaInit::Utils {
 	};
 }
 
-using namespace MetaInit::Utils;
+using namespace Shard::Utils;
 //***macros that layout regist needed***
 #define	STATIC_DESC_DECLARE()\
 static TypeLayoutDesc g_static_desc; \
@@ -385,7 +385,7 @@ public:\
 	PREFIX TYPE NAME{VALUE}; \
 	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
 
-#define LATIYT_VECTOR_FIELD(PREFIX, TYPE, NAME)\
+#define LAYOUT_VECTOR_FIELD(PREFIX, TYPE, NAME)\
 	PREFIX Vector<TYPE>	NAME; \
 	INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
 
@@ -400,7 +400,7 @@ public:\
 
 #if 0
 //macro usage example
-namespace MetaInit {
+namespace Shard {
 	class Usage {
 		BEGIN_DECLARE_TYPE_LAYOUT_DEF(Usage);
 		LAYOUT_FIELD(, uint32_t, dummy_);

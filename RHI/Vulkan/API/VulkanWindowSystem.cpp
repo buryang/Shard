@@ -1,7 +1,7 @@
 #include "RHI/VulkanWindowSystem.h"
 #include "RHI/VulkanRHI.h"
 
-namespace MetaInit
+namespace Shard
 {
 	static constexpr uint32_t g_swap_chain_image_count = 2;
 	VkSwapchainCreateInfoKHR MakeSwapChainCreateInfo(VkSwapchainCreateFlagsKHR flags,

@@ -7,7 +7,7 @@
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
 #define ADD_LAYER_IF(CONDITION, LAYER_NAME) if (CONDITION) { layers.emplace_back(LAYER_NAME); }
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 	
 	REGIST_GLOBAL_ENTITY(RHIGlobalEntityVulkan, ERHIBackEnd::eVulkan, RHIGlobalEntityVulkan::Instance);
 

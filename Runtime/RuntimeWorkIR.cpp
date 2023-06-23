@@ -1,6 +1,6 @@
 #include "RuntimeWorkIR.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

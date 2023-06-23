@@ -1,7 +1,7 @@
 #include "RtRenderResources.h"
 #pragma once
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

@@ -2,7 +2,7 @@
 #include "RHI/Vulkan/API/VulkanDescriptor.h"
 #include "RHI/RHIResourceBinding.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	struct VulkanImmutableSamplers
 	{

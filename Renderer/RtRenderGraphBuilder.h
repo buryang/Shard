@@ -2,15 +2,15 @@
 
 #include "Renderer/RtRenderPass.h"
 #include "Renderer/RtRenderGraphExe.h"
-#include "RHI/RHI.h"
+#include "RHI/RHIGlobalEntity.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{
 		class RtRendererGraph;
 		class MINIT_API RtRenderGraphBuilder
-		{
+		{ 
 		public:
 			struct BuildConfig
 			{

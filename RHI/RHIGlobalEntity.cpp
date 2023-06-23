@@ -1,6 +1,6 @@
 #include "RHI/RHIGlobalEntity.h"
 
-namespace MetaInit::RHI
+namespace Shard::RHI
 {
 	RHIGlobalEntity::Ptr RHIGlobalEntity::Instance()
 	{

@@ -27,7 +27,7 @@
     <ClCompile Include="Test\TestGltfReader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Test\TestMetaInitRender.cpp">
+    <ClCompile Include="Test\TestShardRender.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Test\TestRenderGraph.cpp">

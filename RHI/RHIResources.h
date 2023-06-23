@@ -5,7 +5,7 @@
 #include "Renderer/RtRenderResources.h"
 #include "RHI/RHIGlobalEntity.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace RHI
 	{

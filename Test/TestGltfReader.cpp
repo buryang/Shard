@@ -30,8 +30,8 @@ TEST(TEST_Scene_MODULE, TEST_GLTF_READER)
 
 TEST(TEST_Scene_MODULE, TEST_Scene_API)
 {
-	using namespace MetaInit;
-	using Mesh = MetaInit::Mesh;
+	using namespace Shard;
+	using Mesh = Shard::Mesh;
 
 	SceneGltfParser parser;
 	SceneProxyHelper proxy;

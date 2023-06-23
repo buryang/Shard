@@ -1,7 +1,7 @@
 #pragma once
 #include "RHI/RHIImGuiLayer.h"
 
-namespace MetaInit::RHI::Vulkan
+namespace Shard::RHI::Vulkan
 {
 	class RHIImGuiLayerWrapperVulkan : public RHIImGuiLayerWrapper
 	{

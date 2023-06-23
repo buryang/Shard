@@ -9,7 +9,7 @@
 using Path = std::filesystem::path;
 namespace fs = std::filesystem;
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 
 	REGIST_PARAM_TYPE(UINT, RENDER_COMPILE_WORKERS, 128);
 	REGIST_PARAM_TYPE(STRING, RENDER_SHADER_DIR, "/shaders");
@@ -471,7 +471,7 @@ namespace MetaInit::Renderer {
 		}
 	}
 
-	RtRenderShaderPipeline::SharedPtr MetaInit::Renderer::RtPipelineCompiledRepo::GetPipeline(const PipelineStateObjectDesc& desc)
+	RtRenderShaderPipeline::SharedPtr Shard::Renderer::RtPipelineCompiledRepo::GetPipeline(const PipelineStateObjectDesc& desc)
 	{
 		RtRenderShaderPipeline::SharedPtr  pso(new RtRenderShaderPipeline(desc));
 		return pso;

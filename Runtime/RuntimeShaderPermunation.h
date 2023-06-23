@@ -2,7 +2,7 @@
 #include "Utils/CommonUtils.h"
 //shader compile permunation logic
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

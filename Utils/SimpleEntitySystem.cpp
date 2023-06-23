@@ -1,22 +1,25 @@
 #include "Utils/SimpleEntitySystem.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{
+		const Entity Entity::Null{ 0xFFFFF, 0u };
+
 		Entity EntityManager::Generate()
 		{
-			if (free_indices_.size() > MIN_FREE_INDICES)
+			if (free_indices_.size() > 0u)
 			{
 				auto index = free_indices_.front();
-				free_indices_.();
-				return {};
+				free_indices_.pop();
+				++generation_[index];
+				return {index, generation_[index]};
 			}
 			else
 			{
 				auto index = generation_.size();
-				generation_.push_back(0);
-				return { index, 0 };
+				generation_.push_back(0u);
+				return { index, 0u };
 			}
 		}
 
@@ -29,7 +32,18 @@ namespace MetaInit
 		
 		bool EntityManager::IsAlive(const Entity& entity) const
 		{
-			return entity.Generation() == generation_[entity.Index()];
+			if (entity.Index() < generation_.size()) {
+				return entity.Generation() == generation_[entity.Index()];
+			}
+			return false;
+		}
+
+		EntityManager::VersionType EntityManager::Version(const Entity& entity) const
+		{
+			if (entity.Index() < generation_.size()) {
+				return generation_[entity.Index()];
+			}
+			return VersionType(std::numeric_limits<VersionType>::max);
 		}
 
 		ComponentInterface::Instance ComponentInterface::Insert(Entity entity)
@@ -38,7 +52,7 @@ namespace MetaInit
 			if (iter != id_map_.end())
 			{
 				auto index = id_map_.size();
-				id_map_.insert(std::make_pair(entity, index));
+				id_map_.insert(eastl::make_pair(entity, index));
 			}
 			return { iter->second };
 		}

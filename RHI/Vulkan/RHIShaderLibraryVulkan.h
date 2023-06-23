@@ -2,7 +2,7 @@
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 #include <mutex>
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	using RHIShaderLibraryVulkan = RHIPseudoShaderLibrary<RHIGlobalEntityVulkan>;
 

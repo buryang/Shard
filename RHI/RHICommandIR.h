@@ -5,7 +5,7 @@
 #include "RHI/RHIResources.h"
 #include "RHI/RHIShader.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
 	struct RHICommandPacketInterface
 	{

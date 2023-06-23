@@ -2,7 +2,7 @@
 #include "Utils/FileArchive.h"
 
 //mainly copy from unreal engine
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 
 	struct VTblPointer {
 		Blake3Hash64 hash_name_; //hash for parent class

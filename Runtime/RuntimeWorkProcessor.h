@@ -1,7 +1,7 @@
 #pragma once
 #include "Runtime/RuntimeWorkIR.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

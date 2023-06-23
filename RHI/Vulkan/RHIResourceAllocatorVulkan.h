@@ -5,7 +5,7 @@
 #include "RHI/Vulkan/API/VulkanRHI.h"
 #include <vulkan/vulkan_core.h>
 
-namespace MetaInit::RHI::Vulkan
+namespace Shard::RHI::Vulkan
 {
 	enum
 	{

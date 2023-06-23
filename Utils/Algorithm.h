@@ -1,45 +1,28 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 
-namespace MetaInit
+//https://www.lenshood.dev/2021/04/19/lock-free-ring-buffer/#ring-buffer
+namespace Shard
 {
 	namespace Utils
 	{
-		class RingBuffer
+		template <class T, class StorageClass>
+		class TRingBuffer : public RingBuffer
 		{
 		public:
 			using Handle = size_t;
-			struct Allocation
-			{
-				Handle	offset_{ 0 };
-				size_t	size_{ 0 };
-			};
-			RingBuffer(size_t capacity) :capacity_(capacity) {}
-			Allocation Alloc(size_t size);
-			bool Free(Allocation alloc);
-			virtual ~RingBuffer() {}
+			using ElementType = T;
+			TRingBuffer(size_t capacity);
+			virtual bool Poll(ElementType& el);
+			virtual bool Offer(const ElementType& el);
+			size_t	GetCapacity()const {
+				return capacity_;
+			}
+			virtual ~TRingBuffer() {}
 		private:
-			Handle head_{ 0 };
-			Handle tail_{ 0 };
-			SmallVector<Allocation> delete_alloc_;
-			const size_t capacity_;
-		};
-
-		class LinearBuffer
-		{
-		public:
-			using Handle = size_t;
-			struct Allocation
-			{
-				Handle offset_{ 0 };
-				size_t size_{ 0 };
-			};
-			LinearBuffer(size_t capacity) :capacity_(capacity) {}
-			Allocation Alloc(size_t size);
-			void Reset() { head_ = 0; }
-			virtual ~LinearBuffer() {}
-		private:
-			Handle head_{ 0 };
+			StorageClass	storage_;
+			std::atomic<Handle> head_{ 0u };
+			std::atomic<Handle> tail_{ 0u };
 			const size_t capacity_;
 		};
 	}

@@ -1,6 +1,6 @@
 #include "RHI/RHIShaderLibrary.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 	
 	RHIBlendStateInitializer::HashType RHIBlendStateInitializer::ComputeHash(const RHIBlendStateInitializer& initializer)
 	{

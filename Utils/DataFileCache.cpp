@@ -1,6 +1,6 @@
 #include "Utils/DataFileCache.h"
 
-namespace MetaInit::Utils
+namespace Shard::Utils
 {
 
 	void DataFileCacheManager::AddCacheEntry(CachePtr entry)

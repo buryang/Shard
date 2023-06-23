@@ -9,7 +9,7 @@
 namespace fs = std::filesystem;
 using Path = std::filesystem::path;
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	REGIST_PARAM_TYPE(STRING, VULKAN_PSO_CACHE_PATH, ""); //todo
 

@@ -2,7 +2,7 @@
 #include "Utils/SimpleJobSystem.h"
 
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Utils
 	{

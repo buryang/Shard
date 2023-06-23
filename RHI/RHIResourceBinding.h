@@ -6,7 +6,7 @@
 #include "RHI/RHIGlobalEntity.h"
 
 //main idea copy from https://blog.traverseresearch.nl/bindless-rendering-setup-afeb678d77fc
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
 	REGIST_PARAM_TYPE(BOOL, RHI_RESOURCE_BINDLESS, true);
 

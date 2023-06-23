@@ -6,7 +6,7 @@
 #include "Renderer/RtRenderResourceDefinitions.h"
 #include "Renderer/RtRenderPass.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

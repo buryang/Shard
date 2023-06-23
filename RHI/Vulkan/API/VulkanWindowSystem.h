@@ -3,7 +3,7 @@
 #include "GLFW/glfw3.h"
 #include <atomic>
 
-namespace MetaInit
+namespace Shard
 {
 	VkSwapchainCreateInfoKHR MakeSwapChainCreateInfo(VkSwapchainCreateFlagsKHR flags, 
 													VkSurfaceKHR surface,

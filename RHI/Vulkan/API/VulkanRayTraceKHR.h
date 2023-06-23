@@ -1,7 +1,7 @@
 #pragma once
 #include "RHI/VulkanRHI.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Internal {
 		class VulkanVMAMemAllocator;

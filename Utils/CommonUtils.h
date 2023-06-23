@@ -33,7 +33,6 @@
 #include "eastl/shared_ptr.h"
 #include "eastl/internal/thread_support.h"
 #include "folly/format.h"
-#include "folly/poly.h"
 #include "fmt/format.h"
 #include <memory>
 #include <algorithm>
@@ -66,7 +65,7 @@ class_name##& operator=(class_name##&&)=delete;
   __VA_OPT__(FOR_EACH_AGAIN PARENS (MACRO, __VA_ARGS__))
 #define FOR_EACH_AGAIN() FOR_EACH_HELPER
 
-namespace MetaInit {
+namespace Shard {
 
 	using vec2 = glm::vec2;
 	using vec3 = glm::vec3;
@@ -86,6 +85,8 @@ namespace MetaInit {
 	using bvec2 = glm::bvec2;
 	using bvec3 = glm::bvec3;
 	using bvec4 = glm::bvec4;
+
+	using size_type = std::size_t;
 
 	template<typename T>
 	using Vector = eastl::vector<T>;
@@ -138,7 +139,7 @@ namespace MetaInit {
 	using TickAble = folly::Poly<TickAbleInterface>;
 }
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 
 	template <typename Enum>
 	constexpr bool HasAnyFlags(Enum flags, Enum to_check) {

@@ -1,6 +1,6 @@
 #include "Core/RenderGlobalParams.h"
 
-namespace MetaInit {
+namespace Shard {
 
 	template<typename T>
 	FORCE_INLINE bool SetMapVal(Map<String, T>& map, const String& key, T val) {
@@ -54,5 +54,13 @@ namespace MetaInit {
 	GlobalRenderConfig::FLOAT GlobalRenderConfig::GetFLOATVal(const String& key)
 	{
 		return GetMapVal(GlobalRenderConfig::float_params_, key);
+	}
+	bool GlobalRenderConfig::SetSTRINGVal(const String& key, const STRING& val)
+	{
+		return SetMapVal(GlobalRenderConfig::str_params_, key, val);
+	}
+	const GlobalRenderConfig::STRING& GlobalRenderConfig::GetSTRINGVal(const String& key)
+	{
+		return GetMapVal(GlobalRenderConfig::str_params_, key);
 	}
 }

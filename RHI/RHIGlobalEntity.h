@@ -6,7 +6,7 @@
 #include "RHI/RHIResourceBinding.h"
 #include "RHI/RHIShaderLibrary.h"
 
-namespace MetaInit::RHI
+namespace Shard::RHI
 {
 	enum class ERHIBackEnd : uint8_t
 	{

@@ -1,6 +1,6 @@
 #include "RHISyncVulkan.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 	RHIEventVulkan::RHIEventVulkan(const RHIEventInitializer& initializer):RHIEvent(initializer)
 	{
 		VkEventCreateInfo create_info{

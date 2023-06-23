@@ -4,7 +4,7 @@
 #include <fstream>
 #include <filesystem>
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 #ifdef _WIN32
 	class UniqueIncludeMetaHandler : public IDxcIncludeHandler
 	{

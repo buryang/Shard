@@ -1,6 +1,6 @@
 #include "Renderer/RtRenderShaderArchive.h"
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 	void RtRenderShaderArchive::Serialize(FileArchive& ar, bool use_compress)
 	{
 		ar << ir_;

@@ -5,9 +5,9 @@
 #include "Renderer/RtRenderShaderArchive.h"
 #include "RHI/RHIShader.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
-	using MetaInit::Renderer::EShaderModel;
+	using Shard::Renderer::EShaderModel;
 	class RHIShaderLibraryInterface
 	{
 	public:

@@ -1,6 +1,6 @@
 #include "Utils/FileArchive.h"
 
-namespace MetaInit::Utils {
+namespace Shard::Utils {
 	
 	FileArchive::FileArchive(const String& file_path, EArchiveMode mode) {
 		Open(file_path, mode);

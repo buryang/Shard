@@ -2,7 +2,7 @@
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 #include "RHI/Vulkan/API/VulkanRenderPass.h"
 
-namespace MetaInit
+namespace Shard
 {
 	VkDescriptorSetAllocateInfo MakeDescriptorSetAllocateInfo(VkDescriptorPool pool, const Span<VkDescriptorSetLayout>& layout)
 	{

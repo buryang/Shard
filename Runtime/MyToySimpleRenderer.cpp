@@ -4,7 +4,7 @@
 #include "MyToySimpleRenderer.h"
 
 #define 
-namespace MetaInit
+namespace Shard
 {
 	namespace Runtime
 	{

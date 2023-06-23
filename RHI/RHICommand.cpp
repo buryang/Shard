@@ -1,6 +1,6 @@
 #include "RHI/RHICommand.h"
 
-namespace MetaInit::RHI {
+namespace Shard::RHI {
 
 	void RHIVirtualCommandContext::Enqueue(const RHICommandPacketInterface::Ptr cmd)
 	{

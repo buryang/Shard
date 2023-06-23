@@ -3,7 +3,7 @@
 #include "RHI/RHICommand.h"
 #include "Renderer/RtRenderResources.h"
 
-namespace MetaInit
+namespace Shard
 {
 	namespace Renderer
 	{

@@ -36,15 +36,6 @@
     <ClCompile Include="Utils\CommonUtils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\Light.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene\Material.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene\Mesh.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer\RtRenderPass.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
@@ -87,15 +78,6 @@
     <ClCompile Include="Effect\EffectRayTracingCore.cpp">
       <Filter>Effect</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\Volumetric.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene\GeometryProxy.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene\SceneComponent.cpp">
-      <Filter>Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\SimpleJobSystem.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -133,6 +115,12 @@
     <ClCompile Include="Renderer\RtRenderShaderParameters.cpp" />
     <ClCompile Include="RHI\Vulkan\RHIShaderLibraryVulkan.cpp" />
     <ClCompile Include="RHI\RHIShaderLibrary.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIShaderVulkan.cpp" />
+    <ClCompile Include="RHI\RHICommand.cpp" />
+    <ClCompile Include="Utils\Timer.cpp" />
+    <ClCompile Include="RHI\Vulkan\RHIImGuiLayerVulkan.cpp" />
+    <ClCompile Include="Renderer\RtRenderSystem.cpp" />
+    <ClCompile Include="Utils\SimpleEntitySystemPrimitive.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -198,12 +186,6 @@
     <ClInclude Include="Effect\EffectRayTracing.h">
       <Filter>Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\GeometrytProxy.h">
-      <Filter>Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene\SceneComponent.h">
-      <Filter>Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\SimpleJobSystem.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -258,6 +240,11 @@
     <ClInclude Include="Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="RHI\Vulkan\RHIShaderLibraryVulkan.h" />
     <ClInclude Include="RHI\RHITypeTraits.h" />
+    <ClInclude Include="RHI\Vulkan\RHIShaderVulkan.h" />
+    <ClInclude Include="RHI\RHIImGuiLayer.h" />
+    <ClInclude Include="RHI\Vulkan\RHIImGuiLayerVulkan.h" />
+    <ClInclude Include="Renderer\RtRenderSystem.h" />
+    <ClInclude Include="Utils\SimpleEntitySystemPrimitive.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Renderer\RtRenderResources.inl">
@@ -273,5 +260,6 @@
       <Filter>Utils</Filter>
     </None>
     <None Include="cpp.hint" />
+    <None Include="Renderer\RtRenderShaderUtils.inl" />
   </ItemGroup>
 </Project>

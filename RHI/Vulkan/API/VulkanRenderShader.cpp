@@ -1,7 +1,7 @@
 #include "RHI/Vulkan/API/VulkanRenderShader.h"
 #include <fstream>
 
-namespace MetaInit {
+namespace Shard {
 
 	VkShaderModuleCreateInfo MakeShaderModuleCreateInfo(const Span<char>& code)
 	{

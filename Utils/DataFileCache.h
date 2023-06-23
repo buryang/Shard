@@ -4,7 +4,7 @@
 #include "Utils/Reflection.h"
 #include "eastl/shared_ptr.h"
 
-namespace MetaInit::Utils
+namespace Shard::Utils
 {
 	struct CacheEntity
 	{

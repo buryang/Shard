@@ -2,7 +2,7 @@
 #include "Renderer/RtRenderShaderParameters.h"
 #include "spirv_reflect.h"
 
-namespace MetaInit::Renderer {
+namespace Shard::Renderer {
 
 	void GetSPIRVShaderParameterInfosReflection(const Span<uint8_t>& spriv_code, RtShaderParameterInfosMap& map) 
 	{

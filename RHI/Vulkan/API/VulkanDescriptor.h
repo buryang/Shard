@@ -3,7 +3,7 @@
 #include "RHI/Vulkan/API/VulkanResources.h"
 
 //https://stackoverflow.com/questions/48867995/how-to-correctly-use-decriptor-sets-for-multiple-interleaving-buffers
-namespace MetaInit
+namespace Shard
 {
 	struct VulkanPoolCreateDesc
 	{

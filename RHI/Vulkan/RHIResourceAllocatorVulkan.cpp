@@ -2,7 +2,7 @@
 #include "RHI/Vulkan/RHIResourceAllocatorVulkan.h"
 #include <iomanip>
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 	//whether use dedicate memory allocation
 	REGIST_PARAM_TYPE(BOOL, VULKAN_DEDICATED_ALLOC, true);
 

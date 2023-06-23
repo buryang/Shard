@@ -1,7 +1,7 @@
 #include "RHI/RHISync.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
 
-namespace MetaInit::RHI::Vulkan {
+namespace Shard::RHI::Vulkan {
 
 	enum class EPipeline {
 		eGFX,
