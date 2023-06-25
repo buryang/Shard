@@ -1,55 +1,107 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "folly/memory/arena.h"
-#include <>
 
 namespace Shard
 {
 	namespace Utils
 	{
-		class MINIT_API LinearAllocator
+		template<class T>
+		class LinearAllocator
 		{
 		public:
-			LinearAllocator() = default;
-			[[nodiscard]] void* Alloc(std::size_t size);
-			template <typename T, typename... Args>
+			//field for allocator_traits
+			using value_type = T;
+			using allocate = Alloc;
+			using deallocate = DeAlloc;
+		public:
+			LinearAllocator(size_type capacity) :capacity_(capacity) {
+				memory_ = ::operator new(capacity_);
+			}
+			[[nodiscard]] T* Alloc(size_type n = 1u) {
+				auto ptr = static_cast<T*>(memory_ + offset_);
+				offset_ += n * sizeof(T);
+				if (offset_ >= capacity_) {
+					return nullptr;
+				}
+				return ptr;
+			}
+			template <typename... Args>
 			[[nodiscard]] T* AllocNoDestruct(Args&&... args) {
-				auto ptr = Alloc(sizeof(T));
+				auto ptr = Alloc();
 				return new(ptr)T(std::forward<Args>(args)...);
 			}
-			void DeAlloc(void* ptr, std::size_t size);
-			~LinearAllocator();
-		public: 
-			//field for allocator_traits
-
+			void DeAlloc(T* ptr, size_type n) {
+				LOG(ERROR) << "linearallocator has no dealloc implementation";
+			}
+			~LinearAllocator() {
+				::operator delete(memory_);
+			}
+			friend bool operator==(const LinearAllocator& lhs, const LinearAllocator& rhs) {
+				return lhs.memory_ != rhs.memory_;
+			}
+			friend bool operator!=(const LinearAllocator& lhs, const LinearAllocator& rhs) {
+				return !(lhs == rhs);
+			}
 		private:
+			DISALLOW_COPY_AND_ASSIGN(LinearAllocator);
+		private:
+			size_type	capacity_{ 0u };
+			size_type	offset_{ 0u };
 			void* memory_{ nullptr };
 		};
 
-		//realize allocator from book game-engine-architecture
-		class MINIT_API StackAllocator
+		template<class T>
+		class StackAllocator
 		{
 		public:
-			explicit StackAllocator(size_t stack_size);
-			[[nodiscard]] void* Alloc(std::size_t size);
-			template <typename T, typename... Args>
+			//field for allocator_traits
+			using value_type = T;
+			using allocate = Alloc;
+			using deallocate = DeAlloc;
+		public:
+			[[nodiscard]] T* Alloc(size_type n = 1u) {
+				auto ptr = static_cast<T*>(memory_ + offset_);
+				offset_ += n * sizeof(T);
+				if (offset_ >= capacity_) {
+					return nullptr;
+				}
+				return ptr;
+			}
+			template <typename... Args>
 			[[nodiscard]] T* AllocNoDestruct(Args&&... args) {
-				auto ptr = Alloc(sizeof(T));
+				auto ptr = Alloc();
 				return new(ptr)T(std::forward<Args>(args)...);
 			}
-			void DeAlloc(void* ptr, std::size_t size);
-			~StackAllocator();
-		public:
-			//field for allocator_traits
+			void DeAlloc(T* ptr, size_type n) {
+				std::destroy(ptr, ptr + n);
+				offset_ = std::uintptr_t(memory_) - std::uintptr_t(ptr);
+			}
+			friend bool operator==(const StackAllocator& lhs, const StackAllocator& rhs) {
+				return lhs.memory_ == rhs.memory_;
+			}
+			friend bool operator!=(const StackAllocator& lhs, const StackAllocator& rhs) {
+				return !(lhs == rhs);
+			}
 		private:
-			std::size_t capacity_{ 0u };
-			std::size_t	offset_{ 0u };
+			DISALLOW_COPY_AND_ASSIGN(StackAllocator);
+		private:
+			size_type	capactity_{ 0u };
+			size_type	offset_{ 0u };
 			void* memory_{ nullptr };
+		};
+
+		template<class T>
+		class DoubleEndStackAllocator
+		{
+			//todo
 		};
 
 		template<typename T>
 		class PooledAllocator
 		{
+		public:
+			using value_type = T;
 		public:
 			PooledAllocator() = default;
 			explicit PooledAllocator(size_type element_count) {
@@ -61,14 +113,16 @@ namespace Shard
 				auto* tail = head_;
 				//constructor free list
 				for (auto n = 0; n < element_count; ++n, ++tail) {
-					tail->next_ = tail_ + 1;
+					tail->next_ = tail + 1;
 				}
 				tail->next_ = nullptr;
 			}
 			//todo lock
 			[[nodiscard]] T* Alloc() {
 				auto* next = free_head_->next_;
-				PCHECK(next != nullptr) << "memory pool for type is not enough";
+				if (next == nullptr) {
+					return nullptr;
+				}
 				std::swap(next, free_head_);
 				return &(next->data_);
 			}
@@ -77,15 +131,13 @@ namespace Shard
 				auto ptr = Alloc();
 				return new(ptr)T(std::forward<Args>(args)...);
 			}
-			//todo lock
 			void DeAlloc(T* ptr) {
+				std::destroy(ptr, ptr + 1);//to do
 				auto* node = reintepret_cast<Node*>(static_cast<uintptr_t>(ptr) - sizeof(Node*));
-				node->next_ = free_;
+				node->next_ = free_head_;
 				std::swap(node, free_head_);
 			}
-			~PooledAllocator() { ::operator delete memory_; memory_ = nullptr; }
-		public:
-			//fields for allocator_traits
+			~PooledAllocator() { ::operator delete(memory_); memory_ = nullptr; }
 		private:
 			struct Node {
 				Node*	next_{ nullptr }; //todo
