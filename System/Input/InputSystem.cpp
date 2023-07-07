@@ -42,16 +42,11 @@ namespace Shard::Input {
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			case SDL_EVENT_MOUSE_BUTTON_UP:
-				const auto button_state = event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ? EButtonState::ePressed : EButtonState::ePressed;
-				if (SDL_BUTTON_LEFT == event->button.button) {
-					State::mouse_state.mouse_left_ = button_state;
-				}
-				else if (SDL_BUTTON_RIGHT == event->button.button) {
-					State::mouse_state.mouse_right_ = button_state;
-				}
-				else if (SDL_BUTTON_MIDDLE == event->button.button) {
-					State::mouse_state.mouse_wheel_ = 0u;
-				}
+				const EButton button_type[4] = { EButton::eNone, EButton::eMouseLeft, EButton::eMouseRight, EButton::eMouseMiddle };
+				const auto bt = button_type[event->button.button];
+				const auto old_state = State::mouse_state.pressed_[bt];
+				State::mouse_state.pressed_[bt] = event->type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+				State::mouse_state.flip_[bt] = old_state != State::mouse_state.pressed_[bt];
 				break;
 			case SDL_EVENT_MOUSE_MOTION:
 				State::mouse_state.mouse_pos_ = { event->motion.x, event->motion.y };
@@ -178,23 +173,29 @@ namespace Shard::Input {
 
 					//deal with press message
 					if (raw_mouse.usButtonFlags != 0u) {
-						if (raw_mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) {
-							State::mouse_state.mouse_left_ = EButtonState::ePressed;
+						if (raw_mouse.usButtonFlags& RI_MOUSE_LEFT_BUTTON_DOWN) {
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseLeft)] = !State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseLeft)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseLeft)] = true;
 						}
 						if (raw_mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP) {
-							State::mouse_state.mouse_left_ = EButtonState::eReleased;
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseLeft)] = State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseLeft)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseLeft)] = false;
 						}
 						if (raw_mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN) {
-							State::mouse_state.mouse_right_ = EButtonState::ePressed;
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseRight)] = !State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseRight)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseRight)] = true;
 						}
 						if (raw_mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP) {
-							State::mouse_state.mouse_right_ = EButtonState::eReleased;
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseRight)] = State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseRight)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseRight)] = false;
 						}
 						if (raw_mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_DOWN) {
-							State::mouse_state.mouse_wheel_ = EButtonState::ePressed;
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseMiddle)] = !State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseMiddle)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseMiddle)] = true;
 						}
 						if (raw_mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_UP) {
-							State::mouse_state.mouse_wheel_ = EButtonState::eReleased;
+							State::mouse_state.flip_[Utils::EnumToInteger(EButton::eMouseMiddle)] = State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseMiddle)];
+							State::mouse_state.pressed_[Utils::EnumToInteger(EButton::eMouseMiddle)] = false;
 						}
 					}
 
@@ -221,9 +222,11 @@ namespace Shard::Input {
 					//set keyboard state
 					const auto index = Utils::EnumToInteger(bt);
 					if (raw_keyboard.Flags == RI_KEY_MAKE) {//todo
+						State::keyboard_state.flip_[index] = !State::keyboard_state.pressed_[index];
 						State::keyboard_state.pressed_[index] = true;
 					}
 					if (raw_keyboard.Flags & RI_KEY_BREAK == RI_KEY_BREAK) {
+						State::keyboard_state.flip_[index] = State::keyboard_state.pressed_[index];
 						State::keyboard_state.pressed_[index] = false;
 					}
 					
@@ -232,7 +235,7 @@ namespace Shard::Input {
 				else if (raw_input->header.dwType == RIM_TYPEHID) {
 					
 				}
-				rawinput_allocator.DeAlloc(raw_input);
+				rawinput_allocator.DeAlloc(raw_input, 1u);
 			}
 			else if(message_id == WM_MOUSEMOVE)
 			{
@@ -395,6 +398,40 @@ namespace Shard::Input {
 #elif defined(USE_SDL)
 		InputSystemImplSDL::Update(dt);
 #endif
+		//mouse state
+		for (auto n = 0; n < Utils::EnumToInteger(EButton::eMouseNum); ++n) {
+			if (State::mouse_state.pressed_[n]) {
+				if (State::mouse_state.flip_[n]) {
+					State::mouse_state.held_time_[n] = dt;
+					State::mouse_state.flip_[n] = false; //clear flip state todo 
+				}
+				else {
+					State::mouse_state.held_time_[n] += dt;
+				}
+			}
+			else
+			{
+				State::mouse_state.held_time_[n] = 0.f;
+			}
+		}
+
+		//keyboard state
+		for (auto n = 0; n < Utils::EnumToInteger(EButton::eKeyBoardNum); ++n) {
+			if(State::keyboard_state.pressed_[n]){
+				if (State::keyboard_state.flip_[n]) {
+					State::keyboard_state.held_time_[n] = dt;
+					State::keyboard_state.flip_[n] = false; //clear flip state
+				}
+				else
+				{
+					State::keyboard_state.held_time_[n] += dt;
+				}
+			}
+			else
+			{
+				State::keyboard_state.held_time_[n] = 0.f;
+			}
+		}
 	}
 
 	void InputSystem::ClearFrameState()

@@ -127,17 +127,9 @@ namespace Shard::Input
 		eGP11,
 		//key numbers
 		eMouseNum = eMouseMiddle,
-		eKeyNum = eKeyN9Kp,
+		eKeyBoardNum = eKeyN9Kp,
 		eGPNum = eGP11-eGPUP+2, 
 
-	};
-
-	enum class EButtonState
-	{
-		eNone,
-		eHeld,
-		ePressed,
-		eReleased, //todo
 	};
 
 	enum class EWheelType : uint8_t
@@ -154,17 +146,19 @@ namespace Shard::Input
 
 	struct MouseState
 	{
-		EButtonState	mouse_left_{ EButtonState::eNone };
-		EButtonState	mouse_right_{ EButtonState::eNone };
-		EButtonState	mouse_wheel_{ EButtonState::eNone };
 		vec2	mouse_pos_{ 0, 0 };
 		vec2	mouse_pos_deta_{ 0, 0 };
 		float	mouse_wheel_deta_{ 0.f };//wheel delta
+		BitSet<Utils::EnumToInteger(EButton::eMouseNum)>	pressed_;
+		BitSet<Utils::EnumToInteger(EButton::eMouseNum)>	flip_;
+		Array<float, Utils::EnumToInteger(EButton::eMouseNum)>	held_time_;
 	};
 
 	struct KeyBoardState
 	{
 		BitSet<Utils::EnumToInteger(EButton::eKeyBoardNum)>	pressed_;
+		BitSet<Utils::EnumToInteger(EButton::eKeyBoardNum)>	flip_;
+		Array<float, Utils::EnumToInteger(EButton::eKeyBoardNum)>	held_time_;
 		//Array<EButtonState, Utils::EnumToInteger(EButton::eKeyBoardNum)>	states_{ EButtonState::eNone };
 	};
 
