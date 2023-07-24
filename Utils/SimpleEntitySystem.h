@@ -1,6 +1,8 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "Utils/Hash.h"
 #include "Utils/Memory.h"
+#include "Utils/SimpleJobSystem.h"
 #include "Delegate/Delegate/Delegate.h"
 #include <limits>
 #include <type_traits>
@@ -60,9 +62,16 @@ namespace Shard
 			void Release(Entity entity);
 			VersionType Version(const Entity& entity)const;
 			bool IsAlive(const Entity& entity) const;
+			const Vector<Entity>& GetAliveEntities()const;
 		public:
 			Vector<VersionType>	generation_;
 			List<uint32_t>	free_indices_;
+		};
+
+		template<typename>
+		class SparseSetIterator
+		{
+
 		};
 
 		template<typename ValueType, typename Allocator>
@@ -74,13 +83,13 @@ namespace Shard
 			using Iterator = Vector<ValueType>::iterator;
 			using ConstIterator = Vector<ValueType>::const_iterator;
 			using ThisType = SparseSet<SizeType, ValueType>;
-			using AllocatorType = std::allocator_traits<Allocator>::rbind_alloc<ValueType>;
+			using DenseAllocatorType = std::allocator_traits<Allocator>::rbind_alloc<ValueType>;
 
-			SparseSet() :SparseSet(0u, AllocatorType()) {}
-			explicit SparseSet(SizeType size, AllocatorType& alloc): allocator_(alloc) {
+			SparseSet() :SparseSet(0u, Allocator()) {}
+			explicit SparseSet(SizeType size, Allocator& alloc) : dense_(alloc), page_alloc_(alloc) {
 				Resize(size);
 			}
-			void Resize(SizeType size) {
+			void Resize(SizeType size) { //deprecated todo
 				const auto old_size = Size();
 				sparse_.resize(size);
 				if (old_size > size) {
@@ -92,19 +101,20 @@ namespace Shard
 			void Swap(ThisType& rhs) {
 				std::swap(dense_, rhs.dense_);
 				std::swap(sparse_pages_, rhs.sparse_pages_);
+				std::swap(allocator_, rhs.allocator_);
 				//todo allocator
 			}
 			void Insert(ValueType i) {
 				dense_.push_back(i);
-				sparse_[i] = dense_.size() - 1;
+				SetSparseValue(i, dense_.size() - 1);
 			}
 			void Erase(ValueType i) {
-				const auto dense_index = sparse_[i];
+				const auto dense_index = GetSparseValue(i);
 				sparse_[i] = -1;
 				if (dense_index != dense_, size() - 1) {
 					const auto dense_back = dense_.back();
-					sparse_[dense_back] = dense_index;
-					dense_[dense_index] = dense_back;
+					sparse_[dense_back] = dense_index; //todo
+					dense_[dense_index] = dense_back;//todo
 				}
 				dense_.pop_back();
 			}
@@ -114,18 +124,15 @@ namespace Shard
 			void Clear() {
 				dense_.clear();
 				for (auto* page : sparse_pages_) {
-					alloacor_.DeAlloc(page);
+					page_alloc_.DeAlloc(page);
 					page_ = nullptr;
 				}
-			}
-			SizeType Size()const {
-				//return sparse_.size();
 			}
 			SizeType Count()const {
 				return dense_.size();
 			}
 			bool Test(ValueType i) {
-				//return sparse_[i] != -1;
+				return GetSparseValue(i) != -1;
 			}
 			bool IsEmpty()const {
 				return dense_.empty();
@@ -133,69 +140,79 @@ namespace Shard
 		private:
 			struct SparsePage
 			{
-				static constexpr auto PAGE_SIZE = 256u;
+				static constexpr auto PAGE_SIZE = 4096u;
 				static constexpr auto PAGE_COUNT = 128u;
 				ValueType	data_[PAGE_SIZE];
+				BitSet<PAGE_SIZE>	flags_;
 			};
+			SparsePage* CreateSparsePage() {
+				SparsePage* page = page_alloc_.Alloc();
+				std::fill_n(page->data_, SparsePage::PAGE_SIZE, -1);
+			}
+			void ReleaseSparsePage(SparsePage*& page, uint32_t index) {
+				page.flags_.reset(index)
+				if (page.flags_.none()) {
+					page_alloc_.Dealloc(page);
+					page = nullptr;
+				}
+			}
 			void SetSparseValue(ValueType pos, ValueType value) {
 				const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
-				if (sparse_[page_index] == nullptr) {
-					sparse_[page_index] = allocator_.Alloc();
+				if (sparse_pages_[page_index] == nullptr) {
+					sparse_pages_[page_index] = CreateSparsePage();
 				}
 				const auto inner_index = pos % SparsePage::PAGE_SIZE;
-				sparse_[page_index]->data_[inner_index] = value;
+				sparse_pages_[page_index]->data_[inner_index] = value;
+				sparse_pages_[page_index]->flags_.set(inner_index); 
+			}
+			void UnSetSparseValue(ValueType pos) {
+				const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
+				if (sparse_pages_[page_index] != nullptr) {
+					const auto inner_index = pos % SparsePage::PAGE_SIZE;
+					sparse_pages_[page_index]->data_[inner_index] = -1;
+					ReleaseSparsePage(sparse_pages_[page_index], innder_index);
+				}
+			}
+			void GetSparseValue(ValueType pos) const {
+				const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
+				if (sparse_pages_[page_index] != nullptr) {
+					const auto inner_index = pos % SparsePage::PAGE_SIZE;
+					return sparse_pages_[page_index]->data_[inner_index];
+				}
+				return -1;
 			}
 		private:
-			Vector<ValueType, AllocatorType>	dense_;
+			using PageAllocatorType = std::allocator_traits<Allocator>::rbind_alloc<SparsePage>;
+			Vector<ValueType, DenseAllocatorType>	dense_;
 			SmallVector<SparsePage*, SparsePage::PAGE_COUNT>	sparse_pages_;
-			AllocatorType&	allocator_;
+			PageAllocatorType&	page_alloc_;
 		};
 
-		//2. model graph in between diff comp in diff entity
-		//1 or 2 model which to realize
-		class ComponentInterface
+		class ComponentRepoBase
 		{
 		public:
-			struct Instance {
-				uint32_t	index_{ std::numeric_limits<uint32_t>::max() };
-			};
-			ComponentInterface(LinearAllocator* allocator) : allocator_(allocator) {}
-			Instance MakeInstance(uint32_t i) { return { i };}
-			Instance Insert(Entity entity);
-			Instance LookUp(Entity entity) const;
-			bool Contain(Entity entity)const { return LookUp(entity).index_ != -1; }
-			//garbage collection fixme when to call
-			void GC(const EntityManager& entity_manager);
-			virtual void Destroy(Entity entity) = 0;
-			virtual ~ComponentInterface() = default;
-			//static RegisterComponentType()
-		protected:
-			void* Alloc(size_t size);
-		protected:
-			LinearAllocator*	allocator_{ nullptr };
-			uint32_t	component_identity_;
-			Map<Entity, Instance>	id_map_;
+			virtual ~ComponentRepoBase() = default;
 		};
 
-		template<typename Component>
-		class ComponentRepo : public ComponentInterface
+		template<typename Component, typename Allocator>
+		class ComponentRepo : public ComponentRepoBase
 		{
 		public:
 			using Type = Component;
-			using ThisType = ComponentRepo<Component>;
+			using ThisType = ComponentRepo<Component, Allocator>;
+			explicit ComponentRepo(Allocator& alloc) : sparse_set_(alloc), component_data_(alloc){
+
+			}
 			void Reverse(uint32_t size) {
-				auto ptr = allocator_->Alloc(size*sizeof(Component));
-				if (nullptr != component_data_) {
-					auto cpy_size = id_map_.size() > size ? size : id_map_.size();
-					memcpy(ptr, component_data_, sizeof(Component) * cpy_size);
-				}
-				component_data_ = ptr;
-				capacity_ = size;
+				component_data_.reserve(size);
 			}
 			void Destroy(Entity e) override {
 				auto index = LookUp(e);
 				if (index != -1) {
 					Remove(index);
+				}
+				if (on_release_) {
+					on_release_(this, e);
 				}
 			}
 			void Clear() {
@@ -209,6 +226,9 @@ namespace Shard
 				}
 				Type* result = component_data_ + index;
 				new(result)(std::forward<Args>(args)...);
+				if (on_construct_) {
+					on_contruct_(this, );
+				}
 				return result;
 			}
 
@@ -241,26 +261,47 @@ namespace Shard
 
 			}
 
+			const Vector<Entity>& GetEntities() const{
 
-			Entity ToEntity(uint32_t index) {
-				//todo 
+			}
+
+			size_type ToIndex(Entity entt) const {
+				return sparse_set_.
+			}
+
+			Entity ToEntity(size_type index) const {
+				return sparse_set_.
+			}
+
+			bool IsContain(Entity entt) const {
+				return ToIndex(entt) != -1;
 			}
 
 			Type& Element(uint32_t index)
 			{
-				assert(index < size_);
-				return *(component_data_ + index);
+				assert(index < component_data_.size());
+				return component_data_[index];
 			}
 
 			const Type& Element(uint32_t index) const
 			{
-				assert(index < size_);
-				return *(component_data_ + index);
+				assert(index < component_data_.size());
+				return component_data_[index];
 			}
-
+			//delegate
+			auto& OnConstruct() {
+				return on_construct_;
+			}
+			auto& OnUpdate() {
+				return on_update_;
+			}
+			auto& OnRelease() {
+				return on_release_;
+			}
 		private:
-			SparseSet<uint32_t>	sparse_set_;
-			Type* component_data_{ nullptr };
+			SparseSet<uint32_t, Allocator>	sparse_set_; 
+			using ComponentAlloc = std::allocator_traits<Allocator>::template rebind_alloc<Type>;
+			Vector<Type, ComponentAlloc> component_data_; //todo
 			//delegate 
 			Delegate<void(ThisType*, Entity)>	on_construct_;
 			Delegate<void(ThisType*, Entity)>	on_update_;
@@ -268,7 +309,7 @@ namespace Shard
 		};
 
 		template<typename SharedComponent>
-		class SharedComponentRepo : public ComponentInterface
+		class SharedComponentRepo : public ComponentRepoBase
 		{
 		public:
 			using Type = SharedComponent;
@@ -405,8 +446,9 @@ namespace Shard
 		template<typename ...Component>
 		struct ECSComponentList
 		{
+			using BaseType = std::tuple<Component...>;
 			using ThisType = ECSComponentList<Component...>;
-			static constexpr auto SIZE = sizeof...(Component);
+			static constexpr auto SIZE = std::tuple_size_v<BaseTyoe>;
 			template<typename ...TT>
 			static bool Contain() {
 				if constexpr (sizeof...(TT) == 1u) {
@@ -414,9 +456,13 @@ namespace Shard
 				}
 				else
 				{
-					return (Contain<TT>()&&...);
+					return ((Contain<TT>()&&...));
 				}
 			}
+			template<size_type Index>
+			struct IndexedType{
+				using Type = std::tuple_element_t<Index, BaseType>;
+			};
 			constexpr ECSComponentList() = default;
 		};
 
@@ -425,6 +471,17 @@ namespace Shard
 		struct ECSExcludedList final : ECSComponentList<Component...> {};
 		template<typename ...Component>
 		struct ECSOwnedList final : ECSComponentList<Component...>{};
+
+		template<template<typename> class, typename>
+		struct ECSBatTransformList {
+			using Type = ECSComponentList<>;
+		};
+		
+		template<template<typename> typename Other, typename ...Component>
+		struct ECSBatTransformList<Other, ECSComponentList<Component...>>
+		{
+			using Type = ECSComponentList<Other<Component>...>;
+		};
 
 		template<typename ...Component>
 		class ECSComponentGroupIterator final
@@ -458,11 +515,11 @@ namespace Shard
 				return	operator->();
 			}
 			[[nodiscard]] auto operator->() {
-				return std::make_tuple(std::apply([entity = iter_](auto* repo) { return repo->GetComponent(entity); }, components_repos_)); //todo
+				return std::apply([entity = iter_](auto...* repo) { return std::make_tuple((repo->GetComponent(entity), ...)); }, components_repos_)); 
 			}
 			template<typename ...ComponentLHS, typename ...ComponentRHS>
 			friend constexpr bool operator==(const ECSComponentGroupIterator<ComponentLHS...>& lhs, const ECSComponentGroupIterator<ComponentRHS...>& rhs) {
-
+				return lhs.iter_ == rhs.iter_;
 			}
 
 			template<typename ...ComponentLHS, typename ...ComponentRHS>
@@ -470,72 +527,95 @@ namespace Shard
 				return !(lhs == rhs);
 			}
 		private:
-			bool IsValid() const {
-				return iter_ != iter_last_; //todo
-			}
-		private:
 			//member field
 			size_type	iter_;
-			std::tuple<ComponentRepo<Component>*...> components_repos_;
-
+			ECSBatTransformList<ComponentRepo*, Component...>::Type components_repos_;
 		};
 		
+		struct ECSComponentGroupBase
+		{
+			using Ptr = ECSComponentGroupBase*;
+		};
+
 		template<typename, typename>
-		class ECSComponentGroup;
+		class ECSComponentGroup : public ECSComponentGroupBase
+		{
+
+		};
+
 		/*group component together and pointer to position by cursor*/
-		template<typename ECSAdmin, typename ...Component>
-		class ECSComponentGroup<ECSAdmin, ECSOwnedList<Component...>>
+		template<typename ...Component, typename ...Reject>
+		class ECSComponentGroup<ECSOwnedList<Component...>, ECSExcludedList<Reject...>>
 		{	
 		public:
-			using OwnedType = ECSOwnedList<Component...>;
+			using OwnedRepoType = ECSBatTransformList<ComponentRepo*, Component...>::Type;
+			using RejectedRepoType = ECSBatTransformList<ComponentRepo*, Reject...>::Type;
 		public:
 			//function
 			ECSComponentGroup() = default;
-			ECSComponentGroup(ECSAdmin* admin) {
-				component_repos_ = std::make_tuple(admin->xxx(), ...);
-				//todo deltegate 
+			ECSComponentGroup(OwnedRepoType owned, RejectedRepoType reject):owned_repos_(owned), rejected_repos(reject)  {
+				std::apply([this](auto...* repo) { ((repo->OnConstruct().; repo->OnRelease().). ...); }, owned_repos_);
+				//initializer group
+				auto* cand_repo = std::get<0>(owned_repos_);
+				for (auto entt : cand_repo) {
+					OnConstruct(entt);
+				}
+			}
+			~ECSComponentGroup() {
+				std::apply([this](auto...* repo) { ((repo->OnConstruct().; repo->OnRelease().;), ...); }, owned_repos_);
+				//todo world remove group
+				//RemoveGroup<Component..., Reject...>();
 			}
 			auto Begin() {
-				return ECSComponentGroupIterator<Component...>(0u, component_repos_);
+				return ECSComponentGroupIterator<Component...>(0u, owned_repos_);
 			}
 			auto End() {
-				return ECSComponentGroupIterator<Component...>(group_cursor_, component_repos_);
+				return ECSComponentGroupIterator<Component...>(group_cursor_, owned_repos_);
+			}
+			bool IsEmpty() const 
+			{
+				return group_cursor_ <= 0u;
+			}
+			bool operator bool() const {
+				return IsEmpty();
 			}
 			template<typename Type, typename ...Other>
 			bool IsOwned()const {
 				return OwnedType::Contain<Type, Other...>();
-				//const auto owned[]{ value<std::remove_cv_t<Type>>, value<std::remove_cv_t<Other>>... };
-				//return std::all_of(owned, owned+1u+sizeof...(Other), [&](auto val) {return val});
 			}
 		private:
-			void OnContruct(Entity e) {
-
-			}
-			void OnUpdate(Entity e) {
-
-			}
-			void OnRelease(Entity e) {
-				if (e < group_cursor_) {
-
+			void OnContruct(Entity e) { //todo apply function error use
+				if (std::apply([e](auto...* repo) { return repo->IsContain(e)&&... }, owned_repos_) &&
+					std::apply([e](auto...* repo) { return (0u + ... + repo->IsContain(e)) == 0u; }, rejected_repos_ )
+				{
+					//todo for each repo swap e and group_cursor
+					std::apply([e](auto* repo) { ((const auto index = repo->ToIndex(e); repo->Swap(index, group_cursor_);), ...); }, owned_repos_);
+					++group_cursor_;
 				}
 			}
-			void Sort() {
-
+			void OnUpdate(Entity e) {
+				LOG(INFO) << "nothing related to update delegate";
 			}
-			void Swap(Entity lhs, Entity rhs) {
-
+			void OnRelease(Entity e) {
+				const auto index = std::get<0>(component_repos_)->ToIndex(e); //the order of this after release op done??
+				if (index >= 0 && index < group_cursor_) {
+					std::apply([e](auto* repo) { ((const auto index = repo->ToIndex(e); repo->Swap(index, group_cursor_);). ...); }, owned_repos_);
+					--group_cursor_;
+				}
 			}
 		private:
 			template<typename T>
 			static constexpr auto value = IsTypeIncluded<T, Component...>::value;
-			std::tuple<ComponentRepo<Component>*...> component_repos_;
-			uint32_t	group_cursor_{ 0u };
+			OwnedRepoType	owned_repos_;
+			RejectedRepoType	rejected_repos_;
+			volatile uint32_t	group_cursor_{ 0u };
 		};
 
 		template<typename ...Component>
-		class ECSComponentViewIterator
+		class ECSComponentQueryIterator
 		{
 		public:
+			using IteratorType = Vector<Entity>::iterator;
 			using ThisType = ECSComponentViewIterator<Component...>;
 			using ValueType = decltype(std::forward_as_tuple<Component...>); //todo
 			//iterator traits field
@@ -545,16 +625,17 @@ namespace Shard
 			using difference_type = std::ptrdiff_t;
 			using iterator_category = std::forward_iterator_tag;
 
-			ECSComponentViewIterator() = default;
-			explicit ECSComponentViewIterator() {
+			ECSComponentQueryIterator() = default;
+			explicit ECSComponentQueryIterator(size_type iter, ):iter_(iter) {
 
 			}
 
-			ECSComponentViewIterator& operator++() {
+			ECSComponentQueryIterator& operator++() {
 				//todo
+				++iter_;
 				return *this;
 			}
-			ECSComponentViewIterator operator++(int) {
+			ECSComponentQueryIterator operator++(int) {
 				ECSComponentViewIterator temp{ *this };
 				++(*this);
 				return temp;
@@ -563,60 +644,79 @@ namespace Shard
 				return *operator->();
 			}
 			auto operator->() {
-				return &nullptr;
+				return std::apply([entity = iter_](auto...* repo) { return std::make_tuple(repo->GetComponent(entity), ...); }, component_repos_);
 			}
 			template<typename ...ComponentsLHS, typename ...ComponentsRHS>
-			friend constexpr bool operator==(const ECSComponentViewIterator<>& lhs, const ECSComponentViewIterator<>& rhs) {
+			friend constexpr bool operator==(const ECSComponentViewIterator<ComponentsLHS...>& lhs, const ECSComponentViewIterator<ComponentsRHS...>& rhs) {
 				static_assert(); //todo
 				return lhs.iter_ == rhs.iter_;
 			}
 
 			template<typename ...ComponentsLHS, typename ...ComponentsRHS>
-			friend constexpr bool operator!=(const ECSComponentViewIterator<>& lhs, const ECSComponentViewIterator<>& rhs) {
+			friend constexpr bool operator!=(const ECSComponentViewIterator<ComponentsLHS...>& lhs, const ECSComponentViewIterator<ComponentsRHS...>& rhs) {
 				return !(lhs == rhs);
 			}
 		private:
 			//member field
-			size_type iter_;
+			IteratorType iter_;
+			std::tuple<ComponentRepo<Component>*, ...> component_repos_;
 		};
+		template<typename, typename>
+		class ECSComponentQuery;
 
-		template<typename ECSAdmin, typename ...Component>
-		class ECSComponentView
+		template<typename ...Component, typename ...Reject>
+		class ECSComponentQuery<ECSOwnedList<Component...>, ECSExcludedList<Reject...>>
 		{
 		public:
-			using ViewType = std::tuple<Component...>;
+			using OwnedType = ECSOwnedList<Component...>;
+			using RejectedType = ECSExcludedList<Reject...>;
+			using OwnedRepoType = ECSBatTransformList<ComponentRepo*, Component...>::Type;
+			using RejectedRepoType = ECSBatTransformList<ComponentRepo*, Reject...>::Type;
+			using ViewType = OwnedType;
 
+			template<typename Filter>
+			requires std::is_same_v<bool, decltype(declval<Filter>())>
+			decltype(auto) Filter(Filter&& filter) {
+				eastl::remove_if(entities_.begin(), entities_.end(), filter);
+				return *this;
+			}
 			template<typename Func>
-			void ForEach() {
+			void ForEach(Func&& func) {
 				for (const auto& e : entities_) {
-					Func(); //todo
+					func(e); //todo
 				}
 			}
-			ECSComponentView(ECSAdmin* admin):ecs_admin_(admin) {
-				//collect entities_
+			explicit ECSComponentQuery(OwnedRepoType owned, RejectedRepoType reject):owned_repos_(owned), rejected_repos_(reject) {
+				entities_.clear();
+				auto* cand_repo = owned_repos_.get<0>();
+				assert(nullptr != cand_repo && "repo for component is null");
+				for (const auto ent : cand_repo->GetEntities()) { //todo
+					if (std::apply([ent, this](auto...* repo) { return (repo->HasComponent(ent)&&...); }, owned_repos_)
+						&& std::apply([ent, this](auto ...* repo) { return (0u + ... + repo->HasComponent(ent)) == 0u; }, rejected_repos_))
+					{
+						entities_.emplace_back(ent);
+					}
+				}
 			}
 			decltype(auto) Begin() {
-				return ECSComponentViewIterator<Component...>();
+				return ECSComponentQueryIterator<Component...>(entities_.begin(), owned_repos_);
 			}
 			decltype(auto) End() {
-				return ECSComponentViewIterator<Component...>();
+				return ECSComponentQueryIterator<Component...>(entities_,end(), owned_repos_);
+			}
+			bool IsEmpty() const {
+				return entities_.empty();
+			}
+			operator bool()const {
+				return IsEmpty();
+			}
+			size_type Size()const {
+				return entities_.size();
 			}
 		private:
 			Vector<Entity>	entities_;
-			ECSAdmin* ecs_admin_{ nullptr };
-		};
-
-		template<typename ECSAdmin, typename Component>
-		class ECSComponentView
-		{
-		public:
-			template<typename Func>
-			void ForEach() {
-
-			}
-			ECSComponentView(ECSAdmin* admin) :ecs_admin_(admin) {}
-		private:
-			ECSAdmin* ecs_amdin_{ nullptr };
+			OwnedRepoType	owned_repos_;
+			RejectedRepoType	rejected_repos_;
 		};
 
 		struct ECSSharedComponent
@@ -625,23 +725,152 @@ namespace Shard
 			uint32_t	index_{ 0u };
 		};
 
+		struct ECSSystemUpdateContext {
+			enum {
+				MAX_SYSTEM_DEPEND = 4,
+			};
+			void*	eadmin_{ nullptr };
+			float	delta_time_{ 0.f };
+			Array<JobEntry*, MAX_SYSTEM_DEPEND>	dependency_; //only one?
+		};
+
+		template<typename ...>
+		class ECSObserver
+		{
+			//todo
+		};
+
+	
+		struct ECSComponentCommand
+		{
+			enum class EType
+			{
+				eUnkown,
+				eContruct,
+				eUpdate,
+				eRelease,
+				eNum,
+			};
+			EType	type_{ EType::eUnkown };
+			Entity	entt_{ Entity::Null };
+			//other data
+		};
+
+		/*collect component add/rm/update commands*/
+		template<typename Allocator>
+		class ECSComponentCommandBuffer
+		{
+		public:
+			using CmdBufferAlloc = std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommand>;
+			using CmdBufferContainer = Vector<ECSComponentCommand, CmdBufferAlloc>;
+			using ConstIterator = CmdBufferContainer::const_iterator;
+
+			explicit ECSComponentCommandBuffer(Allocator& alloc):cmd_buffer_(alloc) {
+			}
+			ConstIterator CBegin() const {
+				return cmd_buffers_.cbegin();
+			}
+			ConstIterator CEnd() const {
+				return cmd_buffers_.cend();
+			}
+			size_type Size() const {
+				return cmd_buffers_.size();
+			}
+			ECSComponentCommand& operator[](size_type index) {
+				return cmd_buffers_[index];
+			}
+			void Push(ECSComponent&& cmd) {
+				Utils::SpinLock lock(rw_lock_);
+				cmd_buffers_.emplace_back(cmd);
+			}
+			ECSComponent Poll() {
+				Utils::SpinLock lock(rw_lock_);
+				auto temp = cmd_buffers_.back();
+				cmd_buffers_.pop_back();
+				return temp;
+			}
+		private:
+			std::atomic_bool	rw_lock_;
+			CmdBufferContainer	cmd_buffers_;
+		};
+
 		class ECSSystem
 		{
 		public:
-			virtual void OnInit() = 0;
-			virtual void OnUnit() = 0;
-			virtual void OnUpdate(float dt) = 0;
+			using Ptr = ECSSystem*;
+			using SharedPtr = eastl::shared_ptr<ECSSystem>;
+			virtual void Init() = 0;
+			virtual void UnInit() = 0;
+			virtual void Update(ECSSystemUpdateContext& ctx) = 0;
 			virtual ~ECSSystem() = default;
+			static uint32_t	GeneratePriorOrder(uint32_t hint=-1) {
+				static Set<uint32_t> occupied_oreder{};
+				static uint32_t curr_order{ 0u };
+				auto tmp = hint;
+				if (tmp == -1 || occupied_oreder.count(hint)!=0u) {
+					tmp = curr_order++;
+				}
+				occupied_oreder.emplace(tmp);
+				return tmp;
+			}
+		protected:
+			void WaitAllDependency();
 		public:
 			uint32_t	prior_order_{ 0u };
+		private:
+			std::atomic_uint32_t	tick_counter_{ 0u }; //atomic to sync
+		};
+
+		class ECSSystemGroup : public ECSSystem
+		{
+		public:
+			void Init() override;
+			void UnInit() override;
+			void Update(ECSSystemUpdateContext& ctx) override;
+			virtual void AddSubSystem(ECSSystem::Ptr sub_system, uint32_t local_order);
+			virtual void RemoveSubSystem(ECSSystem::Ptr sub_system);
+			virtual ~ECSSystemGroup();
+		private:
+			bool IsSubSystemIncluded(ECSSystem::Ptr sub_system);
+		private:
+			SmallVector<ECSSystem::Ptr>	sub_sys_;
 		};
 
 
-		template<typename ...T>
+		template<typename Allocator=Utils::LinearAllocator<void>, typename ...T>
 		class ECSAdmin : public MessageQueue<T...>
 		{
 		public:
 			using ThisType = ECSAdmin<T...>;
+			class EntityAdmin
+			{
+			public:
+				EntityAdmin(ThisType* admin) :admin_(admin) {
+					entity_ = admin_->NewEntity();
+				}
+				EntityAdmin(const EntityAdmin& other) :admin_(other.admin_) {
+					admin_->Clone(other);
+				}
+				operator Entity() {
+					return entity_;
+				}
+				template<typename Component, typename ...Args>
+				void Assign(Args&& ...args) {
+					admin_->AddComponent<Component>(std::forward(argsg)..);
+				}
+				template<typename Component>
+				Component& Get() {
+					admin_->GetComponent<Component>(*this);
+				}
+				~EntityAdmin() {
+					admin_->DelEntity(*this);
+				}
+			private:
+				Entity	entity_;
+				ThisType*	admin_;
+			};
+			using EntityType = EntityAdmin;
+		public:
 			template<typename System, typename... Args>
 			System* RegisterSystem(Args&&... args) {
 				auto ptr = new System(std::forward<Args>(args)...);
@@ -664,34 +893,50 @@ namespace Shard
 				auto comp_repo = new ComponentRepo<Component>; //todo 
 				RegisterComponent(comp_repo);
 			}
+			template<typename ...Component, typename ...Reject>
+			void RegisterGroup() {
+
+			}
+			template<typename ...Component, typename ...Reject>
+			void UnRegisterGroup() {
+
+			}
 			template<typename Component>
 			ComponentRepo<Component>* GetComponentRepo() {
 				return dynamic_cast<ComponentRepo<Component>*>(components_data_[typeid(Component)]);
 			}
-
+			template<typename Component...>
+			auto GetComponentRepos() {
+				return std::make_tuple(GetComponent<Component>...);
+			}
 			template<typename Component, typename BinaryCompare>
-			void Sort(BinrayCompare& compare_op) {
+			void Sort(BinaryCompare&& compare_op) {
 				GetComponentRepo<Component>()->Sort(compare_op);
 			}
 
 			template<typename Component, typename ComponentReferred>
 			void Sort() {
-				GetComponentRepo<Component>()->Sort();//todo
+				GetComponentRepo<Component>()->SortAs(GetComponentRepo<ComponentReferred>());//todo
 			}
 
-			template<typename ...Component>
-			ECSComponentView<Component...> View() {
-				//todo
+			template<typename ...Component, typename ...Reject>
+			ECSComponentQuery<Component..., Reject...> Query() {
+				auto owned_repos = GetComponentRepo<Component...>();
+				auto rejected_repos = GetComponentRepo<Reject...>();
+				return { owned_repos, rejected_repos };
 			}
 
-			template<typename ...Component>
-			ECSComponentGroup<Component...> Group() {
+			template<typename ...Component, typename ...Reject>
+			ECSComponentGroup<Component..., Reject...>* Group(bool try_create = false) {
+				if (0) {
 
-			}
-
-			template<typename ...Component>
-			ECSComponentGroup<Component...> GroupIfExsit() {
-
+				}
+				else if(try_create) {
+					auto owned_repos = GetComponentRepo<Component...>();
+					auto rejected_repos = GetComponentRepo<Reject...>();
+					//return { owned_repos, rejected_repos };
+				}
+				return nullptr;
 			}
 
 			template<typename ...Component>
@@ -718,25 +963,8 @@ namespace Shard
 				Clear();
 			}
 
-			Entity NewEntity() {
-				auto entity = entity_manager_.Generate();
-				return entity;
-			}
-
-			void DelEntity(Entity e) {
-				for (auto [_, comp_repo] : components_data_) {
-					comp_repo->Remove(e);
-				}
-				entity_manager_.Release(e);
-			}
-			//copies an existing entity and creates a new entity from that copy
-			Entity Clone(Entity entity) {
-				auto new_entity = NewEntity();
-				for (auto [_, comp_repo] : components_data_) {
-					if (comp_repo->IsCompoenentExisit(entity)) {
-						AddComponent(new_entity, GetComponent(entity));
-					}
-				}
+			EntityType CreateEntity() {
+				return EntityType(this);
 			}
 
 			template<typename Component, typename... Args>
@@ -753,13 +981,13 @@ namespace Shard
 				auto it = component_data_.find(typeid(Component));
 				assert(component_data_.end() != it);
 				const auto index = it->second->LookUp(e);
-				return it->second->Element(index);
+				return it->second->Element(index); //todo return null data
 			}
 			template<typename Component>
 			void RemoveComponent(Entity e) {
 				auto it = component_data_.find(typeid(Component));
 				if (it != component_data_.end()) {
-					it->second->
+					it->second->Remove(e);
 				}
 			}
 			template<typename Component, typename... Args>
@@ -773,6 +1001,22 @@ namespace Shard
 				else {
 					comp_iterface->Add(std::forward<Args...>(args));
 				}
+			}
+			template<typename Component>
+			bool HasComponent(Entity e) {
+				auto* val = GetComponent<Component>();
+				return val != nullptr;
+			}
+
+			//check whether a component enable
+			template<typename Component>
+			requires std::is_base_of_v<ECSEnableComponent, Component>
+			bool HasEnableComponent(Entity e) {
+				if (HasComponent<Component>(e)) {
+					auto* val = GetComponent<Component>();
+					return static_cast<ECSEnableComponent*>*(val)->enable_;
+				}
+				return false;
 			}
 			template<typename System>
 			System* GetOrCreateSystem() {
@@ -810,17 +1054,32 @@ namespace Shard
 					RegisterHandler(, sys_handle);
 				}
 			}
+
+			//entity related function
+			Entity NewEntity() {
+				auto entity = entity_manager_.Generate();
+				return entity;
+			}
+
+			void DelEntity(Entity e) {
+				for (auto [_, comp_repo] : components_data_) {
+					comp_repo->Remove(e);
+				}
+				entity_manager_.Release(e);
+			}
+			//copies an existing entity and creates a new entity from that copy
+			Entity Clone(Entity entity) {
+				auto new_entity = NewEntity();
+				for (auto [_, comp_repo] : components_data_) {
+					if (comp_repo->IsCompoenentExisit(entity)) {
+						AddComponent(new_entity, GetComponent(entity));
+					}
+				}
+			}
 		private:
 			EntityManager entity_manager_;
 			//todo fixme type info bugs ??? //https://skypjack.github.io/2020-03-14-ecs-baf-part-8/
-			Map<std::type_index, ComponentInterface*> components_data_;
-			struct Dummy {};
-			template<typename System>
-			requires has_update_func<System>::value
-			struct SystemInstance : public Dummy {
-				using Type = System;
-				Type* handle_{ nullptr };
-			};
+			Map<std::type_index, ComponentRepoBase*> components_data_;
 			template <typename... Components>
 			struct ComponenentCollector
 			{
@@ -828,9 +1087,9 @@ namespace Shard
 				ComponentCollector(ThisType& world) {
 					Fill<0, Components...>(world);
 				}
-				ComponentInterface* components_data_[COMP_SIZE];
+				ComponentRepoBase* components_data_[COMP_SIZE];
 				template<uint32_t index>
-				ComponentInterface* Get() { return components_data_[index]; }
+				ComponentRepoBase* Get() { return components_data_[index]; }
 				template <uint32_t index>
 				void Fill(Map<std::type_index, ComponentInterface*>& components) {
 					return;
@@ -842,9 +1101,9 @@ namespace Shard
 				}
 			};
 
-			Map<std::type_index, Dummy*> systems_;
+			Map<std::type_index, ECSSystem::Ptr> systems_;
 			//ecs group define 
-			Map<, ECSComponentGroup<> > groups_;
+			Map<std::type_index, ECSComponentGroupBase::Ptr> groups_;
 		};
 	}
 }

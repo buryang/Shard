@@ -38,6 +38,13 @@ namespace Shard
 			return false;
 		}
 
+		const Vector<Entity>& EntityManager::GetAliveEntities() const
+		{
+			Vector<Entity> alives;
+			//todo 
+			return alives;
+		}
+
 		EntityManager::VersionType EntityManager::Version(const Entity& entity) const
 		{
 			if (entity.Index() < generation_.size()) {
