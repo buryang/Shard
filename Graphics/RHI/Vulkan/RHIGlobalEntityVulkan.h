@@ -1,0 +1,82 @@
+#pragma once
+#include "Utils/CommonUtils.h"
+#include "RHI/RHIGlobalEntity.h"
+#include "RHI/RHITypeTraits.h"
+#include "RHI/Vulkan/RHIResourcesVulkan.h"
+#include "RHI/Vulkan/API/VulkanRHI.h"
+
+
+namespace Shard::RHI {
+	namespace Vulkan
+	{
+		class RHIGlobalEntityVulkan : public RHIGlobalEntity
+		{
+		public:
+			using Ptr = RHIGlobalEntityVulkan*;
+			static Ptr Instance();
+			void Init() override;
+			void UnInit() override;
+			void CreateSampler() override;
+			void CreateViewPoint() override;
+			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
+			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
+			RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() override;
+			RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap() override;
+			RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc) override;
+			RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
+			RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc) override;
+			RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc) override;
+			RHIResource::Ptr CreateSRV(const RHITextureSRVInitializer& desc) override;
+			//RHIResource::Ptr CreateRayTracingAccelerateStruct() override;
+			RHICommandContext::Ptr CreateCommandBuffer() override;
+			//calculate resource video memory size
+			size_t ComputeMemorySize(RHIResource::Ptr res) const override;
+			void SetViewPoint() override;
+			void ResizeViewPoint() override;
+			void Execute(Span<RHICommandContext::Ptr> cmd_buffers) override;
+			bool SetUpTexture(RHITextureVulkan::Ptr texture);
+			bool SetUpBuffer(RHIBufferVulkan::Ptr buffer);
+			//special functions for vulkan
+			FORCE_INLINE VulkanInstance::Ptr GetVulkanInstance() {
+				assert(nullptr != instance_);
+				return instance_;
+			}
+			FORCE_INLINE VulkanDevice::Ptr GetVulkanDevice() {
+				assert(nullptr != device_);
+				return device_;
+			}
+			FORCE_INLINE bool SetVulkanCallBack(VkAllocationCallbacks* clk) {
+				alloc_clk_ = clk;
+			}
+			FORCE_INLINE const VkAllocationCallbacks* GetVulkanCallBack() const {
+				return alloc_clk_;
+			}
+			~RHIGlobalEntityVulkan() {
+				UnInit();
+			}
+		protected:
+
+		private:
+			RHIGlobalEntityVulkan();
+			void InitInstance();
+			void InitGlobalAllocationCallBacks();
+		private:
+			VulkanInstance::Ptr	instance_;
+			VulkanDevice::Ptr	device_;
+			//viewport 
+
+			//memory resource manager
+			RHIPooledTextureAllocatorVulkan	pooled_repo_;
+			RHITransientResourceAllocatorVulkan::SharedPtr transient_repo_;
+			
+			//memory alloc wrapper for vulkan
+			VkAllocationCallbacks* alloc_clk_{ nullptr };
+
+			//bindless heap ?
+			RHIResourceBindlessSetVulkan::SharedPtr	bindless_heap_;
+
+			//imgui layer
+			RHIImGuiLayerWrapperVulkan	imgui_wrapper_;
+		}; 
+	}
+}
