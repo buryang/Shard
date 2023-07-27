@@ -3,7 +3,7 @@
 #include "Utils/Hash.h"
 #include "Utils/Memory.h"
 #include "Utils/SimpleJobSystem.h"
-#include "Delegate/Delegate/Delegate.h"
+#include "Delegate/Delegate/MulticastDelegate.h"
 #include <limits>
 #include <type_traits>
 
@@ -68,10 +68,43 @@ namespace Shard
 			List<uint32_t>	free_indices_;
 		};
 
-		template<typename>
+		template<typename Container>
 		class SparseSetIterator
 		{
+		public:
+			using value_type = typename Container::value_type;
+			using pointer = typename Container::pointer;
+			using difference_type = typename Container::difference_type;
+			using iterator_category = std::random_access_iterator_tag;
+		public:
+			SparseSetIterator() = default;
+			SparseSetIterator(const Container& container, const difference_type index):container(std::addressof(container)), offset_(index) {
 
+			}
+			value_type operator*()const {
+				return *operator->();
+			}
+			pointer operator->()const{
+				&container_[offset_];
+			}
+			SparseSetIterator& operator++() {
+				++offset_;
+				return *this;
+			}
+			SparseSetIterator operator++(int) {
+				auto temp = *this;
+				++(*this);
+				return temp;
+			}
+			friend bool operator==(const SparseSetIterator& lhs, const SparseSetIterator& rhs) {
+				return lhs.offset_ == rhs.offset_;
+			}
+			friend bool operator!=(const SparseSetIterator& lhs, const SparseSetIterator& rhs) {
+				return !(lhs == rhs);
+			}
+		private:
+			const Container* container_{ nullptr };
+			difference_type	offset_{ 0u };
 		};
 
 		template<typename ValueType, typename Allocator>
@@ -80,7 +113,7 @@ namespace Shard
 		public:
 			using ValueType = ValueType;
 			using SizeType = Vector<ValueType>::size_type;
-			using Iterator = Vector<ValueType>::iterator;
+			using Iterator = SparseSetIterator<Vector<ValueType>>;
 			using ConstIterator = Vector<ValueType>::const_iterator;
 			using ThisType = SparseSet<SizeType, ValueType>;
 			using DenseAllocatorType = std::allocator_traits<Allocator>::rbind_alloc<ValueType>;
@@ -98,11 +131,22 @@ namespace Shard
 				const auto page_size = std::ceil(float(old_size) / SparsePage::PAGE_SIZE);
 				//todo renew pages
 			}
+			Iterator Begin() {
+
+			}
+			Iterator End() {
+
+			}
 			void Swap(ThisType& rhs) {
 				std::swap(dense_, rhs.dense_);
 				std::swap(sparse_pages_, rhs.sparse_pages_);
-				std::swap(allocator_, rhs.allocator_);
+				std::swap(page_alloc_ rhs.page_alloc_);
 				//todo allocator
+			}
+			void SwapByDense(ValueType lhs, ValueType rhs) {
+				SetSparseValue(dense_[lhs], rhs);
+				SetSparseValue(dense_[rhs], lhs);
+				std::swap(dense_[lhs], dense_[rhs]);
 			}
 			void Insert(ValueType i) {
 				dense_.push_back(i);
@@ -191,6 +235,7 @@ namespace Shard
 		class ComponentRepoBase
 		{
 		public:
+			using Ptr = ComponentRepoBase*;
 			virtual ~ComponentRepoBase() = default;
 		};
 
@@ -206,7 +251,7 @@ namespace Shard
 			void Reverse(uint32_t size) {
 				component_data_.reserve(size);
 			}
-			void Destroy(Entity e) override {
+			void Destroy(Entity e) {
 				auto index = LookUp(e);
 				if (index != -1) {
 					Remove(index);
@@ -216,7 +261,11 @@ namespace Shard
 				}
 			}
 			void Clear() {
-				//todo
+				//todo logic error
+				for (auto iter = sparse_set_.Begin(); iter != sparse_set_.End(); ++iter) {
+					Destroy(iter->);
+				}
+				sparse_set_.Clear();
 			}
 			template<typename... Args>
 			Type& Append(uint32_t index, Args&&... args) {
@@ -246,7 +295,8 @@ namespace Shard
 			}
 
 			void Swap(uint32_t lhs, uint32_t rhs) {
-
+				Swap(component_data_[lhs], component_data_[rhs]);
+				sparse_set_.SwapDense(lhs, rhs);
 			}
 
 			//sort component
@@ -303,11 +353,12 @@ namespace Shard
 			using ComponentAlloc = std::allocator_traits<Allocator>::template rebind_alloc<Type>;
 			Vector<Type, ComponentAlloc> component_data_; //todo
 			//delegate 
-			Delegate<void(ThisType*, Entity)>	on_construct_;
-			Delegate<void(ThisType*, Entity)>	on_update_;
-			Delegate<void(ThisType*, Entity)>	on_release_;
+			DelegateLib::MulticastDelegate<void(ThisType*, Entity)>	on_construct_;
+			DelegateLib::MulticastDelegate<void(ThisType*, Entity)>	on_update_;
+			DelegateLib::MulticastDelegate<void(ThisType*, Entity)>	on_release_;
 		};
 
+		/*
 		template<typename SharedComponent>
 		class SharedComponentRepo : public ComponentRepoBase
 		{
@@ -324,6 +375,7 @@ namespace Shard
 		private:
 			Type* component_data_{ nullptr };
 		};
+		*/
 
 		template<typename ...T>
 		class MessageQueue
@@ -548,13 +600,14 @@ namespace Shard
 		class ECSComponentGroup<ECSOwnedList<Component...>, ECSExcludedList<Reject...>>
 		{	
 		public:
+			using  = ECSComponentGroup<Component..., Reject...>;
 			using OwnedRepoType = ECSBatTransformList<ComponentRepo*, Component...>::Type;
 			using RejectedRepoType = ECSBatTransformList<ComponentRepo*, Reject...>::Type;
 		public:
 			//function
 			ECSComponentGroup() = default;
 			ECSComponentGroup(OwnedRepoType owned, RejectedRepoType reject):owned_repos_(owned), rejected_repos(reject)  {
-				std::apply([this](auto...* repo) { ((repo->OnConstruct().; repo->OnRelease().). ...); }, owned_repos_);
+				std::apply([this](auto...* repo) { ((repo->OnConstruct() += DelegateLib::MakeDelegate(this, &ThisType::OnContruct); repo->OnRelease() += DelegateLib::MakeDelegate(this, &ThisType::OnRelease); ). ...); }, owned_repos_);
 				//initializer group
 				auto* cand_repo = std::get<0>(owned_repos_);
 				for (auto entt : cand_repo) {
@@ -562,7 +615,7 @@ namespace Shard
 				}
 			}
 			~ECSComponentGroup() {
-				std::apply([this](auto...* repo) { ((repo->OnConstruct().; repo->OnRelease().;), ...); }, owned_repos_);
+				std::apply([this](auto...* repo) { ((repo->OnConstruct() -= DelegateLib::MakeDelegate(this, &ThisType::OnContruct); repo->OnRelease() -= DelegateLib::MakeDelegate(this, &ThisType::OnRelease);), ...); }, owned_repos_);
 				//todo world remove group
 				//RemoveGroup<Component..., Reject...>();
 			}
@@ -583,13 +636,30 @@ namespace Shard
 			bool IsOwned()const {
 				return OwnedType::Contain<Type, Other...>();
 			}
+			template<typename Func>
+			void For(Func&& func) {
+				for (auto iter = Begin(); iter != End(); ++iter) {
+					func(*iter);
+				}
+			}
+			template<typename Func>
+			void ParallelFor(Func& func, size_type count) {
+				const auto work_per_thread = group_cursor_ / count;
+				const auto& sub_group_work = [&, this](uint32_t group, uint32_t thread) {
+					for (auto n = work_per_thread * group * thread; n < std::min(group_cursor_, work_per_thread * (group * thread + 1)); ++n)
+					{
+						func(*(Begin() + n));
+					}
+				};
+				Utils::Dispatch(sub_group_work, 1, count);
+			}
 		private:
 			void OnContruct(Entity e) { //todo apply function error use
 				if (std::apply([e](auto...* repo) { return repo->IsContain(e)&&... }, owned_repos_) &&
 					std::apply([e](auto...* repo) { return (0u + ... + repo->IsContain(e)) == 0u; }, rejected_repos_ )
 				{
 					//todo for each repo swap e and group_cursor
-					std::apply([e](auto* repo) { ((const auto index = repo->ToIndex(e); repo->Swap(index, group_cursor_);), ...); }, owned_repos_);
+					std::apply([e](auto...* repo) { ((const auto index = repo->ToIndex(e); repo->Swap(index, group_cursor_);), ...); }, owned_repos_);
 					++group_cursor_;
 				}
 			}
@@ -597,8 +667,9 @@ namespace Shard
 				LOG(INFO) << "nothing related to update delegate";
 			}
 			void OnRelease(Entity e) {
+				assert(group_cursor_ >= 0u);
 				const auto index = std::get<0>(component_repos_)->ToIndex(e); //the order of this after release op done??
-				if (index >= 0 && index < group_cursor_) {
+				if (index >= 0u && index < group_cursor_) {
 					std::apply([e](auto* repo) { ((const auto index = repo->ToIndex(e); repo->Swap(index, group_cursor_);). ...); }, owned_repos_);
 					--group_cursor_;
 				}
@@ -681,10 +752,20 @@ namespace Shard
 				return *this;
 			}
 			template<typename Func>
-			void ForEach(Func&& func) {
+			void For(Func&& func) {
 				for (const auto& e : entities_) {
 					func(e); //todo
 				}
+			}
+			template<typename Func>
+			void ParallelFor(Func&& func, size_type count) {
+				const auto work_per_thread = entities_.size() / count;
+				const auto& sub_group_work = [&, this](uint32_t group, uint32_t thread) {
+					for (const auto n = group * thread * work_per_thread; n < std::min(entities_.size(), (group * thread + 1) * work_per_thread); ++n) {
+						func(entities_[n]);
+					}
+				};
+				Utils::Dispatch(sub_group_work, 1, count);
 			}
 			explicit ECSComponentQuery(OwnedRepoType owned, RejectedRepoType reject):owned_repos_(owned), rejected_repos_(reject) {
 				entities_.clear();
@@ -734,7 +815,7 @@ namespace Shard
 			Array<JobEntry*, MAX_SYSTEM_DEPEND>	dependency_; //only one?
 		};
 
-		template<typename ...>
+		template<typename ...Component>
 		class ECSObserver
 		{
 			//todo
@@ -807,14 +888,14 @@ namespace Shard
 				static Set<uint32_t> occupied_oreder{};
 				static uint32_t curr_order{ 0u };
 				auto tmp = hint;
-				if (tmp == -1 || occupied_oreder.count(hint)!=0u) {
+				if (tmp == -1 || occupied_oreder.count(tmp) != 0u) {
 					tmp = curr_order++;
 				}
 				occupied_oreder.emplace(tmp);
 				return tmp;
 			}
 		protected:
-			void WaitAllDependency();
+			void WaitAllDependency(ECSSystemUpdateContext& ctx);
 		public:
 			uint32_t	prior_order_{ 0u };
 		private:
@@ -872,42 +953,54 @@ namespace Shard
 			using EntityType = EntityAdmin;
 		public:
 			template<typename System, typename... Args>
+			requires std::is_convertible_v(ECSSystem, System)
 			System* RegisterSystem(Args&&... args) {
 				auto ptr = new System(std::forward<Args>(args)...);
-				systems_.insert(std::make_pair());
-				if constexpr (has_component<System>) {
-					RegisterComponentMessage(ptr, ,std::bool_constant<>());
-				}
+				systems_.insert(std::make_pair(std::type_inex(typeid(System), ptr);
+				//if constexpr (has_component<System>) {
+				//	RegisterComponentMessage(ptr, ,std::bool_constant<>());
+				//}
 				//FIXME message handler
 				{
 					//auto dummy[] = { (RegisterMessageHandler<System, T...>(ptr), 0)... };
 				}
 				return ptr;
 			}
+			template<typename System>
+			requires std::is_base_of_v(ECSSystem, System)
+			System* GetSystem(auto key = std::type_index(typeid(System))) {
+				if (auto iter = systems_.find(key)) {
+					return static_cast<System*>(iter->second);
+				}
+				return nullptr;
+			}
 			template<typename Component>
 			void RegisterComponent(ComponentRepo<Component>* component_repo) {
-				components_data_.insert(std::make_pair(typeid(Component), component_repo));
+				components_data_.insert(std::make_pair(std::type_index(typeid(Component)), component_repo));
 			}
-			template<typename Component>
-			void RegisterComponent() {
-				auto comp_repo = new ComponentRepo<Component>; //todo 
+			template<typename Component, typename... Args>
+			void RegisterComponent(Args&&... args) {
+				auto comp_repo = new ComponentRepo<Component>(std::forward<Args>(args)...);  
 				RegisterComponent(comp_repo);
 			}
-			template<typename ...Component, typename ...Reject>
-			void RegisterGroup() {
 
-			}
-			template<typename ...Component, typename ...Reject>
-			void UnRegisterGroup() {
-
-			}
-			template<typename Component>
-			ComponentRepo<Component>* GetComponentRepo() {
-				return dynamic_cast<ComponentRepo<Component>*>(components_data_[typeid(Component)]);
-			}
 			template<typename Component...>
 			auto GetComponentRepos() {
-				return std::make_tuple(GetComponent<Component>...);
+				if constexpr (sizeof...(Component) == 0u) {
+					return nullptr;
+				}
+				else {
+					if constexpr (sizeof...(Component) == 1u) {
+						if (auto iter = components_data_.find(std::type_index(typeid(Component)))) {
+							return static_cast<ComponentRepo<Component>*>(iter->second);
+						}
+						LOG(ERROR) << "admin not has such component repo";
+						return nullptr;
+					}
+					else {
+						return std::make_tuple(GetComponentRepos<Component>...);
+					}
+				}
 			}
 			template<typename Component, typename BinaryCompare>
 			void Sort(BinaryCompare&& compare_op) {
@@ -922,40 +1015,71 @@ namespace Shard
 			template<typename ...Component, typename ...Reject>
 			ECSComponentQuery<Component..., Reject...> Query() {
 				auto owned_repos = GetComponentRepo<Component...>();
-				auto rejected_repos = GetComponentRepo<Reject...>();
-				return { owned_repos, rejected_repos };
+				if (std::apply([](auto...* repo) { return (repo!=nullptr&&...); }, owned_repos))
+				{
+					auto rejected_repos = GetComponentRepo<Reject...>();
+					return { owned_repos, rejected_repos };
+				}
+				LOG(ERROR) << "the query disired not existed";
 			}
 
 			template<typename ...Component, typename ...Reject>
 			ECSComponentGroup<Component..., Reject...>* Group(bool try_create = false) {
-				if (0) {
-
+				using TargetGroupType = ECSComponentGroup<Component..., Reject...>;
+				const auto target_key = std::type_index(typeid(TargetGroupType);
+				if (auto iter = groups_.find(target_key)) {
+					return static_cast<TargetGroupType*>(iter->second);
 				}
-				else if(try_create) {
+				else if (try_create) {
 					auto owned_repos = GetComponentRepo<Component...>();
 					auto rejected_repos = GetComponentRepo<Reject...>();
-					//return { owned_repos, rejected_repos };
+					groups_.insert(std::make_pair(target_key, { owned_repos, rejected_repos }));
+					return
 				}
 				return nullptr;
 			}
 
-			template<typename ...Component>
 			void Clear() {
+				ClearComponents();
+				ClearSystems();
+				for (auto& [_, group] : groups_) {
+					delete group;
+				}
+				groups_.clear();
+			}
+			template<typename ...Component>
+			void ClearComponents() {
 				if constexpr (sizeof...(Component) == 0u) {
 					for (auto [_, comp] : components_data_) {
 						//todo 
 						delete comp;
 					}
+					components_data_.clear();
+				}
+				else {
+					if constexpr (sizeof...(Component) == 1u) {
+						GetComponentRepo<Component>()->Clear();
+						components_data_.erase(std::type_index(typeid(Component)));
+					}
+					else {
+						(ClearComponents<Component>(), ...); //fold express
+					}
+				}
+			}
+			template<typename... System>
+			void ClearSystems() {
+				if constexpr (sizeof...(System) == 0u) {
 					for (auto [_, sys] : systems_) {
 						delete sys;
 					}
 				}
 				else {
-					if constexpr (sizeof...(Component) == 1u) {
-						GetComponentRepo<Component>()->Clear();
+					if constexpr (sizeof...(System) == 1u) {
+						//todo finalize system
+						systems_.erase(std::type_index(typeid(System)));
 					}
 					else {
-						(Clear<Component>(), ...); //fold express
+						(ClearSystems<System>(), ...);
 					}
 				}
 			}
@@ -971,9 +1095,7 @@ namespace Shard
 			void AddComponent(Entity e, Args&&... args) {
 				auto it = component_data_.find(typeid(Component));
 				assert(it != component_data_.end());
-				auto comp_iterface = it->second;
-				//FIXME
-				comp_iterface->Add(std::forward<Args...>(args));
+				it->second->Add(std::forward<Args...>(args));
 			}
 			//component manager interface
 			template<typename Component>
@@ -1013,14 +1135,10 @@ namespace Shard
 			requires std::is_base_of_v<ECSEnableComponent, Component>
 			bool HasEnableComponent(Entity e) {
 				if (HasComponent<Component>(e)) {
-					auto* val = GetComponent<Component>();
-					return static_cast<ECSEnableComponent*>*(val)->enable_;
+					const auto* val = GetComponent<Component>(e);
+					return static_cast<ECSEnableComponent*>(val)->enable_;
 				}
 				return false;
-			}
-			template<typename System>
-			System* GetOrCreateSystem() {
-				return nullptr;
 			}
 		private:
 			template<typename System, typename Message, typename C, typename... Cs>
@@ -1031,7 +1149,7 @@ namespace Shard
 				}
 				for (auto n = 0; n < collector.COMP_SIZE; ++n) {
 					auto comp_iter = collector.Get<n>();
-					RegisterHandler(, [&](Message& mess) {
+					RegisterHandler(comp_iter, [&](Message& mess) {
 						run(mess, comp_iter);
 					});
 				}
@@ -1077,9 +1195,10 @@ namespace Shard
 				}
 			}
 		private:
+			Allocator alloc_;
 			EntityManager entity_manager_;
 			//todo fixme type info bugs ??? //https://skypjack.github.io/2020-03-14-ecs-baf-part-8/
-			Map<std::type_index, ComponentRepoBase*> components_data_;
+			Map<std::type_index, ComponentRepoBase::Ptr> components_data_;
 			template <typename... Components>
 			struct ComponenentCollector
 			{
@@ -1087,20 +1206,21 @@ namespace Shard
 				ComponentCollector(ThisType& world) {
 					Fill<0, Components...>(world);
 				}
-				ComponentRepoBase* components_data_[COMP_SIZE];
+				ComponentRepoBase::Ptr components_data_[COMP_SIZE];
 				template<uint32_t index>
-				ComponentRepoBase* Get() { return components_data_[index]; }
+				ComponentRepoBase::Ptr Get() { return components_data_[index]; }
 				template <uint32_t index>
-				void Fill(Map<std::type_index, ComponentInterface*>& components) {
+				void Fill(Map<std::type_index, ComponentRepoBase::Ptr>& components) {
 					return;
 				}
 				template <uint32_t index, typename T, typename... Ts>
-				void Fill(Map<std::type_index, ComponentInterface*>& components) {
-					components_data_[index] = components[typeid(T)];
+				void Fill(Map<std::type_index, ComponentRepoBase::Ptr>& components) {
+					components_data_[index] = components[std::type_index(typeid(T))];
 					Fill<index + 1, Ts...>(components);
 				}
 			};
 
+			//according to entt, type_index/type_info.hash_code both not unique
 			Map<std::type_index, ECSSystem::Ptr> systems_;
 			//ecs group define 
 			Map<std::type_index, ECSComponentGroupBase::Ptr> groups_;

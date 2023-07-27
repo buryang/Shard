@@ -90,7 +90,7 @@ namespace Shard
 
 		template<typename F>
 		requires std::is_convertible_v<std::decay_t<F>, std::function<void(void)>>
-		JobEntry Schedule(F&& function, JobEntry* parent = nullptr, uint32_t affinity = 0xFFFFFFFF, bool stealable = true)
+		JobEntry* Schedule(F&& function, JobEntry* parent = nullptr, uint32_t affinity = 0xFFFFFFFF, bool stealable = true)
 		{
 			//fixme life time of task and entry
 			JobEntry::TaskEntry<F> job_task{ function };

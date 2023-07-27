@@ -10,19 +10,25 @@ namespace Shard
 		{
 			bool enable_{ false };
 		};
+
+		template<typename T>
+		struct ECSEnableTemplateComponent : ECSEnableComponent
+		{
+			T	value_;
+		};
 		
 		struct ECSNameComponent
 		{
 			enum
 			{
-				MAX_NAME_LENGTH = 128,
+				MAX_NAME_LENGTH = 128u,
 			};
-			char name_[MAX_NAME_LENGTH];
+			Tchar name_[MAX_NAME_LENGTH];
 		};
 
 		struct ECSRelationShipComponent
 		{
-			std::size_t	children_{ 0u };
+			size_type	children_{ 0u };
 			//parent
 			Entity	parent_{ Entity::Null };
 			//prev sibling 
@@ -32,6 +38,14 @@ namespace Shard
 			//first child
 			Entity	first_child_{ Entity::Null };
 		};
+
+		FORCE_INLINE bool HasParent(const ECSRelationShipComponent& rel) {
+			return rel.parent_ != Entity::Null;
+		}
+		
+		FORCE_INLINE bool HasChildren(const ECSRelationShipComponent& rel) {
+			return rel.children_ > 0u;
+		}
 
 		struct ECSInputComponent
 		{

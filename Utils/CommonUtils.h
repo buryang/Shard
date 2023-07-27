@@ -88,10 +88,12 @@ namespace Shard {
 
 	using size_type = std::size_t;
 
-	template<typename T>
-	using Vector = eastl::vector<T>;
-	template<typename T, uint32_t reverse_size=16, bool overflow=true>
-	using SmallVector = eastl::fixed_vector<T, reverse_size, overflow>;
+	template<typename T, typename Allocator = eastl::allocator>
+	using Vector = eastl::vector<T, Allocator>;
+	template<typename T, uint32_t reverse_size=16, bool overflow=true, typename Allocator = eastl::allocator>
+	using SmallVector = eastl::fixed_vector<T, reverse_size, overflow, Allocator>;
+	template<typename T, uint32_t reverse_size>
+	using Array = SmallVector<T, reverse_size, false, eastl::dummy_allocator>;
 	template<typename Key, typename Val>
 	using Map = eastl::hash_map<Key, Val>;
 	template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
@@ -108,7 +110,8 @@ namespace Shard {
 	using List = eastl::list<T>;
 	template<size_t N>
 	using BitSet = eastl::bitset<N>;
-	using BitVector = eastl::bitvector<>;
+	template<class Allocator>
+	using BitVector = eastl::bitvector<Allocator>;
 
 	template<typename T>
 	using Span = eastl::span<T>;
@@ -118,6 +121,14 @@ namespace Shard {
 
 	using String = eastl::string;
 	using WString = eastl::wstring;
+
+#ifdef _UNICODE
+	using Tchar = wchar_t;
+	using TString = WString;
+#else
+	using Tchar = char;
+	using TString = String;
+#endif
 	
 	//multi thread 
 	/*
