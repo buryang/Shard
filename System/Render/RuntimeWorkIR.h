@@ -1,7 +1,6 @@
 #pragma once
 //render runtime work IR present like UE meshbatchcommand
 #include "Utils/CommonUtils.h"
-#include "Scene/PrimitiveProxy.h"
 
 namespace Shard
 {

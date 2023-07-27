@@ -7,3 +7,9 @@
 [submodule "ThirdParty/bullet3"]
 	path = ThirdParty/bullet3
 	url = https://github.com/bulletphysics/bullet3.git
+[submodule "ThirdParty/SDL"]
+	path = ThirdParty/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "ThirdParty/--force"]
+	path = ThirdParty/--force
+	url = https://github.com/zeux/meshoptimizer.git

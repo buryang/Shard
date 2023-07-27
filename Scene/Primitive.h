@@ -178,12 +178,6 @@ namespace Shard
 		//extrinsics
 		mat4	affine_{ 1.0f };
 	};
-	
-	/*entity sprite for render*/
-	struct Sprite
-	{
-
-	};
 
 	/*
 	struct Volume
@@ -282,6 +276,18 @@ namespace Shard
 		TexturePtr emissive_texture_;
 	};
 
+	struct EnvironmentMap
+	{
+		Texture::Ptr	cube_map_{ nullptr };
+	};
+
+	struct SkyboxEnviromentMap : EnvironmentMap
+	{
+		Texture::Ptr	skybox_radiance_{ nullptr };
+		float	intensity_{ 1.0f };
+		float	exposure_{ -1.f };
+	};
+
 	//todo material
 	struct CombinedMaterial
 	{
@@ -294,17 +300,20 @@ namespace Shard
 
 	};
 
+	template<typename>
 	struct Volumetric
 	{
 
 	};
 
-	struct VolumetricFog
+	template<typename>
+	struct VolumetricFog : Volumetric<>
 	{
 
 	};
 
-	struct VolumetricCloud
+	template<typename>
+	struct VolumetricCloud : Volumetric<>
 	{
 
 	};

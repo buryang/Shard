@@ -3,7 +3,6 @@
 #include "folly/json.h"
 #include "MyToySimpleRenderer.h"
 
-#define 
 namespace Shard
 {
 	namespace Runtime

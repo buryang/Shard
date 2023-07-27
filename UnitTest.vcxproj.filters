@@ -27,9 +27,6 @@
     <ClCompile Include="Test\TestGltfReader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Test\TestShardRender.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Test\TestRenderGraph.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -37,6 +34,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Test\TestSimpleCoro.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Test\TestMetaInitRender.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TestInputSystem.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

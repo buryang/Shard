@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="TestInputSystem.cpp" />
     <ClCompile Include="Test\main.cpp" />
     <ClCompile Include="Test\TestAssimpReader.cpp" />
     <ClCompile Include="Test\TestGltfReader.cpp" />
@@ -92,12 +93,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit;D:\Exp\Source\MetaInit\ThirdParty\SDL\include</IncludePath>
     <LibraryPath>D:\vcpkg\installed\x64-windows\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit</IncludePath>
+    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit;D:\Exp\Source\MetaInit\ThirdParty\SDL\include</IncludePath>
     <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\Exp\MetaInit\x64\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
