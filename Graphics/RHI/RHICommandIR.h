@@ -47,12 +47,12 @@ namespace Shard::RHI {
 			eSetEvent,
 			eWaitEvent,
 		};
-		virtual ECommandType Type() = 0;
+		virtual ECommandType Type() const = 0;
 		virtual ~RHICommandPacketInterface() {}
 	};
 
 #define IMPLEMENT_TYPE(type) \
-	RHICommandPacketInterface::ECommandType Type() override \
+	RHICommandPacketInterface::ECommandType Type() const override \
 	{\
 		return type;\
 	}
@@ -92,6 +92,10 @@ namespace Shard::RHI {
 			eAsync,
 			eRayTrace
 		};
+		RHIBindPSOPacket(RHI::RHIPipelineStateObject::Ptr pso, EBindPoint bind_point) : pso_(pso), bind_point_(bind_point)
+		{
+
+		}
 		RHI::RHIPipelineStateObject::Ptr	pso_{ nullptr };
 		EBindPoint	bind_point_{ EBindPoint::eGFX };
 	};
@@ -115,6 +119,11 @@ namespace Shard::RHI {
 
 	struct RHIDrawPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eDraw);
+		RHIDrawPacket() = default;
+		RHIDrawPacket(uint32_t num_vertex, uint32_t num_instance, 
+						uint32_t first_vertex, uint32_t first_instance): 
+						num_vertex_(num_vertex), num_instance_(num_instance),
+						first_vertex_(first_vertex), first_instance_(first_instance){}
 		uint32_t	num_vertex_{ 0u };
 		uint32_t	num_instance_{ 0u };
 		uint32_t	first_vertex_{ 0u };
@@ -219,11 +228,15 @@ namespace Shard::RHI {
 		RHITexture::Ptr	dst_texture_{ nullptr };
 	};
 
-	struct RHIPushConstant final : public RHICommandPacketInterface {
+	struct RHIPushConstantPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::ePushConstant);
+		RHIPushConstantPacket() = default;
+		RHIPushConstantPacket(uint32_t flags, uint32_t offset, uint8_t* data, size_type size) :
+								flags_(flags), offset_(offset), user_data_(data), user_data_size_(size) {}
 		uint32_t	flags_{ 0 };
 		uint32_t	offset_{ 0 };
-		Span<uint8_t>	user_data_;
+		uint8_t*	user_data_{ nullptr };
+		size_type	user_data_size_{ 0u };
 	};
 
 	struct RHIEventSet final : public RHICommandPacketInterface {
@@ -235,4 +248,7 @@ namespace Shard::RHI {
 		IMPLEMENT_TYPE(ECommandType::eWaitEvent);
 		Span<RHIEvent::Ptr>	events_;
 	};
+
+ 
+
 }

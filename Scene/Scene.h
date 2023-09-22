@@ -1,11 +1,13 @@
 #pragma once
 #include "Utils/SimpleEntitySystem.h"
+#include "Utils/SimpleEntitySystemPrimitive.h"
 #include "Scene/Primitive.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_USE_CPP14
 #include "tiny_gltf.h"
+#include <memory>
 
 namespace Shard
 {
@@ -45,7 +47,7 @@ namespace Shard
 		private:
 			//load post proc functions
 		private:
-			friend class MyToySimpleRenderer;
+			friend class RuntimeHDRPRenderer;
 			CameraList		cameras_;
 			Camera* curr_camera_{ nullptr };
 			MeshList		meshes_;
@@ -99,9 +101,12 @@ namespace Shard
 			eRender,
 		};
 
+		class WorldScene;
+
 		struct WorldSceneUpdateContext final: Utils::ECSSystemUpdateContext
 		{
-
+			WorldSceneUpdateContext();
+			WorldScene::Ptr GetScence();
 		};
 
 		//ecs scene interface
@@ -109,9 +114,64 @@ namespace Shard
 		{
 		public:
 			using Ptr = WorldScene*;
-			using Utils::ECSAdmin<int>::EntityType; //todo
+			class EntityProxy: public std::enable_shared_from_this<EntityProxy>
+			{
+			public:
+				using SharedPtr = std::shared_ptr<EntityProxy>;
+				EntityProxy(WorldScene* world) :world_(world) {
+					entity_ = world_->NewEntity();
+				}
+				EntityProxy(const EntityProxy& other):world_(other.world_) {
+					entity_ = world_->Clone({ other });
+				}
+				SharedPtr GetPtr() {
+					return shared_from_this();
+				}
+				operator Utils::Entity() {
+					return entity_;
+				}
+				operator bool() {
+					return bool(entity_);
+				}
+				template<typename Component, typename ...Args>
+				void Assign(Utils::Entity entt, Args&& ...args) {
+					world_->AddComponent<Component>(entt, std::forward(args)..);
+				}
+				template<typename Component>
+				void Remove(Utils::Entity entt) {
+					world_->RemoveComponent<Component>(entt);
+				}
+				template<typename Component>
+				Component& Get() {
+					admin_->GetComponent<Component>(*this);
+				}
+				void AttachEntity(Utils::Entity parent, Utils::Entity child)
+				{
+					//attach children to parent
+					Assign<Utils::ECSRelationShipComponent>(child, {} );
+				}
+
+				void DetachEntity(Utils::Entity entt) {
+					Remove<Utils::ECSRelationShipComponent>(entt);
+				}
+
+				void DetachChildrenEntity(Utils::Entity parent) {
+
+				}
+
+				~EntityProxy() {
+					world_->DelEntity(*this);
+				}
+			private:
+				Utils::Entity	entity_;
+				Ptr	world_{ nullptr };
+			};
+			
 			virtual void Tick(float dt);
 			virtual ~WorldScene() = default;
+			EntityProxy::SharedPtr CreateEntity();
+			void Serialize(const String& world_file);
+			void UnSerialize(const String& world_file) const;
 		};
 	}
 }

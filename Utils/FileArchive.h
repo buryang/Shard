@@ -5,26 +5,38 @@
 
 namespace Shard::Utils {
 
-	class MINIT_API FileArchive {
+	class MINIT_API IOArchive
+	{
 	public:
 		using SizeType = uint64_t;
-		using PositionType = SizeType;
-
 		enum EArchiveMode {
 			eUndefined = 0,
 			eRead = 1 << 0,
 			eWrite = 1 << 1,
 			eAppend = eWrite | 0x100,
 		};
+		bool IsReading()const { return archive_mode_ & eRead; }
+		virtual bool IsEof() const = 0;
+		virtual constexpr SizeType Tell()const = 0;
+		virtual ~IOArchive() = default;
+	protected:
+		EArchiveMode	archive_mode_{ eUndefined };
+	};
+
+	//file archive 
+	class MINIT_API FileArchive : public IOArchive {
+	public:
+		using PositionType = SizeType;
+		using IOArchive::EArchiveMode;
+
 		FileArchive() = default;
 		FileArchive(const String& file_path, EArchiveMode mode);
 		void Open(const String& file_path, EArchiveMode mode);
 		void Close();
-		constexpr SizeType Tell()const;
+		constexpr SizeType Tell()const override;
 		FileArchive& Seek(PositionType pos);
-		bool IsReading()const { return archive_mode_ & eRead; }
-		bool IsEof()const { return archive_stream_.eof(); }
-		FileArchive& Serialize(void* data, uint64_t size);
+		bool IsEof() const override { return archive_stream_.eof(); }
+		FileArchive& Serialize(void* data, SizeType size);
 		template <typename T>
 		friend FileArchive& operator << (FileArchive& archive, T&& value) {
 			assert(archive.archive_mode_ != FileArchive::eUndefined);
@@ -37,8 +49,27 @@ namespace Shard::Utils {
 			return archive;
 		}
 	private:
-		EArchiveMode	archive_mode_{ eUndefined };
 		std::fstream	archive_stream_;
+	};
+
+	//binary memory stream archive
+	class MINIT_API BinaryArchive : public IOArchive {
+	public:
+		using Blob = Vector<uint8_t>;
+		using PositionType = Blob::iterator;
+		using IOArchive::EArchiveMode;
+		BinaryArchive() = default;
+		BinaryArchive(Blob* binary, EArchiveMode mode);
+		constexpr SizeType Tell()const override;
+		bool IsEof() const override { return curr_pos_ == archive_blob_->end(); }
+		BinaryArchive& Serialize(void* data, SizeType size);
+		template <typename T>
+		friend BinaryArchive& operator <<(BinaryArchive& archive, T&& value) {
+
+		}
+	private:
+		Blob* archive_blob_{ nullptr };
+		PositionType	curr_pos_;
 	};
 
 	constexpr uint64_t CalcFileArchiveCrc(const FileArchive& archive, FileArchive::PositionType beg, FileArchive::PositionType end);

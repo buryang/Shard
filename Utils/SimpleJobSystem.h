@@ -44,6 +44,7 @@ namespace Shard
 			}
 			void Wait();
 			void Release();
+			bool IsFinished() const { return is_finished_.load(); }
 			bool IsStealAble()const { return stealable_; }
 			template<class T>
 			requires std::is_base_of<Task, std::decay_t<T>>::value
@@ -69,7 +70,7 @@ namespace Shard
 		class MINIT_API SimpleJobSystem
 		{
 		public:
-			SimpleJobSystem& Instance();
+			static SimpleJobSystem& Instance();
 			void Init(const uint32_t group_count, const uint32_t queue_size, bool use_dedicate_core = false);
 			void UnInit();
 			JobEntry* NewJobEntry();

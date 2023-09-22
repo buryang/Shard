@@ -30,7 +30,7 @@ namespace Shard::Utils {
 		FORCE_INLINE constexpr bool operator!=(const HashSignature& rhs) const {
 			return !(*this == rhs);
 		}
-		friend FileArchive& operator << (FileArchive& ar, HashSignature& hash) {
+		friend IOArchive& operator << (IOArchive& ar, HashSignature& hash) {
 			return ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
 		}
 	private:

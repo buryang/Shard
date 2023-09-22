@@ -18,6 +18,7 @@ namespace Shard::RHI::Vulkan {
 		RHIResourceBindlessSetVulkan() = default;
 		~RHIResourceBindlessSetVulkan();
 		void Init(const RHIBindLessTableInitializer& desc)override;
+		void UnInit()override;
 		void Bind(RHICommandContext::Ptr command)override;
 		RHIResourceHandle WriteBuffer(RHIBuffer::Ptr buffer)override;
 		RHIResourceHandle WriteTexture(RHITexture::Ptr texture)override;
@@ -30,6 +31,9 @@ namespace Shard::RHI::Vulkan {
 		}
 		FORCE_INLINE VulkanDescriptorSet::SharedPtr GetDescritorSet(uint32_t index)const {
 			return descriptor_heaps_[index].set_;
+		}
+		~RHIResourceBindlessSetVulkan() {
+			UnInit();
 		}
 	private:
 		uint32_t GetDescriptorHeapIndex(uint32_t tag_flags);

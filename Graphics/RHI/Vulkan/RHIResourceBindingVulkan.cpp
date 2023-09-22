@@ -44,6 +44,12 @@ namespace Shard::RHI::Vulkan {
 
 		vkCreatePipelineLayout(GetGlobalDevice(), &pipe_desc.ToVulkan(), g_host_alloc, &pipeline_layout_);
 	}
+	
+	void RHIResourceBindlessSetVulkan::UnInit()
+	{
+		vkDestroyPipelineLayout(GetGlobalDevice(), pipeline_layout_, g_host_alloc);
+	}
+
 	void RHIResourceBindlessSetVulkan::Bind(RHICommandContext::Ptr command)
 	{
 		/*

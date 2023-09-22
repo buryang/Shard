@@ -400,3 +400,13 @@ namespace Shard
 		return *this;
 	}
 }
+
+EntityProxy::SharedPtr Shard::Scene::WorldScene::CreateEntity()
+{
+	return std::make_shared<EntityProxy>(this);
+}
+
+WorldScene::Ptr Shard::Scene::WorldSceneUpdateContext::GetScence()
+{
+	return static_cast<WorldScene::Ptr>(admin_);
+}

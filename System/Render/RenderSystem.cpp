@@ -1,7 +1,7 @@
 #include "Utils/CommonUtils.h"
 #include "Core/RenderGlobalParams.h"
 #include "Scene/Scene.h"
-#include "Renderer/RtRenderSystem.h"
+#include "System/Render/RenderSystem.h"
 
 
 namespace Shard::Renderer {
@@ -9,16 +9,21 @@ namespace Shard::Renderer {
 	REGIST_PARAM_TYPE(FLOAT, RENDER_TARGET_FPS, 30);
 	REGIST_PARAM_TYPE(BOOL, RENDER_SKIP_FRAME, false);
 	REGIST_PARAM_TYPE(BOOL, RENDER_FIXED_FPS, false);
+	REGIST_PARAM_TYPE(BOOL, RENDER_DELAY_DEL, false);//whether delay render delete
 
-	void RtRenderSystem::Init()
+	void RenderSystem::Init()
 	{
 	}
 
-	void RtRenderSystem::Unit()
+	void RenderSystem::Unit()
 	{
 	}
 
-	void RtRenderSystem::Tick(float dt)
+	void RenderSystem::Tick(float dt)
+	{
+	}
+
+	void RenderSystem::ReloadRender()
 	{
 	}
 

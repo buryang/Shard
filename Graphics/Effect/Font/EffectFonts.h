@@ -20,6 +20,16 @@ namespace Shard::Effect
 
 	};
 
+	class MINIT_API RtGlyphOutlinesFontVS : public Renderer::RtRenderShader
+	{
+
+	};
+
+	class MINIT_API RtGlyphOutlinesFontPS : public Renderer::RtRenderShader
+	{
+
+	};
+
 	REGIST_SHADER_IMPL(FreeTypeFontVS,"FontsShader.hlsl", ,EShaderFrequency::eVertex);
 	REGIST_SHADER_IMPL(FreeTypeFontPS, "FontsSHader.hlsl", ,EShaderFrequency::eFrag);
 	REGIST_SHADER_IMPL(GlyphOutlinesFontVS, "REGIST_SHADER_IMPL",,EShaderFrequency::eVertex);
@@ -34,14 +44,30 @@ namespace Shard::Effect
 		eBottomAlign,
 	};
 
-	using HashType = Utils::SpookyV2Hash32;
+	struct GlpyHash
+	{
+		uint32_t	code_ : 16;
+		uint32_t	sdf_ : 1;
+		uint32_t	font_style_ : 5;
+		uint32_t	size_ : 10;
+
+		GlpyHash(uint32_t packed) {
+			*reinterpret_cast<uint32_t*>(this) = packed;
+		}
+		operator uint32_t() const {
+			return *reinterpret_cast<const uint32_t*>(this);
+		}
+	};
+
+	using HashType = GlpyHash;
 
 	struct GlyphBitmap
 	{
 		HashType	hash_;
-		ivec2	pos_{0u, 0u};
-		ivec2	size_{0u, 0u};
+		ivec2	size_{0u, 0u}; //bitmap size
+		//#if
 		Vector<uint8_t>	data_;
+		GlyphBitmap() = default;
 	};
 
 	struct GlyphAtlas
@@ -55,7 +81,9 @@ namespace Shard::Effect
 	{
 		String	name_;
 		stbtt_fontinfo	stb_info_;
-		int32_t	ascent_;
+		int32_t	ascent_{ 0u };
+		int32_t	descent_{ 0u };
+		int32_t	linegap_{ 0u };
 	};
 
 	enum class EDrawAlgo
@@ -105,18 +133,19 @@ namespace Shard::Effect
 		static void Draw(const String& text, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
 		static void Draw(const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
 	private:
-		static void AddFontStyle(const String& name, const Span<uint8_t>& bin);
+		static uint32_t AddFontStyle(const String& name, const Span<uint8_t>& bin);
 		static void DrawExecuteFreeType(const WString& wtext, const TextDrawParams& draw_params);
 		static void DrawExecuteGlyphOutlines(const WString& wtext, const TextDrawParams& draw_params);
-		static void UpdateAtlas(); //todo
+		static void UpdateAtlas(float scale = 1.f); //todo
 	private:
-		static Map<String, FontStyleInfo>	font_styleLUT_;
+		static Vector<FontStyleInfo>	font_styleLUT_;
 		static Map<HashType, GlyphAtlas>	glyphs_atlasLUT_;
 		static Map<HashType, GlyphBitmap>	glyphs_neededLUT_;
 
 		static std::mutex	atlas_mutex_;
+		static RHI::RHIBuffer::Ptr	vertex_buffer_;
+		static RHI::RHIBuffer::Ptr	index_buffer_;
 		static RHI::RHITexture::Ptr	atlas_{ nullptr };
-		static RtFreeTypeFontVS	vertex_shader_;
-		static RtFreeTypeFontPS	pixel_shader_;
+		static RHI::RHIPipelineStateObject::Ptr pso_{ nullptr };
 	};
 }

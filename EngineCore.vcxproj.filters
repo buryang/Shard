@@ -51,7 +51,7 @@
     <ClCompile Include="Graphics\Renderer\RtRenderGraphPerfDebug.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="System\Render\MyToySimpleRenderer.cpp">
+    <ClCompile Include="System\Render\RuntimeHDRPRenderer.cpp">
       <Filter>Runtime</Filter>
     </ClCompile>
     <ClCompile Include="System\Render\RuntimeWorkIR.cpp">
@@ -121,6 +121,10 @@
     <ClCompile Include="Utils\Memory.cpp" />
     <ClCompile Include="System\Input\InputSystem.cpp" />
     <ClCompile Include="Runtime\RuntimeEngineCore.cpp" />
+    <ClCompile Include="Graphics\Effect\Base\EffectBasePass.cpp" />
+    <ClCompile Include="System\App\CameraSystem.cpp" />
+    <ClCompile Include="Utils\PlatformShared.cpp" />
+    <ClCompile Include="Graphics\Effect\Font\EffectFonts.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -162,7 +166,7 @@
     <ClInclude Include="Utils\Memory.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="System\Render\MyToySimpleRenderer.h">
+    <ClInclude Include="System\Render\RuntimeHDRPRenderer.h">
       <Filter>Runtime</Filter>
     </ClInclude>
     <ClInclude Include="Utils\DirectedAcyclicGraph.h">
@@ -249,6 +253,11 @@
     <ClInclude Include="Runtime\RuntimeEngineCore.h" />
     <ClInclude Include="System\System.h" />
     <ClInclude Include="System\PhyX\PhyXSystem.h" />
+    <ClInclude Include="System\Resource\ResourceLoaderSystem.h" />
+    <ClInclude Include="System\Animation\AnimationSystem.h" />
+    <ClInclude Include="Graphics\Effect\Base\EffectBasePass.h" />
+    <ClInclude Include="System\App\CameraSystem.h" />
+    <ClInclude Include="Graphics\Effect\Font\EffectFonts.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Graphics\Renderer\RtRenderResources.inl">
@@ -265,5 +274,11 @@
     </None>
     <None Include="cpp.hint" />
     <None Include="Graphics\Renderer\RtRenderShaderUtils.inl" />
+    <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
+    <None Include="Shaders\BindlessResource.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />
+    <FxCompile Include="Shaders\Fonts\VSFontsShader.hlsl" />
   </ItemGroup>
 </Project>

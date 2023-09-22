@@ -1,13 +1,13 @@
 #include <fstream>
 #include "folly/dynamic.h"
 #include "folly/json.h"
-#include "MyToySimpleRenderer.h"
+#include "System/Render/RuntimeHDRPRenderer.h"
 
 namespace Shard
 {
 	namespace Runtime
 	{
-		void MyToySimpleRenderer::RendererCfg::Load(const std::string& path)
+		void RuntimeHDRPRenderer3D::RendererCfg::Load(const std::string& path)
 		{
 			std::ifstream cfg_file(path, std::ios::binary);
 			if (cfg_file.is_open())
@@ -22,7 +22,7 @@ namespace Shard
 			}
 		}
 
-		void MyToySimpleRenderer::RendererCfg::Dump(const std::string& path)
+		void RuntimeHDRPRenderer3D::RendererCfg::Dump(const std::string& path)
 		{
 			std::ofstream cfg_file(path, std::ios::binary);
 			if (cfg_file.is_open())
@@ -37,23 +37,23 @@ namespace Shard
 			
 		}
 
-		void MyToySimpleRenderer::Render(SceneProxyHelper::SharedPtr scene)
+		void RuntimeHDRPRenderer3D::RenderScene()
 		{
 			//begin render main logic here
 
 		}
 
-		const RendererCfg& MyToySimpleRenderer::Config() const
+		const RendererCfg& RuntimeHDRPRenderer3D::Config() const
 		{
 			return config_;
 		}
 
-		bool MyToySimpleRenderer::GatherDyamicMeshDrawCommand(Renderer::RtRenderGraphBuilder& builder)
+		bool RuntimeHDRPRenderer3D::GatherDyamicMeshDrawCommand(Renderer::RtRenderGraphBuilder& builder)
 		{
 			return false;
 		}
 
-		bool MyToySimpleRenderer::GatherRayTracingWorld(Renderer::RtRenderGraphBuilder& builder)
+		bool RuntimeHDRPRenderer3D::GatherRayTracingWorld(Renderer::RtRenderGraphBuilder& builder)
 		{
 			return false;
 		}

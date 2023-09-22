@@ -50,11 +50,12 @@ namespace Shard::RHI
 		//only metal support shader library
 		virtual RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary();
 		virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
-		virtual RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap();
+		//bindless heap interface
+		virtual RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap();
 		virtual RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper();
 		virtual RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc);
-		virtual RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc);
+		virtual RHITexture::Ptr CreateTexture(const RHITextureInitializer& desc);
 		virtual RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc);
 		virtual RHIResource::Ptr CreateSRV(const RHITextureSRVInitializer& desc);
 		//virtual RHIResource::Ptr CreateRayTracingAccelerateStruct();

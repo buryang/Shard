@@ -15,7 +15,7 @@
 #include "Utils/Memory.h"
 #include "InputSystem.h"
 
-namespace Shard
+namespace Shard::System
 {
 
 	namespace Input 

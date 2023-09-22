@@ -113,6 +113,7 @@ namespace Shard
 			template<class>
 			friend class StackAllocator;
 		public:
+			StackAllocator() = default;
 			explicit StackAllocator(size_type capacity) :std::make_shared<StackAllocatorImpl>(capacity) {
 
 			}
@@ -374,7 +375,7 @@ namespace Shard
 		};
 
 		template<typename T, template <typename> typename Allocator>
-		class TraceProxyAllocator
+		class TraceProxyAllocator 
 		{
 		public:
 			using value_type = T;

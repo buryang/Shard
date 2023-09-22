@@ -2,6 +2,7 @@
 #include "RHI/Vulkan/RHIResourcesVulkan.h"
 #include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
 #include "RHI/Vulkan/RHIShaderLibraryVulkan.h"
+#include "RHI/Vulkan/RHIResourceBindingVulkan.h"
 #include "RHI/RHITypeTraits.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
@@ -28,6 +29,14 @@ namespace Shard::RHI::Vulkan {
 	{
 		instance_ = VulkanInstance::Create();
 		device_ = VulkanDevice::Create(instance_);
+
+		//create bindless heap 
+		if (GET_PARAM_TYPE_VAL(BOOL, BINDLESS_TABLE_ENABLE))
+		{
+			bindless_heap_.reset(new RHIResourceBindlessSetVulkan);
+			const auto& bindless_initializer = RHIBindLessTableInitializer::GetBindlessTableInitializer();
+			bindless_heap_->Init(bindless_initializer);
+		}
 	}
 
 	RHICommandContext::Ptr RHIGlobalEntityVulkan::CreateCommandBuffer()
@@ -125,17 +134,20 @@ namespace Shard::RHI::Vulkan {
 		return static_cast<RHIImGuiLayerWrapper::Ptr>(&imgui_wrapper_);
 	}
 
-	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetOrCreateResourceBindlessHeap()
+	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetResourceBindlessHeap()
 	{
-		if(bindless_heap_.get()==nullptr){
-			//todo 
+		//init heap in global entity's init function 
+		if (GET_PARAM_TYPE_VAL(BOOL, BINDLESS_TABLE_ENABLE)) {
+			assert(bindless_heap_.get() != nullptr);
+			return bindless_heap_;
 		}
-		return bindless_heap_;
+		LOG(ERROR) << "bindless table not enabled";
 	}
 
-	RHIResource::Ptr RHIGlobalEntityVulkan::CreateConstBuffer(const RHIBufferInitializer& desc)
+	RHIBuffer::Ptr RHIGlobalEntityVulkan::CreateUniformBuffer(const RHIBufferInitializer& desc)
 	{
-		RHIBufferVulkan::Ptr 
+		RHIBufferVulkan::Ptr buffer = nullptr; //todo
+		return static_cast<RHIBuffer::Ptr>(buffer);
 	}
 
 }

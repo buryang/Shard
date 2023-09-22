@@ -42,12 +42,21 @@ namespace Shard
 			AttributeFrequency	freq_ = AttributeFrequency::None;
 		};
 
+		struct MeshLet
+		{
+			Utils::Entity	material_{ Utils::Entity::Null };
+			uint32_t	offset_{ 0u };
+			uint32_t	indices_count_{ 0u };
+		};
+
 		Attribute<vec3>		positions_;
 		Attribute<vec3>		normals_;
 		Attribute<vec2>		tex_coords_;
 		Attribute<uint32_t> indices_;
 		uint32_t			face_num_;
 		uint32_t			vertex_num_;
+		//tessellation factor
+		float	tessellation_factor_{ 0.f };
 
 
 		template<typename T>
@@ -97,25 +106,91 @@ namespace Shard
 
 	};
 
-	struct StaticMesh
+	struct Cone
+	{
+		vec3	pos_;
+		vec3	normal_;
+	};
+
+	//mesh cluster/lod 
+	struct MeshCluster
+	{
+		static constexpr uint32_t	MAX_CLUSTER_LOD = 8u;
+		uint32_t	lod_{ 0u };
+		uint32_t	offset_{ 0u };
+		uint32_t	indices_count_{ 0u };
+		OBB	bbox_;
+		Cone	bcone_;
+		//todo
+	};
+
+	struct StaticMesh : Mesh
 	{
 
 	};
 
-	struct SkinMesh
+	struct SkinMesh : Mesh
 	{
 
 	};
 
 	struct SkinBone
 	{
+		uint32_t	id_{ 0u };
+	};
 
+
+	struct ECSStaticMeshComponent
+	{
+		StaticMesh* handle_{ nullptr };
+	};
+
+	struct ECSSkinMeshComponent
+	{
+		SkinMesh* handle_{ nullptr };
 	};
 
 	struct Curve
 	{
-		Vector<vec3>	ctrl_points_;
-		Vector<float>	segments_;
+		SmallVector<vec3>	ctrl_points_;
+		SmallVector<float>	segments_;
+	};
+
+	struct Rect
+	{
+		vec2	xy_{ 0.f, 0.f };
+		vec2	wh_{ 1.f, 1.f };
+	};
+
+	struct Sphere
+	{
+		vec3	xyz_{ 0.f, 0.f, 0.f };
+		float	radius_;
+	};
+
+	struct Cylinder
+	{
+		vec3	xyz_;
+		vec3	axis_;
+		float	half_height_;
+		float	radius_;
+	};
+
+	struct Capsule
+	{
+		vec3	xyz_;
+		vec3	axis_;
+		float	half_height_;
+		float	radius_;
+	};
+
+	struct OBB
+	{
+		vec3	xyz_;
+		vec3	size_;
+		vec3	axisX_;
+		vec3	axisY_;
+		vec3	axisZ_;
 	};
 
 	struct AABB
@@ -281,6 +356,16 @@ namespace Shard
 		Texture::Ptr	cube_map_{ nullptr };
 	};
 
+	struct SkyBoxMap : EnvironmentMap
+	{
+
+	};
+
+	struct EnvironmentProbeMap
+	{
+		Texture::Ptr	probes_;
+	};
+
 	struct SkyboxEnviromentMap : EnvironmentMap
 	{
 		Texture::Ptr	skybox_radiance_{ nullptr };
@@ -303,7 +388,9 @@ namespace Shard
 	template<typename>
 	struct Volumetric
 	{
-
+		float absorb_{ 0.f };
+		float scatter_{ 0.f };
+		float green_phase_{ 1.f };
 	};
 
 	template<typename>
@@ -318,10 +405,7 @@ namespace Shard
 
 	};
 
-	//gui part
-	struct ImGuiWidget
-	{
-		//dummy struct 
-	};
+
+
 
 }

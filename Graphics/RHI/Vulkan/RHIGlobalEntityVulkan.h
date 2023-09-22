@@ -21,10 +21,10 @@ namespace Shard::RHI {
 			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
 			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
 			RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() override;
-			RHIResourceBindlessHeap::SharedPtr GetOrCreateResourceBindlessHeap() override;
-			RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc) override;
-			RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
-			RHIResource::Ptr CreateTexture(const RHITextureInitializer& desc) override;
+			RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap() override;
+			RHIBuffer::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc) override;
+			RHIBuffer::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
+			RHITexture::Ptr CreateTexture(const RHITextureInitializer& desc) override;
 			RHIResource::Ptr CreateUAV(const RHITextureUAVInitializer& desc) override;
 			RHIResource::Ptr CreateSRV(const RHITextureSRVInitializer& desc) override;
 			//RHIResource::Ptr CreateRayTracingAccelerateStruct() override;
@@ -61,8 +61,8 @@ namespace Shard::RHI {
 			void InitInstance();
 			void InitGlobalAllocationCallBacks();
 		private:
-			VulkanInstance::Ptr	instance_;
-			VulkanDevice::Ptr	device_;
+			VulkanInstance::SharedPtr	instance_;
+			VulkanDevice::SharedPtr	device_;
 			//viewport 
 
 			//memory resource manager

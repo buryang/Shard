@@ -802,7 +802,7 @@ namespace Shard
 
 		struct ECSSharedComponent
 		{
-			std::atomic_uint32_t	ref_counter_{ 0u };
+			std::atomic_uint32_t	ref_count_{ 0u };
 			uint32_t	index_{ 0u };
 		};
 
@@ -810,9 +810,9 @@ namespace Shard
 			enum {
 				MAX_SYSTEM_DEPEND = 4,
 			};
-			void*	eadmin_{ nullptr };
+			void*	admin_{ nullptr };
 			float	delta_time_{ 0.f };
-			Array<JobEntry*, MAX_SYSTEM_DEPEND>	dependency_; //only one?
+			Array<std::atomic<JobEntry*>, MAX_SYSTEM_DEPEND>	dependency_; //only one?
 		};
 
 		template<typename ...Component>
@@ -821,8 +821,9 @@ namespace Shard
 			//todo
 		};
 
-	
-		struct ECSComponentCommand
+		
+		//deal with component from entity
+		struct ECSComponentCommandIR
 		{
 			enum class EType
 			{
@@ -842,8 +843,8 @@ namespace Shard
 		class ECSComponentCommandBuffer
 		{
 		public:
-			using CmdBufferAlloc = std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommand>;
-			using CmdBufferContainer = Vector<ECSComponentCommand, CmdBufferAlloc>;
+			using CmdBufferAlloc = std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>;
+			using CmdBufferContainer = Vector<ECSComponentCommandIR, CmdBufferAlloc>;
 			using ConstIterator = CmdBufferContainer::const_iterator;
 
 			explicit ECSComponentCommandBuffer(Allocator& alloc):cmd_buffer_(alloc) {
@@ -860,11 +861,14 @@ namespace Shard
 			ECSComponentCommand& operator[](size_type index) {
 				return cmd_buffers_[index];
 			}
-			void Push(ECSComponent&& cmd) {
+			void Push(ECSComponentCommandIR&& cmd) {
 				Utils::SpinLock lock(rw_lock_);
 				cmd_buffers_.emplace_back(cmd);
 			}
-			ECSComponent Poll() {
+			void Sort() {
+				eastl::sort(cmd_buffers_.begin(), cmd_buffers_.end(), [](const auto& lhs, const auto& rhs) {return lhs.entt_ > rhs.entt_; });
+			}
+			ECSComponentCommandIR Poll() {
 				Utils::SpinLock lock(rw_lock_);
 				auto temp = cmd_buffers_.back();
 				cmd_buffers_.pop_back();
@@ -882,6 +886,7 @@ namespace Shard
 			using SharedPtr = eastl::shared_ptr<ECSSystem>;
 			virtual void Init() = 0;
 			virtual void UnInit() = 0;
+			virtual void FixedUpdate(){}
 			virtual void Update(ECSSystemUpdateContext& ctx) = 0;
 			virtual ~ECSSystem() = default;
 			static uint32_t	GeneratePriorOrder(uint32_t hint=-1) {
@@ -923,34 +928,6 @@ namespace Shard
 		{
 		public:
 			using ThisType = ECSAdmin<T...>;
-			class EntityAdmin
-			{
-			public:
-				EntityAdmin(ThisType* admin) :admin_(admin) {
-					entity_ = admin_->NewEntity();
-				}
-				EntityAdmin(const EntityAdmin& other) :admin_(other.admin_) {
-					admin_->Clone(other);
-				}
-				operator Entity() {
-					return entity_;
-				}
-				template<typename Component, typename ...Args>
-				void Assign(Args&& ...args) {
-					admin_->AddComponent<Component>(std::forward(argsg)..);
-				}
-				template<typename Component>
-				Component& Get() {
-					admin_->GetComponent<Component>(*this);
-				}
-				~EntityAdmin() {
-					admin_->DelEntity(*this);
-				}
-			private:
-				Entity	entity_;
-				ThisType*	admin_;
-			};
-			using EntityType = EntityAdmin;
 		public:
 			template<typename System, typename... Args>
 			requires std::is_convertible_v(ECSSystem, System)
@@ -1130,6 +1107,31 @@ namespace Shard
 				return val != nullptr;
 			}
 
+			//singleton component api
+			template<typename Component, typename,,, Args>
+			void AddSingletonComponent(Args&&... args) {
+				if (!HasSingletonComponent<Component>()) {
+					using ComponentAllocator = std::allocator_traits<Allocator>::rebind_alloc<Component>;
+					auto* data = std::allocator_traits<ComponentAllocator>::allocate(alloc_, 1);
+					std::allocator_traits<ComponentAllocator>::construct(alloc_, data, std::forward<Args>(args)...);
+					single_data_.insert(std::make_pair(typeid(Component), data); //todo
+					return;
+				}
+				LOG(ERROR) << "already has one singleton instance";
+			}
+
+			template<typename Component>
+			Component* GetSingletonComponent() {
+				assert(HasSingletonComponent<Component>());
+				return static_cast<Component*>(singleton_data_[typeid(Component)]);
+			}
+
+			template<typename Component>
+			bool HasSingletonComponent() const {
+				auto iter = singleton_data_.find(typeid(Component));
+				return iter != singleton_data_.end();
+			}
+		
 			//check whether a component enable
 			template<typename Component>
 			requires std::is_base_of_v<ECSEnableComponent, Component>
@@ -1181,7 +1183,7 @@ namespace Shard
 
 			void DelEntity(Entity e) {
 				for (auto [_, comp_repo] : components_data_) {
-					comp_repo->Remove(e);
+					comp_repo->Remove(e); //todo slow
 				}
 				entity_manager_.Release(e);
 			}
@@ -1199,6 +1201,7 @@ namespace Shard
 			EntityManager entity_manager_;
 			//todo fixme type info bugs ??? //https://skypjack.github.io/2020-03-14-ecs-baf-part-8/
 			Map<std::type_index, ComponentRepoBase::Ptr> components_data_;
+			Map<std::type_index, void*>	singleton_data_;
 			template <typename... Components>
 			struct ComponenentCollector
 			{

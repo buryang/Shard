@@ -15,16 +15,36 @@ namespace Shard
 			vec3	view_;
 		};
 
-		class RuntimeSceneRenderInterface
+		class RuntimeRenderBase
 		{
 		public:
-			using Ptr = RuntimeSceneRenderInterface*;
-			virtual void Render(SceneProxyHelper::SharedPtr scene) = 0;
-			virtual ~RuntimeSceneRenderInterface() = default;
+			virtual void Render() = 0;
+		};
+
+		class RuntimeSceneRenderBase : public RuntimeRenderBase
+		{
+		public:
+			using Ptr = RuntimeSceneRenderBase*;
+			explicit RuntimeSceneRenderBase(Scene::WorldScene::Ptr	scene) :scene_(scene)
+			{
+
+			}
+			void Render()override {
+				RenderScene();
+			}
+			virtual ~RuntimeSceneRenderBase() = default;
+			FORCE_INLINE bool IsScenceValid()const {
+				return scene_ != nullptr;
+			}
+			FORCE_INLINE void SetScence(Scene::WorldScene::Ptr	scene) {
+				scene_ = scene;
+			}
 		protected:
-			SceneProxyHelper::SharedPtr			scene_proxy_;
+			virtual void RenderScene() = 0; //change this interface
+		protected:
+			Scene::WorldScene::Ptr	scene_{ nullptr };
 			//render view context
-			Vector<RuntimeViewContext::Ptr>		views_;
+			SmallVector<RuntimeViewContext::Ptr>		views_;
 		};
 	}
 }

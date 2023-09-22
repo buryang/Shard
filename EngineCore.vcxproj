@@ -22,6 +22,8 @@
     <ClCompile Include="Graphics\Core\RenderGlobalParams.cpp" />
     <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
     <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
+    <ClCompile Include="Graphics\Effect\Base\EffectBasePass.cpp" />
+    <ClCompile Include="Graphics\Effect\Font\EffectFonts.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderBarrier.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderGraph.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderGraphBuilder.cpp" />
@@ -33,6 +35,7 @@
     <ClCompile Include="Graphics\Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderParameters.cpp" />
+    <ClCompile Include="System\App\CameraSystem.cpp" />
     <ClCompile Include="System\Render\RenderSystem.cpp" />
     <ClCompile Include="Graphics\RHI\RHICommand.cpp" />
     <ClCompile Include="Graphics\RHI\RHIGlobalEntity.cpp" />
@@ -61,7 +64,7 @@
     <ClCompile Include="Graphics\RHI\Vulkan\RHISyncVulkan.h" />
     <ClCompile Include="Runtime\RuntimeEngineCore.cpp" />
     <ClCompile Include="System\Input\InputSystem.cpp" />
-    <ClCompile Include="System\Render\MyToySimpleRenderer.cpp" />
+    <ClCompile Include="System\Render\RuntimeHDRPRenderer.cpp" />
     <ClCompile Include="System\Render\RuntimeSceneRender.cpp" />
     <ClCompile Include="System\Render\RuntimeShaderPermunation.cpp" />
     <ClCompile Include="System\Render\RuntimeWorkData.cpp" />
@@ -71,6 +74,7 @@
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
     <ClCompile Include="Utils\Memory.cpp" />
+    <ClCompile Include="Utils\PlatformShared.cpp" />
     <ClCompile Include="Utils\Reflection.cpp" />
     <ClCompile Include="Utils\ReflectionImageObject.cpp" />
     <ClCompile Include="Utils\SimpleEntitySystemPrimitive.cpp" />
@@ -82,6 +86,8 @@
     <ClInclude Include="Graphics\Core\PixelInfo.h" />
     <ClInclude Include="Graphics\Core\RenderGlobalParams.h" />
     <ClInclude Include="Effect\EffectRayTracing.h" />
+    <ClInclude Include="Graphics\Effect\Base\EffectBasePass.h" />
+    <ClInclude Include="Graphics\Effect\Font\EffectFonts.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderBarrier.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderGraph.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderGraphBuilder.h" />
@@ -96,6 +102,8 @@
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
+    <ClInclude Include="System\Animation\AnimationSystem.h" />
+    <ClInclude Include="System\App\CameraSystem.h" />
     <ClInclude Include="System\PhyX\PhyXSystem.h" />
     <ClInclude Include="System\Render\RenderSystem.h" />
     <ClInclude Include="Graphics\RHI\RHIGlobalEntity.h" />
@@ -129,7 +137,7 @@
     <ClInclude Include="Graphics\RHI\Vulkan\RHIShaderLibraryVulkan.h" />
     <ClInclude Include="Graphics\RHI\Vulkan\RHIShaderVulkan.h" />
     <ClInclude Include="Runtime\RuntimeEngineCore.h" />
-    <ClInclude Include="System\Render\MyToySimpleRenderer.h" />
+    <ClInclude Include="System\Render\RuntimeHDRPRenderer.h" />
     <ClInclude Include="System\Render\RuntimeSceneRender.h" />
     <ClInclude Include="System\Render\RuntimeShaderPermunation.h" />
     <ClInclude Include="System\Render\RuntimeWorkData.h" />
@@ -138,6 +146,7 @@
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="System\Input\InputSystem.h" />
+    <ClInclude Include="System\Resource\ResourceLoaderSystem.h" />
     <ClInclude Include="System\System.h" />
     <ClInclude Include="Utils\Algorithm.h" />
     <ClInclude Include="Utils\CommonUtils.h" />
@@ -156,9 +165,15 @@
     <None Include="cpp.hint" />
     <None Include="Graphics\Renderer\RtRenderResources.inl" />
     <None Include="Graphics\Renderer\RtRenderShaderUtils.inl" />
+    <None Include="Shaders\BindlessResource.hlsli" />
+    <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />
+    <FxCompile Include="Shaders\Fonts\VSFontsShader.hlsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -271,7 +286,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL;APPLICATION_RUNTIME</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -291,7 +306,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL;APPLICATION_RUNTIME</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>

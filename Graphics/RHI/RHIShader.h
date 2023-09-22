@@ -112,7 +112,7 @@ namespace Shard::RHI {
 			EBlendOperation	alpha_blend_op_{};
 			EBlendColorMask	color_write_mask_{};
 		};
-		SmallVector<BlendAttachment, MAX_RENDER_TARGETS_NUM, false>	attachments_;
+		Array<BlendAttachment, MAX_RENDER_TARGETS_NUM>	attachments_;
 		static HashType ComputeHash(const RHIBlendStateInitializer& initializer);
 	};
 
@@ -141,11 +141,11 @@ namespace Shard::RHI {
 			eIncrAndWarp,
 			eDecrAndWarp,
 		};
-		bool	depth_test_enable_{};
-		bool	depth_write_enable_{};
-		EDepthCompareOp	depth_compare_op_{};
-		bool	depth_bound_test_enable_{};
-		bool	stencil_test_enable_{};
+		bool	depth_test_enable_{ false };
+		bool	depth_write_enable_{ false };
+		EDepthCompareOp	depth_compare_op_{ EDepthCompareOp::eNever };
+		bool	depth_bound_test_enable_{ false };
+		bool	stencil_test_enable_{ false };
 		EStencilOp	front_op_;
 		EStencilOp	back_op_;
 		vec2	depth_bounds_;
@@ -176,7 +176,7 @@ namespace Shard::RHI {
 		EPolygonMode	poly_mode_{ EPolygonMode::eFill };
 		EFrontFace	front_face_{ EFrontFace::eClk };
 		ECullingMode	culling_mode_{ ECullingMode::eNone };
-		float	depth_bias_;
+		float	depth_bias_{ 0.f };
 		static HashType ComputeHash(const RHIRasterizationStateInitializer& initializer);
 	};
 
@@ -191,7 +191,7 @@ namespace Shard::RHI {
 		struct StreamBind {
 			uint32_t	binding_{ 0u };
 			uint32_t	stride{ 0u };
-			EInputRate		nput_rate_{ EInputRate::eVertex };
+			EInputRate		input_rate_{ EInputRate::eVertex };
 		};
 		struct StreamAttribute
 		{

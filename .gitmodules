@@ -13,3 +13,15 @@
 [submodule "ThirdParty/--force"]
 	path = ThirdParty/--force
 	url = https://github.com/zeux/meshoptimizer.git
+[submodule "ThirdParty/CmdParser"]
+	path = ThirdParty/CmdParser
+	url = https://github.com/FlorianRappl/CmdParser.git
+[submodule "ThirdParty/imgui-node-editor"]
+	path = ThirdParty/imgui-node-editor
+	url = https://github.com/thedmd/imgui-node-editor.git
+[submodule "ThirdParty/stb"]
+	path = ThirdParty/stb
+	url = https://github.com/nothings/stb.git
+[submodule "ThirdParty/freetype"]
+	path = ThirdParty/freetype
+	url = https://github.com/freetype/freetype.git

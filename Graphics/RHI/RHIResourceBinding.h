@@ -59,10 +59,13 @@ namespace Shard::RHI {
 		struct Member {
 			uint32_t	tag_{ 0u };
 			uint32_t	max_size_{ 0u };
+			uint32_t	space_{ 0u };
+			uint32_t	index_{ 0u };
 			void* extra_info_{ nullptr };
 		};
 		Member	members_[MAX_BINDINGLESS_MEMBERS];
 		uint32_t	num_member_{ 0u };
+		static const RHIBindLessTableInitializer& GetBindlessTableInitializer();
 	};
 
 	class RHIResourceBindlessHeap
@@ -71,21 +74,24 @@ namespace Shard::RHI {
 		using Ptr = RHIResourceBindlessHeap*;
 		using SharedPtr = eastl::shared_ptr<RHIResourceBindlessHeap>;
 		virtual void Init(const RHIBindLessTableInitializer& desc) {}
+		virtual void UnInit() {}
 		virtual void Bind(RHICommandContext::Ptr command) = 0;
 		virtual RHIResourceHandle WriteBuffer(RHIBuffer::Ptr buffer) = 0;
 		virtual RHIResourceHandle WriteTexture(RHITexture::Ptr texture) = 0;
 		//push constant
 		virtual void Notify(const RHINotifyHeader& header, const Span<uint8_t>& notify_data) {}
 		FORCE_INLINE void Free(RHIResourceHandle handle) {
+			std::unique_lock<std::shared_mutex> lock(free_mutex_);
 			free_index_.emplace_back(handle);
 		}
 		FORCE_INLINE bool IsBind() const {
 			return cmd_buffer_ != nullptr;
 		}
-		virtual ~RHIResourceBindlessHeap() {}
+		virtual ~RHIResourceBindlessHeap() = default;
 	protected:
 		RHIResourceHandle GetAvailableResourceHandle(uint32_t tag) {
 			RHIResourceHandle handle;
+			std::unique_lock<std::shared_mutex>	lock(free_mutex_);
 			if (!free_index_.empty()) {
 				handle = free_index_.front();
 				handle.tag_ = tag;
@@ -97,8 +103,9 @@ namespace Shard::RHI {
 			return handle;
 		}
 	protected:
+		std::shared_mutex	free_mutex_;
 		List<RHIResourceHandle>	free_index_;
-		uint32_t	curr_max_handle_{ 0 };
+		uint32_t	curr_max_handle_{ 0u };
 		RHICommandContext::Ptr cmd_buffer_{ nullptr };
 	};
 

@@ -12,6 +12,7 @@
 
 #define GLM_FORCE_CTOR_INIT
 #include "glm/glm.hpp"
+#include "glm/ext.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glog/logging.h"
@@ -32,6 +33,7 @@
 #include "eastl/unique_ptr.h"
 #include "eastl/shared_ptr.h"
 #include "eastl/internal/thread_support.h"
+#include "eastl/algorithm.h"
 #include "folly/format.h"
 #include "fmt/format.h"
 #include <memory>
@@ -67,24 +69,26 @@ class_name##& operator=(class_name##&&)=delete;
 
 namespace Shard {
 
-	using vec2 = glm::vec2;
-	using vec3 = glm::vec3;
-	using vec4 = glm::vec4;
+	using glm::vec2;
+	using glm::vec3;
+	using glm::vec4;
 
-	using mat3 = glm::mat3;
-	using mat4 = glm::mat4;
+	using glm::mat3;
+	using glm::mat4;
 
-	using ivec2 = glm::ivec2;
-	using ivec3 = glm::ivec3;
-	using ivec4 = glm::ivec4;
+	using glm::ivec2;
+	using glm::ivec3;
+	using glm::ivec4;
 
-	using uvec2 = glm::uvec2;
-	using uvec3 = glm::uvec3;
-	using uvec4 = glm::uvec4;
+	using glm::uvec2;
+	using glm::uvec3;
+	using glm::uvec4;
 
-	using bvec2 = glm::bvec2;
-	using bvec3 = glm::bvec3;
-	using bvec4 = glm::bvec4;
+	using glm::bvec2;
+	using glm::bvec3;
+	using glm::bvec4;
+
+	using glm::quat;
 
 	using size_type = std::size_t;
 
@@ -125,9 +129,11 @@ namespace Shard {
 #ifdef _UNICODE
 	using Tchar = wchar_t;
 	using TString = WString;
+#define STR_PPEFIX(str) L##str
 #else
 	using Tchar = char;
 	using TString = String;
+#define STR_PREFIX(str) str
 #endif
 	
 	//multi thread 

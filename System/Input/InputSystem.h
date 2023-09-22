@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 
-namespace Shard
+namespace Shard::System
 {
 	namespace Input
 	{

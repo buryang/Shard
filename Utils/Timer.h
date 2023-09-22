@@ -19,8 +19,20 @@ namespace Shard::Utils
 		}
 		virtual ~Timer() = default;
 	private:
-		
 		std::chrono::steady_clock::time_point	time_stamp_;
+	};
+
+	class ScopedTimer : public Timer
+	{
+	public:
+		ScopedTimer(double& delta_time):delta_time_(delta_time){
+			Record();
+		}
+		~ScopedTimer() {
+			delta_time_ = ElapsedMilliSeconds();
+		}
+	private:
+		double& delta_time_;
 	};
 
 	class Profiler :public Timer
@@ -31,24 +43,24 @@ namespace Shard::Utils
 		static void GetAllProfilers(Map<String, double>& profilers);
 		static bool RegistProfile(const String& name, double elapsed);
 	public:
-		Profiler(const String& name = "anonymous") :name_(name) {
+		Profiler(const String& tag = "anonymous") :tag_(tag) {
 			Timer::Record();
 		}
 		~Profiler() {
 			const auto elapsed = Timer::ElapsedMilliSeconds();
-			RegistProfile(name_, elapsed);
+			RegistProfile(tag_, elapsed);
 		}
 		FORCE_INLINE const String& GetName()const {
-			return name_;
+			return tag_;
 		}
 	private:
-		const String& name_;
+		const String& tag_;
 	};
 
 #ifdef TIMER_PROFILER
-#define PROFILER(NAME) Profiler timer_##NAME(#NAME)
+#define PROFILER(TAG) Profiler timer_##TAG(#TAG);
 #else
-#define PROFILER(NAME)
+#define PROFILER(TAG)
 #endif
 
 }
