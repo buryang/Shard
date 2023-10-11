@@ -9,31 +9,41 @@
 
 namespace Shard::Effect
 {
+	using namespace Renderer;
 
 	class MINIT_API RtFreeTypeFontVS : public Renderer::RtRenderShader
 	{
-
+	public:
+		bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
+		RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
 	};
 
 	class MINIT_API RtFreeTypeFontPS : public Renderer::RtRenderShader
 	{
-
+	public:
+		bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
+		RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
+		
 	};
 
 	class MINIT_API RtGlyphOutlinesFontVS : public Renderer::RtRenderShader
 	{
-
+	public:
+		bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
+		RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
 	};
 
 	class MINIT_API RtGlyphOutlinesFontPS : public Renderer::RtRenderShader
 	{
-
+	public:
+		bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
+		RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
 	};
 
-	REGIST_SHADER_IMPL(FreeTypeFontVS,"FontsShader.hlsl", ,EShaderFrequency::eVertex);
-	REGIST_SHADER_IMPL(FreeTypeFontPS, "FontsSHader.hlsl", ,EShaderFrequency::eFrag);
-	REGIST_SHADER_IMPL(GlyphOutlinesFontVS, "REGIST_SHADER_IMPL",,EShaderFrequency::eVertex);
-	REGIST_SHADER_IMPL(GlyphOutlinesFontPS, "REGIST_SHADER_IMPL",,EShaderFrequency::eFrag);
+	REGIST_SHADER_IMPL(FreeTypeFontVS,"Fonts/VSFontsShader.hlsl", "main", EShaderFrequency::eVertex, RtFreeTypeFontVS);
+	REGIST_SHADER_IMPL(FreeTypeFontPS, "Fonts/PSFontsSHader.hlsl", "main", EShaderFrequency::eFrag, RtFreeTypeFontPS);
+	REGIST_SHADER_IMPL(GlyphOutlinesFontVS, "Fonts/VSFontsShader.hlsl", "main", EShaderFrequency::eVertex, RtGlyphOutlinesFontVS);
+	REGIST_SHADER_IMPL(GlyphOutlinesFontPS, "Fonts/PSFontsSHader.hlsl", "main", EShaderFrequency::eFrag, RtGlyphOutlinesFontPS);
 
 	enum class EAlignmentOp
 	{

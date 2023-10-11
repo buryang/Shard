@@ -11,6 +11,7 @@ namespace Shard::Effect
 {
 	REGIST_PARAM_TYPE(STRING, FONT_ROOT_PATH, "");
 	REGIST_PARAM_TYPE(UINT, FONT_DRAW_ALGO, EDrawAlgo::eFreeType);
+	REGIST_PARAM_TYPE(UINT, FONT_SDF_GLYPH_SIZE, 128); //if use sdf, all glyph share same size
 	REGIST_PARAM_TYPE(UINT, FONT_SDF_PADDING_VAL, 5);
 	REGIST_PARAM_TYPE(UINT, FONT_SDF_ONEDGE_VAL, 180);
 	REGIST_PARAM_TYPE(UINT, FONT_ATLAS_SIZE_W, 4096);
@@ -34,17 +35,43 @@ namespace Shard::Effect
 	//shader const buffer
 	struct FontConstBuffer
 	{
-		vec2	sdf_minmax;
-		uint32_t	color;
-		int	buffer_index;
-		int	buffer_offset;
-		int	texture_index;
-		mat4	transform;
+		vec2	sdf_minmax_;
+		uint32_t	color_;
+		int	buffer_index_;
+		int	buffer_offset_;
+		int	texture_index_;
+		mat4	transform_;
 	};
 
 	static inline bool IsDrawAlgoSupported(EDrawAlgo algo) {
 		return GET_PARAM_TYPE_VAL(UINT, FONT_DRAW_ALGO) & Utils::EnumToInteger(algo);
 	}
+
+	bool RtFreeTypeFontVS::IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation)
+	{
+		return true;
+	}
+
+	RtRenderShaderParametersMeta* RtFreeTypeFontVS::GetShaderParametersMeta()
+	{
+		return nullptr;
+	}
+
+	bool RtFreeTypeFontPS::IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation)
+	{
+		return true;
+	}
+
+	RtRenderShaderParametersMeta* RtFreeTypeFontPS::GetShaderParametersMeta()
+	{
+		return nullptr;
+	}
+
+	bool RtGlyphOutlinesFontVS::IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation)
+	{
+		return false;
+	}
+
 
 	void EffectDrawText::Init()
 	{
@@ -238,7 +265,7 @@ namespace Shard::Effect
 			//set texture and buffers / bindless resource RHI::RHI 
 			const auto vertex_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteBuffer(vertex_buffer_);
 			const auto atlas_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteTexture(atlas_);
-			FontConstBuffer font_cbbuffer{ .texture_index = atlas_handle.index_, .buffer_index = vertex_handle.index_ };//todo
+			FontConstBuffer font_cbbuffer{ .buffer_index_ = vertex_handle.index_, .texture_index_ = atlas_handle.index_, };//todo
 			RHI::RHIPushConstantPacket push_cmd{ 0u, 0u, reinterpret_cast<uint8_t*>(&font_cbbuffer), sizeof(font_cbbuffer) };
 			cmd_ctx->Enqueue(&push_cmd);
 		}
@@ -318,23 +345,77 @@ namespace Shard::Effect
 					const auto& gly_bitmap = glyphs_neededLUT_[rid];
 					gly_atlas.pos_ = ivec2{ iter->x, iter->y };
 					
-					//copy data to atlas
-					for (auto row = 0; row < gly_bitmap.size_.y; ++row) {
-						std::copy(gly_bitmap.data_.data() + row * gly_bitmap.size_.x,
-							gly_bitmap.data_.data() + (row + 1) * gly_bitmap.size_.x,
-							atlas_cpu.data() + (gly_atlas.pos_.y + row) * atlas_width + gly_atlas.pos_.x);
+					if (GET_PARAM_TYPE_VAL(UINT, FONT_DRAW_ALGO) & Utils::EnumToInteger(EDrawAlgo::eSDF))
+					{
+						//https://steamcdn-a.akamaihd.net/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
+						const auto max_radius = std::max(gly_bitmap.size_.x, gly_bitmap.size_.y);
+						for (auto row = 0; row < atlas_height; ++row)
+						{
+							for(auto col = 0; col < atlas_width; ++col)
+							{
+								const auto xpos = 0u, ypos = 0u;
+								const auto texel = *(gly_bitmap.data_.data() + xpos + ypos*gly_bitmap.size_.x);
+								uint8_t min_dist = std::numeric_limits<uint8_t>::max();
+								//begin search nearest opposite val
+								bool found = false;
+								int32_t xoffset = 0, yoffset = 0;
+								for (auto r = 1; r < max_radius; ++r)
+								{
+									const auto check_func = [&]() {
+										if (xpos + xoffset < 0 || ypos + yoffset < 0 ||
+											xpos + xoffset >= gly_bitmap.size_.x || ypos + yoffset >= gly_bitmap.size_.y) //check whether x/y outof image 
+										{
+											return;
+										}
+										const auto curr_dist = (uint32_t)sqrtf((xpos + xoffset) * (xpos + xoffset) + (ypos + yoffset) * (ypos + yoffset));
+										if (curr_dist > std::numeric_limits<uint8_t>::max()) {
+											return;
+										}
+										const auto curr_texel = *(gly_bitmap.data_.data() + xpos + xoffset + (ypos + yoffset) * gly_bitmap.size_.x);
+										if (texel != curr_texel && curr_dist < min_dist) //opposite value found
+										{
+											min_dist = curr_dist;
+											found = true;
+										}
+
+									};
+									xoffset = -r;
+									for (yoffset = -r; yoffset < r; ++yoffset) check_func();
+									xoffset = r;
+									for (yoffset = -r; yoffset < r; ++yoffset) check_func();
+									yoffset = -r;
+									for (xoffset = -r+1; xoffset < r-1; ++xoffset) check_func();
+									yoffset = r;
+									for (xoffset = -r+1; xoffset < r-1; ++xoffset) check_func();
+									if (found) {
+										break;
+									}
+								}
+								atlas_cpu[row * atlas_width + col] = (texel > 0 ? 1 : -1) * min_dist;
+							}
+						}
+					}
+					else
+					{
+						//copy data to atlas
+						for (auto row = 0; row < gly_bitmap.size_.y; ++row) {
+							std::copy(gly_bitmap.data_.data() + row * gly_bitmap.size_.x,
+								gly_bitmap.data_.data() + (row + 1) * gly_bitmap.size_.x,
+								atlas_cpu.data() + (gly_atlas.pos_.y + row) * atlas_width + gly_atlas.pos_.x);
+						}
 					}
 				}
 				RHI::RHITextureInitializer atlas_desc;
 				atlas_desc.layout_.width_ = atlas_width;
 				atlas_desc.layout_.height_ = atlas_height;
 				atlas_desc.format_ = EPixFormat::eR8Unorm;
-				atlas_desc.is_dedicated_ = true;
+				atlas_desc.is_dedicated_ = false;//
+				atlas_desc.is_transiant_ = true;
 				atlas_desc.access_ = Renderer::EAccessFlags::eReadOnly;
 
 				atlas_ = RHI::RHIGlobalEntity::Instance()->CreateTexture(atlas_desc);
 				PCHECK(atlas_ != nullptr) << "update glyph atlas create texture failed";
-				//copy atlas from CPU to GPU
+				//copy atlas from CPU to GPU error texture cannot alloc on host
 				auto* atlas_gpu = atlas_->MapBackMem();
 				std::copy(atlas_cpu.cbegin(), atlas_cpu.cend(), atlas_gpu);
 				atlas_->UnMapBackMem();
@@ -346,7 +427,7 @@ namespace Shard::Effect
 	const TextDrawParams& TextDrawParams::GetDefaultTextDrawParams()
 	{
 		static TextDrawParams default_params;
-		//default_params.xx
+		default_params.style_name_ = "";
 		return default_params;
 	}
 }
