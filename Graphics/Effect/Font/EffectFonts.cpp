@@ -1,5 +1,6 @@
 #include "Core/RenderGlobalParams.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
+#include "Graphics/Renderer/RtRenderGraph.h"
 #include "Graphics/Effect/Font/EffectFonts.h"
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb/stb_rect_pack.h"
@@ -16,6 +17,8 @@ namespace Shard::Effect
 	REGIST_PARAM_TYPE(UINT, FONT_SDF_ONEDGE_VAL, 180);
 	REGIST_PARAM_TYPE(UINT, FONT_ATLAS_SIZE_W, 4096);
 	REGIST_PARAM_TYPE(UINT, FONT_ATLAS_STZE_H, 4096);
+
+	static constexpr auto DRAW_FONT_PASS = "DRAW_FONT_PASS";
 
 	struct QuadVertex
 	{
@@ -129,8 +132,7 @@ namespace Shard::Effect
 		return -1;
 	}
 
-	void EffectDrawText::DrawExecuteFreeType(const WString& wtext, const TextDrawParams& draw_params) {
-
+	void EffectDrawText::DrawExecuteFreeType(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params) {
 		const auto whitespace_size = 0.25f * (draw_params.size_ + draw_params.paddingX_);
 		const auto tab_size = whitespace_size * 4;
 		const auto linebreak_size = float(draw_params.size_ + draw_params.paddingY_);
@@ -254,33 +256,36 @@ namespace Shard::Effect
 			glyphs_neededLUT_.clear();
 		}
 
-		//draw quad instance
-		auto cmd_ctx = RHI::RHIGlobalEntity::Instance()->CreateCommandBuffer();
-		RHI::RHIBindPSOPacket pso_cmd{ pso_, RHI::RHIBindPSOPacket::EBindPoint::eGFX };
-		cmd_ctx->Enqueue(&pso_cmd);
-		RHI::RHIBeginRenderPassPacket begin_pass_cmd;
-		cmd_ctx->Enqueue(&begin_pass_cmd);
-		if (IsDrawAlgoSupported(EDrawAlgo::eFreeType)) {
-			 //bind free type draw resource
-			//set texture and buffers / bindless resource RHI::RHI 
-			const auto vertex_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteBuffer(vertex_buffer_);
-			const auto atlas_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteTexture(atlas_);
-			FontConstBuffer font_cbbuffer{ .buffer_index_ = vertex_handle.index_, .texture_index_ = atlas_handle.index_, };//todo
-			RHI::RHIPushConstantPacket push_cmd{ 0u, 0u, reinterpret_cast<uint8_t*>(&font_cbbuffer), sizeof(font_cbbuffer) };
-			cmd_ctx->Enqueue(&push_cmd);
-		}
-		else
-		{
-			//cmd_ctx->Enqueue();
-		}
-		RHI::RHIDrawPacket draw_cmd{ draw_info.instance_count_ * 4, draw_info.instance_count_, 0, 0 };
-		cmd_ctx->Enqueue(&draw_cmd);
-		RHI::RHIEndRenderPassPacket end_pass_cmd;
-		cmd_ctx->Enqueue(&end_pass_cmd);
-		RHI::RHIGlobalEntity::Instance()->Execute({ cmd_ctx });
+		//todo add pass
+		graph.AddPass([&](void) {
+			//draw quad instance
+			auto cmd_ctx = RHI::RHIGlobalEntity::Instance()->CreateCommandBuffer();
+			RHI::RHIBindPSOPacket pso_cmd{ pso_, RHI::RHIBindPSOPacket::EBindPoint::eGFX };
+			cmd_ctx->Enqueue(&pso_cmd);
+			RHI::RHIBeginRenderPassPacket begin_pass_cmd;
+			cmd_ctx->Enqueue(&begin_pass_cmd);
+			if (IsDrawAlgoSupported(EDrawAlgo::eFreeType)) {
+				//bind free type draw resource
+			   //set texture and buffers / bindless resource RHI::RHI 
+				const auto vertex_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteBuffer(vertex_buffer_);
+				const auto atlas_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteTexture(atlas_);
+				FontConstBuffer font_cbbuffer{ .buffer_index_ = vertex_handle.index_, .texture_index_ = atlas_handle.index_, };//todo
+				RHI::RHIPushConstantPacket push_cmd{ 0u, 0u, reinterpret_cast<uint8_t*>(&font_cbbuffer), sizeof(font_cbbuffer) };
+				cmd_ctx->Enqueue(&push_cmd);
+			}
+			else
+			{
+				//cmd_ctx->Enqueue();
+			}
+			RHI::RHIDrawPacket draw_cmd{ draw_info.instance_count_ * 4, draw_info.instance_count_, 0, 0 };
+			cmd_ctx->Enqueue(&draw_cmd);
+			RHI::RHIEndRenderPassPacket end_pass_cmd;
+			cmd_ctx->Enqueue(&end_pass_cmd);
+			RHI::RHIGlobalEntity::Instance()->Execute({ cmd_ctx });
+		}, EPipeLine::eGraphics, RtRendererPass::EFlags::eGFX, DRAW_FONT_PASS);
 	}
 
-	void EffectDrawText::DrawExecuteGlyphOutlines(const WString& wtext, const TextDrawParams& draw_params) {
+	void EffectDrawText::DrawExecuteGlyphOutlines(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params) {
 		const auto load_char_func = [&](const stbtt_fontinfo* fontinfo, wchar_t char_code) {
 			const char* svg_data{ nullptr };
 			const auto size = stbtt_GetGlyphSVG(fontinfo, char_code, &svg_data);
@@ -295,19 +300,21 @@ namespace Shard::Effect
 
 		const auto parse_func = [&](const WString& wtext, const TextDrawParams& draw_params) {
 		};
+
+		graph.AddPass([&](void) {}, EPipeLine::eGraphics, RtRendererPass::EFlags::eGFX, DRAW_FONT_PASS);
 	}
 
-	void EffectDrawText::Draw(const String& text, const TextDrawParams& draw_params)
+	void EffectDrawText::Draw(Renderer::RtRendererGraph& graph, const String& text, const TextDrawParams& draw_params)
 	{
 		const auto& wtext_temp = Utils::StringConvertHelper::StringToWString(text);
-		Draw(text, draw_params);
+		Draw(graph, text, draw_params);
 	}
 
-	void EffectDrawText::Draw(const WString& wtext, const TextDrawParams& draw_params)
+	void EffectDrawText::Draw(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params)
 	{
 		PCHECK(!wtext.empty());
 		decltype(&DrawExecuteFreeType) draw_executor = IsDrawAlgoSupported(EDrawAlgo::eFreeType) ? DrawExecuteFreeType : DrawExecuteGlyphOutlines;
-		draw_executor(wtext, draw_params);
+		draw_executor(graph, wtext, draw_params);
 	}
 
 	void EffectDrawText::UpdateAtlas(float scale)

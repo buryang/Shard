@@ -140,12 +140,12 @@ namespace Shard::Effect
 	public:
 		static void Init();
 		static void Unit();
-		static void Draw(const String& text, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
-		static void Draw(const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
+		static void Draw(Renderer::RtRendererGraph& graph, const String& text, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
+		static void Draw(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
 	private:
 		static uint32_t AddFontStyle(const String& name, const Span<uint8_t>& bin);
-		static void DrawExecuteFreeType(const WString& wtext, const TextDrawParams& draw_params);
-		static void DrawExecuteGlyphOutlines(const WString& wtext, const TextDrawParams& draw_params);
+		static void DrawExecuteFreeType(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params);
+		static void DrawExecuteGlyphOutlines(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params);
 		static void UpdateAtlas(float scale = 1.f); //todo
 	private:
 		static Vector<FontStyleInfo>	font_styleLUT_;
