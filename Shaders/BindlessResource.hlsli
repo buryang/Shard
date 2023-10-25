@@ -3,14 +3,42 @@
 
 //space macro defines
 #define SHARD_BINDLESS_TEXTURE_SPACE 0
-#define SHARD_BINDLESS_BUFFER_SPACE 0
+#define SHARD_BINDLESS_BUFFER_SPACE 1
+#define SHARD_BINDLESS_SAMPLER_SPACE 2
 
-//register macro defines
-#define SHARD_BINDLESS_TEXTURE_INDEX 0
-#define SHARD_BINDLESS_BUFFER_INDEX 0
+#define SHARD_DEDICATE_SPACE_BEGIN 100
 
 #ifndef __cplusplus
+#include "CommonUtils.hlsli"
 
+#define CONCATE_STR(str, n) str##n 
+#define TEXTURE_SPACE CONCATE_STR(space, SHARD_BINDLESS_TEXTURE_SPACE)
+#define BUFFER_SPACE CONCATE_STR(space, SHARD_BINDLESS_BUFFER_SPACE)
+#define SAMPLER_SPACE CONCATE_STR(space, SHARD_BINDLESS_SAMPLER_SPACE)
+
+/*
+VK_PUSH_CONSTANT
+cbuffer BindLessConstants
+{
+    uint descriptor_table_offset0_;
+    uint descriptor_table_offset1_;
+    uint descriptor_table_offset2_;
+    uint descriptor_table_offset3_;
+    uint root_constant0_;
+    uint root_constant1_;
+    uint root_constant2_;
+    uint root_constant3_;
+};
+*/
+
+Texture2D bindless_textures[] : register(t0, TEXTURE_SPACE);
+ByteAddressBuffer bindless_buffers[] : register(t0, BUFFER_SPACE);
+RWByteAddressBuffer bindless_rwbuffers[] : register(t0, BUFFER_SPACE);
+SamplerState bindless_immutable_samplers[] : register(t0, SAMPLER_SPACE);
+
+#define GetBindlessTexture2D(index) bindless_textures[NonUniformResourceIndex(index)]
+#define GetBindlessBufferUniform(index) bindless_buffers[index]
+#define GetBindlessRWBufferUniform(index) bindless_rwbuffers[index]
 
 #endif
 
