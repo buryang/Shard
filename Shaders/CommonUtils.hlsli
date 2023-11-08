@@ -68,7 +68,11 @@ float Hash13(float3 p3)
     return frac((p3.x + p3.y) * p3.z);
 }
 
-//---IGN(interleaved gradient noise) noise----------
+/*---IGN(interleaved gradient noise) noise----------
+ from "Next Generation Post Processing inCall of Duty Advanced Warfare":
+ Experimenting and optimizing a noise generator, we found a noise function that we could classify 
+ as being half way between dithered and random, and that we called Interleaved Gradient Noise
+*/
 float IGN(float2 p, int frame)
 {
     p += float(frame) * 5.588238f;
@@ -173,6 +177,45 @@ float4 RGBDEncode(float3 rgb)
 float3 RGBDDecode(float4 rgbd)
 {
     return rgbd.rgb * ((64.f / 255.f) / rgbd.a);
+}
+
+
+//morton code from:https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+uint2 ExpandBits2D(uint2 x)
+{
+    x &= 0x0000ffff; // x = ---- ---- ---- ---- fedc ba98 7654 3210
+    x = (x ^ (x << 8)) & 0x00ff00ff; // x = ---- ---- fedc ba98 ---- ---- 7654 3210
+    x = (x ^ (x << 4)) & 0x0f0f0f0f; // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
+    x = (x ^ (x << 2)) & 0x33333333; // x = --fe --dc --ba --98 --76 --54 --32 --10
+    x = (x ^ (x << 1)) & 0x55555555; // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+    return x;
+}
+
+uint Morton2D(float2 xy)
+{
+    uint2 expand_xy = ExpandBits2D(uint2(xy));
+    return (expand_xy.x << 1) + expand_xy.y;
+}
+
+//https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
+
+//expand 10-bit integer to 30 bits
+uint ExpandBits3D(uint3 v)
+{
+    v = (v * 0x00010001u) & 0xFF0000FFu;
+    v = (v * 0x00000101u) & 0x0F00F00Fu;
+    v = (v * 0x00000011u) & 0xC30C30C3u;
+    v = (v * 0x00000005u) & 0x49249249u;
+    return v;
+}
+
+//calc morton code for the 3d coordinate located in uint cube[0,1]
+uint Morton3D(float3 xyz)
+{
+    const float cube_scale = 1024.f;
+    xyz = min(max(xyz * cube_scale, 0.f), cube_scale - 1.f);
+    uint3 expand_xyz = ExpandBits3D(uint3(xyz));
+    return (expand_xyz.x << 2) + (expand_xyz.y << 1) + expand_xyz.z;
 }
 
 

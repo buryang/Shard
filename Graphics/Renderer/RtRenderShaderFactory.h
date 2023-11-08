@@ -16,13 +16,13 @@
 #include <d3d12shader.h> 
 #endif
 
-REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
-REGIST_PARAM_TYPE(UINT, PSO_COMPILE_BACTH_SIZE, 128);
-REGIST_PARAM_TYPE(STRING, SHADER_CACHE_DIR, "/shaders/compiled/");
-REGIST_PARAM_TYPE(STRING, PSO_CACHE_DIR, "/pso.cache");
-
 namespace Shard::Renderer
 {
+	REGIST_PARAM_TYPE(BOOL, SHADER_COMPILE_RETRY, false);
+	REGIST_PARAM_TYPE(UINT, PSO_COMPILE_BACTH_SIZE, 128);
+	REGIST_PARAM_TYPE(STRING, SHADER_CACHE_DIR, "/shaders/compiled/");
+	REGIST_PARAM_TYPE(STRING, PSO_CACHE_DIR, "/pso.cache");
+
 	struct ShaderCompileEnv;
 	class MINIT_API RtShaderType
 	{
@@ -93,7 +93,7 @@ namespace Shard::Renderer
 	};
 
 #define REGIST_SHADER_IMPL(name, file, func, freq, shader_class) \
-	static RtShaderType shader_class##ShaderType(name, file, function, freq);
+	static Renderer::RtShaderType shader_class##ShaderType(name, file, function, freq);
 
 	struct ShaderCompileEnv
 	{
@@ -119,6 +119,7 @@ namespace Shard::Renderer
 
 	bool operator==(const ShaderCompileJobIn& lhs, const ShaderCompileJobIn& rhs);
 	bool operator!=(const ShaderCompileJobIn& lhs, const ShaderCompileJobIn& rhs);
+	
 	//only read ANSI encode file
 	void TraverseHLSLIncludePath(const String& prefix, const String& file, Vector<String>& paths);
 
@@ -339,3 +340,5 @@ namespace Shard::Renderer
 		PSORepoOnSaveDelegate	repo_save_delegate_;
 	};
 }
+
+

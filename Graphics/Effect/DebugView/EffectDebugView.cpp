@@ -108,12 +108,14 @@ namespace Shard::Effect
 		DebugViewRender::UnInit();
 	}
 
-	void EffectDrawDebugView::Draw(Renderer::RtRendererGraph& graph, System::DebugView::DebugViewSystem& debugview)
+	void EffectDrawDebugView::Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview)
 	{
 		DebugViewRender render;
 		auto debug_ctx = debugview.GetDebugViewContext();
-		graph.AddPass([&]() {
-			auto cmd_buffer = RHI::RHIGlobalEntity::Instance().CreateCommandBuffer();
+		builder.GetRenderGraph().AddPass([&]()
+			auto graph_exe = builder.GetRenderGraphExe();
+			assert(graph_exe.get() != nullptr);
+			//auto cmd_buffer = graph_exe.
 			render.Render(debug_ctx, cmd_buffer);
 		}, "DebugView Render");
 	}

@@ -1,5 +1,5 @@
 #include "imgui.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "System/DebugView/DebugViewSystem.h"
 
 #if 1 //def DEVELOP_DEBUG_TOOLS

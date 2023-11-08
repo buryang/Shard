@@ -18,6 +18,7 @@ namespace Shard::RHI::Vulkan {
 	REGIST_PARAM_TYPE(BOOL, DEVICE_MEMORY_BUDGET, true);
 	REGIST_PARAM_TYPE(BOOL, DEVICE_MEMORY_REQUIRE, true);
 	REGIST_PARAM_TYPE(BOOL, DEVICE_DEDICATED_ALLOC, true);
+	//todo other config params REGIST_PARAM_TYPE(BOOL, DEVICE_, true);
 
 	RHIGlobalEntityVulkan::Ptr RHIGlobalEntityVulkan::Instance()
 	{
@@ -129,10 +130,13 @@ namespace Shard::RHI::Vulkan {
 		return static_cast<RHIPipelineStateObjectLibraryInterface::Ptr>(&pso_library);
 	}
 
+#if defined(DEVELOP_DEBUG_TOOLS) && defined(ENABLE_IMGUI)
 	RHIImGuiLayerWrapper::Ptr RHIGlobalEntityVulkan::GetImGuiLayerWrapper()
 	{
 		return static_cast<RHIImGuiLayerWrapper::Ptr>(&imgui_wrapper_);
 	}
+#endif
+
 
 	RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetResourceBindlessHeap()
 	{

@@ -41,6 +41,14 @@ namespace Shard::RHI {
 		return hash;
 	}
 	
+	void RHIPipelineStateObjectLibraryInterface::UnInit(void)
+	{
+		for (auto [_, ptr] : pso_cache_) {
+			DestoryPipelineImpl(ptr);
+			//delete ptr;
+		}
+	}
+
 	RHIPipelineStateObject::Ptr RHIPipelineStateObjectLibraryInterface::GetOrCreatePipeline(const RHIPipelineStateObjectInitializer& initializer)
 	{
 		{
@@ -73,9 +81,7 @@ namespace Shard::RHI {
 
 	RHIPipelineStateObjectLibraryInterface::~RHIPipelineStateObjectLibraryInterface()
 	{
-		for (auto [_, ptr] : pso_cache_) {
-			delete ptr;
-		}
+		UnInit();
 	}
 
 	/*-----rhi shader define -------*/

@@ -1,8 +1,9 @@
-#include "eastl/algorithm.h"
 #include "Utils/CommonUtils.h"
 #include "RHI/Vulkan/API/VulkanMemAllocator.h"
 #include "RHI/Vulkan/API/VulkanCmdContext.h"
 #include "RHI/Vulkan/API/VulkanHelperStruct.h"
+#include "RHI/Vulkan/API/VulkanStat.h"
+#include "eastl/algorithm.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
@@ -31,33 +32,63 @@ namespace Shard
 	static inline VkDeviceCreateInfo MakeDeviceCreateInfo(VkDeviceCreateFlags flags, const Span<VkDeviceQueueCreateInfo>& queue_infos, const Span<const char*>& ext_infos)
 	{
 		VkDeviceCreateInfo device_info;
-		memset(&device_info, 0, sizeof(device_info));
+		memset(&device_info, 0u, sizeof(device_info));
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_info.flags = flags;
-		device_info.queueCreateInfoCount = queue_infos.size();
-		device_info.pQueueCreateInfos = queue_infos.data();
-		device_info.enabledExtensionCount = ext_infos.size();
-		device_info.ppEnabledExtensionNames = ext_infos.data();
+		device_info.queueCreateInfoCount = queue_infos.empty() ? 0u : queue_infos.size();
+		device_info.pQueueCreateInfos = queue_infos.empty() ? nullptr : queue_infos.data();
+		device_info.enabledExtensionCount = ext_infos.empty() ? 0u : ext_infos.size();
+		device_info.ppEnabledExtensionNames = ext_infos.empty() ? nullptr : ext_infos.data();
 		return device_info;
 	}
 
 	static inline VkInstanceCreateInfo MakeInstanceCreateInfo(VkInstanceCreateFlags flags, const VkApplicationInfo& app_info, const Span<const char*> ext_infos, const Span<const char*>& layer_infos)
 	{
 		VkInstanceCreateInfo instance_info;
-		memset(&instance_info, 0, sizeof(instance_info));
+		memset(&instance_info, 0u, sizeof(instance_info));
 		instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		instance_info.flags = flags;
 		instance_info.pApplicationInfo = &app_info;
-		instance_info.enabledLayerCount = layer_infos.size();
-		instance_info.ppEnabledLayerNames = layer_infos.data();
-		instance_info.enabledExtensionCount = ext_infos.size();
-		instance_info.ppEnabledExtensionNames = ext_infos.data();
+		instance_info.enabledLayerCount = layer_infos.empty() ? 0u : layer_infos.size();
+		instance_info.ppEnabledLayerNames = layer_infos.empty() ? nullptr : layer_infos.data();
+		instance_info.enabledExtensionCount = ext_infos.empty() ? 0u : ext_infos.size();
+		instance_info.ppEnabledExtensionNames = ext_infos.empty() ? nullptr : ext_infos.data();
 		return instance_info;
 	}
 
+#if defined(DEVELOP_DEBUG_TOOLS) && defined(DEBUG_VULKAN)
+	static inline VkDebugUtilsMessengerCreateInfoEXT MakeDebugMessagerCreateInfo()
+	{
+		constexpr VkDebugUtilsMessageSeverityFlagsEXT kseverities =
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+
+		constexpr VkDebugUtilsMessageTypeFlagsEXT kmessages =
+			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		
+		VkDebugUtilsMessengerCreateInfoEXT messenger_info;
+		memset(&messenger_info, 0u, sizeof(messenger_info));
+		messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		messenger_info.messageSeverity = kseverities;
+		messenger_info.messageType = kmessages;
+		messenger_info.pfnUserCallback = &DebugUtilsMessengerCallbackEXT;
+	}
+
+	static inline VkDebugReportCallbackCreateInfoEXT MakeDebugReportCreateInfo()
+	{
+		VkDebugReportCallbackCreateInfoEXT reporter_info;
+		memset(&reporter_info, 0u, sizeof(reporter_info));
+		reporter_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+		reporter_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+		reporter_info.pfnCallback = &DebugReportCallbackEXT;
+	}
+#endif
+
 	VulkanDevice::SharedPtr VulkanDevice::Create(VulkanInstance::SharedPtr instance)
 	{
-		VulkanDevice::SharedPtr device_ptr{ new VulkanDevice };
+		auto device_ptr = std::make_shared<VulkanDevice>();
 		SmallVector<const char*> extensions;
 		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_BUDGET), VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, DEVICE_MEMORY_REQUIRE), VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
@@ -65,7 +96,7 @@ namespace Shard
 
 		auto selected_phy_device = SelectSuitAbleDevice(instance, extensions);
 
-		uint32_t queue_property_count = 0;
+		uint32_t queue_property_count = 0u;
 		vkGetPhysicalDeviceQueueFamilyProperties(selected_phy_device, &queue_property_count, nullptr);
 		SmallVector<VkQueueFamilyProperties> queue_properties(queue_property_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(selected_phy_device, &queue_property_count, queue_properties.data());
@@ -227,6 +258,9 @@ namespace Shard
 		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, INSTANCE_DEBUG_REPORT_EXT), "VK_EXT_debug_report");
 		ADD_EXT_IF(GET_PARAM_TYPE_VAL(BOOL, INSTANCE_DEBUG_UTILS_EXT), "VK_EXT_debug_utils");
 		SmallVector<const char*> layers;
+#if defined(DEVELOP_DEBUG_TOOLS) && defined(DEBUG_VULKAN)
+		layers.emplace_back("VK_LAYER_KHRONOS_validation");
+#endif
 
 		VulkanInstance::SharedPtr instance_ptr(new VulkanInstance);
 		const auto& instance_info = MakeInstanceCreateInfo(0x0, app_info, extensions, layers);
@@ -278,6 +312,20 @@ namespace Shard
 		//create instance
 		auto ret = vkCreateInstance(&instance_info, g_host_alloc, &instance_ptr->handle_);
 		PCHECK(ret == VK_SUCCESS) << "create vulkan instance failed";
+#if defined(DEVELOP_DEBUG_TOOLS) && defined(DEBUG_VULKAN)
+		//create my own debug messager callack
+		auto pfn_create_messager = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance_ptr->handle_, "vkCreateDebugUtilsMessengerEXT");
+		if (pfn_create_messager) {
+			const auto messenger_info = MakeDebugMessagerCreateInfo();
+			pfn_create_messager(instance_ptr->handle_, &messenger_info, g_host_alloc, /*todo*/);
+		}
+		//create my own debug report
+		auto pfn_create_debug_reporter = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance_ptr->handle, "vkCreateDebugReportCallbackEXT");
+		if (pfn_create_debug_reporter) {
+			const auto reporter_info = MakeDebugReportCreateInfo();
+			pfn_create_debug_reporter(instance_ptr->handle_, &reporter_info, /*todo*/);
+		}
+#endif
 		return instance_ptr;
 	}
 

@@ -46,6 +46,8 @@ namespace Shard::RHI {
 			//for event
 			eSetEvent,
 			eWaitEvent,
+			//timestamp query
+			eTimeQuery,
 		};
 		virtual ECommandType Type() const = 0;
 		virtual ~RHICommandPacketInterface() {}
@@ -102,9 +104,10 @@ namespace Shard::RHI {
 
 	struct RHIBeginRenderPassPacket final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eBeginPass);
-		RHI::RHITexture::Ptr	render_target_;
-		vec4	roi_; //offset.x offset.y wxh
-		vec4	clear_val_;
+		RHIBeginRenderPassPacket() = default;
+		RHI::RHITexture::Ptr	render_target_{ nullptr };
+		vec4	roi_{ 0 }; //offset.x offset.y wxh
+		vec4	clear_val_{ 0 };
 		//other data
 	};
 
@@ -247,6 +250,10 @@ namespace Shard::RHI {
 	struct RHIEventWait final : public RHICommandPacketInterface {
 		IMPLEMENT_TYPE(ECommandType::eWaitEvent);
 		Span<RHIEvent::Ptr>	events_;
+	};
+
+	struct RHITimeQuery final : public RHICommandPacketInterface {
+		IMPLEMENT_TYPE(ECommandType::eTimeQuery);
 	};
 
  

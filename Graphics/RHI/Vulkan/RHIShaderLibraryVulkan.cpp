@@ -1,4 +1,4 @@
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "Utils/CommonUtils.h"
 #include "RHI/Vulkan/RHIShaderVulkan.h"
 #include "RHI/Vulkan/RHIShaderLibraryVulkan.h"

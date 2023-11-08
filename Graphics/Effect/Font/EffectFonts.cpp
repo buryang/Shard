@@ -1,4 +1,4 @@
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
 #include "Graphics/Renderer/RtRenderGraph.h"
 #include "Graphics/Effect/Font/EffectFonts.h"
@@ -132,7 +132,7 @@ namespace Shard::Effect
 		return -1;
 	}
 
-	void EffectDrawText::DrawExecuteFreeType(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params) {
+	void EffectDrawText::DrawExecuteFreeType(Renderer::RtRendererGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params) {
 		const auto whitespace_size = 0.25f * (draw_params.size_ + draw_params.paddingX_);
 		const auto tab_size = whitespace_size * 4;
 		const auto linebreak_size = float(draw_params.size_ + draw_params.paddingY_);
@@ -257,6 +257,7 @@ namespace Shard::Effect
 		}
 
 		//todo add pass
+		auto graph = builder.GetRenderGraph();
 		graph.AddPass([&](void) {
 			//draw quad instance
 			auto cmd_ctx = RHI::RHIGlobalEntity::Instance()->CreateCommandBuffer();
@@ -304,17 +305,17 @@ namespace Shard::Effect
 		graph.AddPass([&](void) {}, EPipeLine::eGraphics, RtRendererPass::EFlags::eGFX, DRAW_FONT_PASS);
 	}
 
-	void EffectDrawText::Draw(Renderer::RtRendererGraph& graph, const String& text, const TextDrawParams& draw_params)
+	void EffectDrawText::Draw(Renderer::RtRenderGraphBuilder& builder, const String& text, const TextDrawParams& draw_params)
 	{
 		const auto& wtext_temp = Utils::StringConvertHelper::StringToWString(text);
-		Draw(graph, text, draw_params);
+		Draw(builder, text, draw_params);
 	}
 
-	void EffectDrawText::Draw(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params)
+	void EffectDrawText::Draw(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params)
 	{
 		PCHECK(!wtext.empty());
 		decltype(&DrawExecuteFreeType) draw_executor = IsDrawAlgoSupported(EDrawAlgo::eFreeType) ? DrawExecuteFreeType : DrawExecuteGlyphOutlines;
-		draw_executor(graph, wtext, draw_params);
+		draw_executor(builder, wtext, draw_params);
 	}
 
 	void EffectDrawText::UpdateAtlas(float scale)

@@ -1,6 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "RHI/RHIResources.h"
 #include "RHI/RHICommand.h"
 #include "RHI/RHIResourceBinding.h"
@@ -52,7 +52,9 @@ namespace Shard::RHI
 		virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
 		//bindless heap interface
 		virtual RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap();
-		virtual RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper();
+#if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
+		virtual RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() { return nullptr; }
+#endif
 		virtual RHIResource::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc);
 		virtual RHIResource::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc);
 		virtual RHITexture::Ptr CreateTexture(const RHITextureInitializer& desc);
@@ -65,6 +67,14 @@ namespace Shard::RHI
 		virtual void SetViewPoint();
 		virtual void ResizeViewPoint();
 		virtual void Execute(Span<RHICommandContext::Ptr> cmd_buffers);
+
+		//hardware property check
+		virtual bool IsAsyncComputeSupported()const {
+			LOG(ERROR) << "async compute check function not exsited";
+		}
+		virtual bool IsHWRayTraceSupported()const {
+			LOG(ERROR) << "hardware ray tracing check function not exisited";
+		}
 	private:
 		RHIGlobalEntity() = default;
 		DISALLOW_COPY_AND_ASSIGN(RHIGlobalEntity);

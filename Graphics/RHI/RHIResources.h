@@ -1,7 +1,7 @@
 #pragma once
 #include "eastl/shared_ptr.h"
 #include "Utils/CommonUtils.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "Renderer/RtRenderResources.h"
 #include "RHI/RHIGlobalEntity.h"
 

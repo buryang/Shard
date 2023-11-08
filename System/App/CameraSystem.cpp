@@ -1,4 +1,4 @@
-#include "Graphics/Core/RenderGlobalParams.h"
+#include "Graphics/Core/EngineGlobalParams.h"
 #include "Scene/Scene.h"
 #include "System/App/CameraSystem.h"
 

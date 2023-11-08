@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Utils/Memory.h"
-#include "RHI/RHI.h"
-#include "Renderer/RtRenderResources.h"
-#include "Renderer/RtRenderPass.h"
+#include "Graphics/RHI/RHIGlobalEntity.h"
+#include "Graphics/Renderer/RtRenderResources.h"
+#include "Graphics/Renderer/RtRenderPass.h"
 
 namespace Shard
 {

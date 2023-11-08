@@ -84,8 +84,11 @@ namespace Shard {
 		eBC4Snorm,   // RGTC Signed Red
 		eBC5Unorm,   // RGTC Unsigned RG
 		eBC5Snorm,   // RGTC Signed RG
-		eBC6HS16,
+		//The BC6H format provides high-quality compression for images that use three HDR color
+		//channels, with a 16-bit float value for each color channel of the value (16:16:16). 4x4 tile 
+		eBC6HS16,	
 		eBC6HU16,
+		//better-than-average quality compression with less artifacts for standard RGB source data.4x4 tile
 		eBC7Unorm,
 		eBC7UnormSrgb,
 		eNum,

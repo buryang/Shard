@@ -1,7 +1,9 @@
 #include "Utils/CommonUtils.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "Scene/Scene.h"
+#include "Graphics/Effect/DebugView/EffectDebugView.h"
 #include "System/Render/RenderSystem.h"
+
 
 
 namespace Shard::Renderer {
@@ -13,10 +15,16 @@ namespace Shard::Renderer {
 
 	void RenderSystem::Init()
 	{
+#ifdef DEVELOP_DEBUG_TOOLS
+		Effect::RtDebugViewRender::Init();
+#endif
 	}
 
 	void RenderSystem::Unit()
 	{
+#ifdef DEVELOP_DEBUG_TOOLS
+		Effect::RtDebugViewRender::UnInit();
+#endif
 	}
 
 	void RenderSystem::Tick(float dt)

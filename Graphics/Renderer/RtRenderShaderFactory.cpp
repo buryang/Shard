@@ -1,6 +1,6 @@
 #include "Utils/FileArchive.h"
 #include "Utils/SimpleJobSystem.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "RHI/RHIShaderLibrary.h"
 #include "Renderer/RtRenderShaderFactory.h"
 #include <filesystem>
@@ -11,9 +11,26 @@ namespace fs = std::filesystem;
 
 namespace Shard::Renderer {
 
+	enum EVkShiftFlags
+	{
+		eNone,
+		eSampler = 0x1,
+		eTexture = 0x2,
+		eBuffer = 0x4,
+		eUniform = 0x8,
+		eAll = 0xFFFF,
+	};
 	REGIST_PARAM_TYPE(UINT, RENDER_COMPILE_WORKERS, 128);
 	REGIST_PARAM_TYPE(STRING, RENDER_SHADER_DIR, "/shaders");
-
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_SHIFT_FLAGS, EVkShiftFlags::eNone);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_BOFFSET_S, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_SET_S, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_BOFFSET_T, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_SET_T, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_BOFFSET_B, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_SET_B, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_BOFFSET_U, 0);
+	REGIST_PARAM_TYPE(UINT, COMPILE_VK_SET_U, 0);
 
 	//class layout define here
 	IMPLEMENT_TYPE_LAYOUT_DEF(RtShaderContent);
@@ -277,6 +294,27 @@ namespace Shard::Renderer {
 		file_ = shader_type.GetFileName();
 		entry_ = shader_type.GetEntryName();
 		permutation_ = permutation_id;
+		if (GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SHIFT_FLAGS) != EVkShiftFlags::eNone)
+		{
+			String shift_cli;
+			if (GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SHIFT_FLAGS) & EVkShiftFlags::eSampler)
+			{
+				shift_cli += fmt::format("-fvk-s-shift {} {}", GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_BOFFSET_S), GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SET_S));
+			}
+			if (GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SHIFT_FLAGS) & EVkShiftFlags::eTexture)
+			{
+				shift_cli += fmt::format("-fvk-t-shift {} {}", GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_BOFFSET_T), GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SET_T));
+			}
+			if (GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SHIFT_FLAGS) & EVkShiftFlags::eBuffer)
+			{
+				shift_cli += fmt::format("-fvk-b-shift {} {}", GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_BOFFSET_B), GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SET_B));
+			}
+			if (GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SHIFT_FLAGS) & EVkShiftFlags::eUniform)
+			{
+				shift_cli += fmt::format("-fvk-u-shift {} {}", GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_BOFFSET_U), GET_PARAM_TYPE_VAL(UINT, COMPILE_VK_SET_U));
+			}
+			extra_cli_.emplace_back(shit_cli);
+		}
 		//todo other work
 	}
 

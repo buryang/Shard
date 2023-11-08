@@ -4,3 +4,4 @@
 #include "System/Input/InputSystem.h"
 #include "System/Animation/AnimationSystem.h"
 #include "System/PhyX/PhyXSystem.h"
+#include "System/DebugView/DebugViewSystem.h"

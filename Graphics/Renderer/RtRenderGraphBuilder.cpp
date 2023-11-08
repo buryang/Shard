@@ -1,4 +1,5 @@
-#include "Renderer/RtRenderGraphBuilder.h"
+#include "Graphics/Renderer/RtRenderGraphBuilder.h"
+#include "Graphics/RHI/RHIGlobalEntity.h"
 #include "Utils/DirectedAcyclicGraph.h"
 
 namespace Shard
@@ -6,12 +7,12 @@ namespace Shard
 	namespace Renderer
 	{
 
-		void RtRenderGraphBuilder::AnalysisResourceUsage(const RtRendererGraph& graph, RtRenderGraphExecutor::Ptr executor)
+		void RtRenderGraphBuilder::AnalysisResourceUsage()
 		{
 			/*all resource field manager buffer*/
 			Map<String, RtFieldResourcePlanner> resource_planers;
 
-			for (auto& [pass_handle, pass] : executor->passes_) {
+			for (auto& [pass_handle, pass] : graph_exe_->passes_) {
 				auto& fields = pass.GetSchduleContext().GetFields();
 				for (auto& [_, field] : fields) {
 					/*render graph do not dist external/unreferenced resource*/
@@ -36,90 +37,103 @@ namespace Shard
 
 			//do all resource planer work
 			for (auto& [_, planner] : resource_planers) {
-				planner.DoResourcePlan(*executor);
+				planner.DoResourcePlan(*graph_exe_);
 			}
 
 		}
 
-		void RtRenderGraphBuilder::AddResourceTransition(RtRenderGraphExecutor::Ptr executor)
+		void RtRenderGraphBuilder::AddResourceTransition()
 		{
-			for () {
-				executor->InsertCallBack();
-			}
-		}
-
-		void RtRenderGraphBuilder::AddResourceTransition(RtRenderGraphExecutor::SharedPtr executor)
-		{
-			for (auto& [pass_handle, pass] : executor->passes_) {
+			for (auto& [pass_handle, pass] : graph_exe_->passes_) {
 				//insert prologure pass barrier
-				executor->InsertCallBack(pass_handle, [](auto& executor) {
+				graph_exe_->InsertCallBack(pass_handle, [](auto& executor) {
 
-					}, false);
+				}, false);
 				//insert epilogure pass barrier
-				executor->InsertCallBack(pass_handle, &](auto& executor){
+				graph_exe_->InsertCallBack(pass_handle, [&](auto& executor){
 				}, true);
 			}
 		}
 
-		bool RtRenderGraphBuilder::ValidateFinalizeGraph(const RtRendererGraph& graph)
+		void RtRenderGraphBuilder::Compile(const BuildConfig& build_param)
 		{
-			//first of check whether a direct acyclic graph
-			if(!graph.IsValid())
-			{
-				return false;
+			if (!graph_.IsCompileNeeded()) {
+				return; //todo check whether params are the same
 			}
-			//check other things
-			return true;
-		}
 
-		RtRenderGraphExecutor::Ptr RtRenderGraphBuilder::Compile(RtRendererGraph& graph, const RtRendererGraph::BuildConfig& param)
-		{
-			RtRenderGraphBuilder builder(graph);
+			//pre valid build param
+			const auto valid_build_config = [](const auto& build_param)
+			{
+				BuildConfig param = build_param;
+				if (param.aync_enable_) {
+					param.aync_enable_ = RHI::RHIGlobalEntity::Instance()->IsAsyncComputeSupported();
+					LOG(WARNING) << "aync compute is not supported by device, so closed";
+				}
+				if (param.hw_raytrace_enable_) {
+					param.hw_raytrace_enable_ = RHI::RHIGlobalEntity::Instance()->IsHWRayTraceSupported();
+					LOG(WARNING) << "hardware ray tracing is not supported by device, so closed";
+				}
+				return param;
+			};
+
+			const auto param = valid_build_config(build_param);
 
 			//1.step culling no use pass
 			if (param.culling_passes_) {
-				builder.CullingNoUsePasses();
+				CullingNoUsePasses();
 			}
 
-			constexpr bool is_async_compute_enable = !!param.aync_enable_;
+			const bool is_async_compute_enable = !!param.aync_enable_;
 			//2.step analysis resource transistant; add barriers
-			for (auto& edge : edge_) //?
+			for (auto& edge : graph_.) //?
 			{
 			}
 
 
 			//3.valid the finalize graph
-			builder.ValidateFinalizeGraph();
-			//last step copy execute list as ascend ordered
-			RtRenderGraphExecutor::SharedPtr executor(new RtRenderGraphExecutor);
-			std::sort(builder.command_list_.begin(), builder.command_list_.end());
-			for (auto& pass_handle : builder.command_list_) {
-				executor->InsertPass(pass_handle);
+			if (!graph_.IsValid())
+			{
+				LOG(ERROR) << "RenderGraph Compile failed";
 			}
 
-			//4. do resource analysis
-			builder.AnalysisResourceUsage(graph_, executor);
-
-			executor->is_compiled_ = true;
-			return executor;
 		}
 
-		void RtRenderGraphBuilder::CullingNoUsePasses(RtRendererGraph& graph)
+		void RtRenderGraphBuilder::Finalize()
+		{
+			//4. do resource analysis
+			//last step copy execute list as ascend ordered
+			//std::sort(builder.command_list_.begin(), builder.command_list_.end());
+			graph_exe_ = std::make_shared<RtRenderGraphExecutor>();
+			for (auto& pass_handle : command_list_) {
+				graph_exe_->InsertPass(pass_handle);
+			}
+			
+			AnalysisResourceUsage();
+			graph_exe_->is_compiled_ = true;
+		}
+
+		bool RtRenderGraphBuilder::IsReady()const
+		{
+			return graph_exe_.get() != nullptr && graph_exe_->is_compiled_;
+		}
+
+		void RtRenderGraphBuilder::CullingNoUsePasses()
 		{
 			//track outputs related passes
-			for (auto n = 0; n < graph.OutputNum(); ++n) {
-				Utils::DirectGraphVisitor<Utils::DFSSearch, decltype(graph)> visitor(graph, );
+			for (auto n = 0; n < graph_.OutputNum(); ++n) {
+				Utils::DirectGraphVisitor<decltype(graph_), Utils::DFSSearch> visitor(graph_, graph_.GetNode(0u));
 				while (true) {
 					auto pass_node = visitor.Next();
 					if (nullptr == pass_node) {
 						break;
 					}
 					//set pass valid for 
-					pass_node->SetFlags(Flags::eValid);
+					pass_node->SetFlags(NodeData::EFlags::eValid);
 				}
 			}
 			
 			//remove noused passes
+
 			
 		}
 

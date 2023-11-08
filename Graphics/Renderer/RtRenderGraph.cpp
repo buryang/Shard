@@ -61,5 +61,13 @@ namespace Shard
 			}
 			return INVALID_INDEX;
 		}
+		
+		void RtRendererGraph::Serialize(Utils::IOArchive& ar)
+		{
+		}
+		
+		void RtRendererGraph::UnSerialize(Utils::IOArchive& ar)
+		{
+		}
 	}
 }

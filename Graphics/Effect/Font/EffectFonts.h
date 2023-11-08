@@ -3,6 +3,7 @@
 #include "Utils/hash.h"
 #include "Graphics/RHI/RHIResources.h"
 #include "Graphics/Renderer/RtRenderShader.h"
+#include "Graphics/Renderer/RtRenderGraphBuilder.h"
 #include <mutex>
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
@@ -135,6 +136,7 @@ namespace Shard::Effect
 
 	};
 
+	//todo refactor like debugview
 	class EffectDrawText
 	{
 	public:
@@ -144,8 +146,8 @@ namespace Shard::Effect
 		static void Draw(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
 	private:
 		static uint32_t AddFontStyle(const String& name, const Span<uint8_t>& bin);
-		static void DrawExecuteFreeType(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params);
-		static void DrawExecuteGlyphOutlines(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params);
+		static void DrawExecuteFreeType(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
+		static void DrawExecuteGlyphOutlines(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
 		static void UpdateAtlas(float scale = 1.f); //todo
 	private:
 		static Vector<FontStyleInfo>	font_styleLUT_;

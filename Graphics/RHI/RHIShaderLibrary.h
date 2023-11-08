@@ -74,16 +74,19 @@ namespace Shard::RHI {
 	};
 
 	//to do redesign this interface
+	//https://www.tomlooman.com/psocaching-unreal-engine/
 	class RHIPipelineStateObjectLibraryInterface
 	{
 	public:
 		using Ptr = RHIPipelineStateObjectLibraryInterface*;
 		virtual void Init(void) {}
+		virtual void UnInit(void);
 		virtual RHIPipelineStateObject::Ptr GetOrCreatePipeline(const RHIPipelineStateObjectInitializer& initializer);
 		constexpr size_type GetPSOCount()const;
 		virtual ~RHIPipelineStateObjectLibraryInterface();
 	protected:
 		virtual RHIPipelineStateObject::Ptr CreatePipelineImpl(const RHIPipelineStateObjectInitializer& initializer) = 0;
+		virtual void DestoryPipelineImpl(RHIPipelineStateObject::Ptr) = 0;
 	protected:
 		Map<RHIPipelineStateObjectInitializer, RHIPipelineStateObject::Ptr>	pso_cache_;
 		std::shared_mutex	cache_mutex_;

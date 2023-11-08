@@ -99,7 +99,7 @@
     <ClCompile Include="Graphics\Renderer\RtRenderBarrier.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="Graphics\RHI\Vulkan\RHISyncVulkan.h" />
-    <ClCompile Include="Graphics\Core\RenderGlobalParams.cpp" />
+    <ClCompile Include="Graphics\Core\EngineGlobalParams.cpp" />
     <ClCompile Include="Graphics\RHI\RHIResources.cpp" />
     <ClCompile Include="Graphics\RHI\Vulkan\RHISyncVulkan.cpp" />
     <ClCompile Include="Graphics\RHI\Vulkan\API\VulkanStat.cpp" />
@@ -125,6 +125,12 @@
     <ClCompile Include="System\App\CameraSystem.cpp" />
     <ClCompile Include="Utils\PlatformShared.cpp" />
     <ClCompile Include="Graphics\Effect\Font\EffectFonts.cpp" />
+    <ClCompile Include="Graphics\RHI\RHIResourceBinding.cpp" />
+    <ClCompile Include="Graphics\Effect\DebugView\EffectDebugView.cpp" />
+    <ClCompile Include="Graphics\Effect\DebugView\EffectImguiView.cpp" />
+    <ClCompile Include="System\DebugView\DebugViewSystem.cpp" />
+    <ClCompile Include="Graphics\Effect\PostProcess\EffectDepthOfField.cpp" />
+    <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -229,7 +235,7 @@
     <ClInclude Include="Graphics\RHI\RHIShader.h" />
     <ClInclude Include="Graphics\RHI\Vulkan\RHIGlobalEntityVulkan.h" />
     <ClInclude Include="Graphics\RHI\Vulkan\RHIResourceAllocatorVulkan.h" />
-    <ClInclude Include="Graphics\Core\RenderGlobalParams.h" />
+    <ClInclude Include="Graphics\Core\EngineGlobalParams.h" />
     <ClInclude Include="Graphics\RHI\Vulkan\API\VulkanStat.h" />
     <ClInclude Include="Graphics\RHI\Vulkan\RHIResourcesVulkan.h" />
     <ClInclude Include="Graphics\RHI\RHIResourceBinding.h" />
@@ -258,6 +264,13 @@
     <ClInclude Include="Graphics\Effect\Base\EffectBasePass.h" />
     <ClInclude Include="System\App\CameraSystem.h" />
     <ClInclude Include="Graphics\Effect\Font\EffectFonts.h" />
+    <ClInclude Include="Graphics\Effect\DebugView\EffectDebugView.h" />
+    <ClInclude Include="Graphics\Effect\DebugView\EffectImguiView.h" />
+    <ClInclude Include="System\DebugView\DebugViewSystem.h" />
+    <ClInclude Include="Graphics\Effect\PostProcess\EffectDepthOfField.h" />
+    <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
+    <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
+    <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Graphics\Renderer\RtRenderResources.inl">
@@ -276,9 +289,25 @@
     <None Include="Graphics\Renderer\RtRenderShaderUtils.inl" />
     <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
     <None Include="Shaders\BindlessResource.hlsli" />
+    <None Include="Shaders\BSDF.hlsli" />
+    <None Include="Shaders\CommonUtils.hlsli" />
+    <None Include="Shaders\Material.hlsli" />
+    <None Include="Shaders\BVHCommon.hlsli" />
+    <None Include="Shaders\Lighting\LTC.hlsli" />
+    <None Include="Shaders\DebugView\DebugViewCommon.hlsli" />
+    <None Include="Shaders\Math.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />
     <FxCompile Include="Shaders\Fonts\VSFontsShader.hlsl" />
+    <FxCompile Include="Shaders\Fonts\df.hlsl" />
+    <FxCompile Include="Shaders\DebugView\VSDebugViewShader.hlsl" />
+    <FxCompile Include="Shaders\DebugView\PSDebugViewShader.hlsl" />
+    <FxCompile Include="Shaders\DebugView\GSDebugViewShader.hlsl" />
+    <FxCompile Include="Shaders\MBOIT\PSMBOIT.hlsl" />
+    <FxCompile Include="Shaders\MBOIT\CSMBOIT.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Graphics\Effect\MBOIT\Readme.txt" />
   </ItemGroup>
 </Project>

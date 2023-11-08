@@ -1,5 +1,6 @@
 #include "eastl/sort.h"
 #include "Renderer/RtRenderGraphExe.h"
+#include "Renderer/RtRenderGraphPerfDebug.h"
 #include "RHI/RHI.h"
 
 namespace Shard
@@ -133,13 +134,15 @@ namespace Shard
 			//alloc a same configure resource as resource
 			const auto& field_name = field.GetName();
 			if (field.GetType() == RtField::EType::eBuffer) {
-				auto buffer_handle = buffer_repo_.Alloc(*external_resource);
+				auto* external_buffer = dynamic_cast<RtRenderBuffer*>(external_resource);
+				auto buffer_handle = buffer_repo_.Alloc(*external_buffer);//shallow copy, use rhi as external resource
 				buffer_map_.insert(eastl::make_pair(field_name, buffer_handle));
 			}
 			else
 			{
-				auto texture_handle = texture_repo_.Alloc(*external_resource);
-				texture_map_.insert(eastl::make_pair());
+				auto* external_texture = dynamic_cast<RtRenderTexture*>(external_resource);
+				auto texture_handle = texture_repo_.Alloc(*external_texture);
+				texture_map_.insert(eastl::make_pair(field_name, texture_handle));
 			}
 			return *this;
 		}
@@ -158,6 +161,7 @@ namespace Shard
 
 		void RtRenderGraphExecutor::ExecutePass(RHI::RHICommandContext* context, RtRendererPass& pass)
 		{
+			RENDER_EVENT("render_pass:%s", pass.GetName());
 			pass.Execute(context);
 		}
 

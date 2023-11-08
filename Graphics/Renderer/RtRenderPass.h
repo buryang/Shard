@@ -56,6 +56,10 @@ namespace Shard
 				Map<String, RtField>& operator()(void) {
 					return fields_;
 				}
+				
+				auto& GetFields() {
+					return fields_;
+				}
 				template <typename Function>
 				void Enumerate(Function func) {
 					for (auto& [_, p] : fields_) {
@@ -85,6 +89,8 @@ namespace Shard
 				static SmallVector<EPipeLine, 2, false> pipe_lines{ EPipeLine::eGraphics, EPipeLine::eAsyncCompute };
 				return pipe_lines;
 			}
+			void GetInputFields(Vector<RtField>& input_fields);
+			void GetOutputFields(Vector<RtField>& output_fields);
 			RtBarrierBatch::Ptr GetOrCreatePrologureBarrier(Utils::Allocator* alloc);
 			RtBarrierBatch::Ptr GetOrCreateEpilogureBarrier(Utils::Allocator* alloc);
 			FORCE_INLINE void IncrRef() { ++ref_count_; }

@@ -886,8 +886,10 @@ namespace Shard
 			using SharedPtr = eastl::shared_ptr<ECSSystem>;
 			virtual void Init() = 0;
 			virtual void UnInit() = 0;
+			virtual void PreUpdate() {}
 			virtual void FixedUpdate(){}
 			virtual void Update(ECSSystemUpdateContext& ctx) = 0;
+			virtual void PostUpdate() {}
 			virtual ~ECSSystem() = default;
 			static uint32_t	GeneratePriorOrder(uint32_t hint=-1) {
 				static Set<uint32_t> occupied_oreder{};

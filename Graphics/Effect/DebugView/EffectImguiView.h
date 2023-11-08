@@ -11,7 +11,7 @@ namespace Shard::Effect
 	public:
 		static void Init();
 		static void Unit();
-		static void Draw(Renderer::RtRendererGraph& graph, System::DebugView::DebugViewSystem& debugview);
+		static void Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
 	};
 }
 #endif

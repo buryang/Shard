@@ -3,6 +3,7 @@
 #if 1//def DEVELOP_DEBUG_TOOLS
 #include "Utils/CommonUtils.h"
 #include "System/DebugView/DebugViewSystem.h"
+#include "Graphics/Renderer/RtRenderGraphBuilder.h"
 #include "Graphics/RHI/RHIShaderLibrary.h"
 #include "Graphics/RHI/RHICommand.h"
 
@@ -32,7 +33,7 @@ namespace Shard::Effect
 	public:
 		static void Init();
 		static void Unit();
-		static void Draw(Renderer::RtRendererGraph& graph, System::DebugView::DebugViewSystem& debugview);
+		static void Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
 	};
 }
 

@@ -26,7 +26,7 @@ namespace Shard
 					handle_();
 				}
 			};
-			std::atomic<uint32_t>	ref_count_{ 0u };
+			mutable std::atomic<uint32_t>	ref_count_{ 0u };
 			std::atomic_bool	is_finished_{ false };
 			JobEntry*	parent_{ nullptr };
 			//task can stealed by other thread?
@@ -44,6 +44,8 @@ namespace Shard
 			}
 			void Wait();
 			void Release();
+			void AddRef()const { ref_count_.fetch_add(1, std::memory_order::relaxed); }
+			void DecRef()const { ref_count_.fetch_sub(1, std::memory_order::relaxed); }
 			bool IsFinished() const { return is_finished_.load(); }
 			bool IsStealAble()const { return stealable_; }
 			template<class T>

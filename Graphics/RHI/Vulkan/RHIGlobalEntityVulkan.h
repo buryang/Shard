@@ -20,7 +20,9 @@ namespace Shard::RHI {
 			void CreateViewPoint() override;
 			RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
 			RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
+#if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
 			RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() override;
+#endif
 			RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap() override;
 			RHIBuffer::Ptr CreateUniformBuffer(const RHIBufferInitializer& desc) override;
 			RHIBuffer::Ptr CreateStructedBuffer(const RHIBufferInitializer& desc) override;
@@ -37,11 +39,11 @@ namespace Shard::RHI {
 			bool SetUpTexture(RHITextureVulkan::Ptr texture);
 			bool SetUpBuffer(RHIBufferVulkan::Ptr buffer);
 			//special functions for vulkan
-			FORCE_INLINE VulkanInstance::Ptr GetVulkanInstance() {
+			FORCE_INLINE VulkanInstance::SharedPtr GetVulkanInstance() {
 				assert(nullptr != instance_);
 				return instance_;
 			}
-			FORCE_INLINE VulkanDevice::Ptr GetVulkanDevice() {
+			FORCE_INLINE VulkanDevice::SharedPtr GetVulkanDevice() {
 				assert(nullptr != device_);
 				return device_;
 			}
@@ -76,7 +78,9 @@ namespace Shard::RHI {
 			RHIResourceBindlessSetVulkan::SharedPtr	bindless_heap_;
 
 			//imgui layer
+#if defined(DEVELIP_DEBUG_TOOLS) && defined(ENABLE_IMGUI)
 			RHIImGuiLayerWrapperVulkan	imgui_wrapper_;
+#endif
 		}; 
 	}
 }

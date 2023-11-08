@@ -19,11 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Graphics\Core\RenderGlobalParams.cpp" />
+    <ClCompile Include="Graphics\Core\EngineGlobalParams.cpp" />
     <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
     <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
     <ClCompile Include="Graphics\Effect\Base\EffectBasePass.cpp" />
+    <ClCompile Include="Graphics\Effect\DebugView\EffectDebugView.cpp" />
+    <ClCompile Include="Graphics\Effect\DebugView\EffectImguiView.cpp" />
     <ClCompile Include="Graphics\Effect\Font\EffectFonts.cpp" />
+    <ClCompile Include="Graphics\Effect\PostProcess\EffectDepthOfField.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderBarrier.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderGraph.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderGraphBuilder.cpp" />
@@ -35,7 +38,9 @@
     <ClCompile Include="Graphics\Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderParameters.cpp" />
+    <ClCompile Include="Graphics\RHI\RHIResourceBinding.cpp" />
     <ClCompile Include="System\App\CameraSystem.cpp" />
+    <ClCompile Include="System\DebugView\DebugViewSystem.cpp" />
     <ClCompile Include="System\Render\RenderSystem.cpp" />
     <ClCompile Include="Graphics\RHI\RHICommand.cpp" />
     <ClCompile Include="Graphics\RHI\RHIGlobalEntity.cpp" />
@@ -71,6 +76,7 @@
     <ClCompile Include="System\Render\RuntimeWorkIR.cpp" />
     <ClCompile Include="System\Render\RuntimeWorkProcessor.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
     <ClCompile Include="Utils\Memory.cpp" />
@@ -84,10 +90,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Core\PixelInfo.h" />
-    <ClInclude Include="Graphics\Core\RenderGlobalParams.h" />
+    <ClInclude Include="Graphics\Core\EngineGlobalParams.h" />
     <ClInclude Include="Effect\EffectRayTracing.h" />
     <ClInclude Include="Graphics\Effect\Base\EffectBasePass.h" />
+    <ClInclude Include="Graphics\Effect\DebugView\EffectDebugView.h" />
+    <ClInclude Include="Graphics\Effect\DebugView\EffectImguiView.h" />
     <ClInclude Include="Graphics\Effect\Font\EffectFonts.h" />
+    <ClInclude Include="Graphics\Effect\PostProcess\EffectDepthOfField.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderBarrier.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderGraph.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderGraphBuilder.h" />
@@ -104,6 +113,7 @@
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
     <ClInclude Include="System\Animation\AnimationSystem.h" />
     <ClInclude Include="System\App\CameraSystem.h" />
+    <ClInclude Include="System\DebugView\DebugViewSystem.h" />
     <ClInclude Include="System\PhyX\PhyXSystem.h" />
     <ClInclude Include="System\Render\RenderSystem.h" />
     <ClInclude Include="Graphics\RHI\RHIGlobalEntity.h" />
@@ -146,6 +156,9 @@
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="System\Input\InputSystem.h" />
+    <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
+    <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
+    <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
     <ClInclude Include="System\Resource\ResourceLoaderSystem.h" />
     <ClInclude Include="System\System.h" />
     <ClInclude Include="Utils\Algorithm.h" />
@@ -166,14 +179,63 @@
     <None Include="Graphics\Renderer\RtRenderResources.inl" />
     <None Include="Graphics\Renderer\RtRenderShaderUtils.inl" />
     <None Include="Shaders\BindlessResource.hlsli" />
+    <None Include="Shaders\BSDF.hlsli" />
+    <None Include="Shaders\BVHCommon.hlsli" />
+    <None Include="Shaders\CommonUtils.hlsli" />
+    <None Include="Shaders\DebugView\DebugViewCommon.hlsli" />
     <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
+    <None Include="Shaders\Lighting\LTC.hlsli" />
+    <None Include="Shaders\Material.hlsli" />
+    <None Include="Shaders\Math.hlsli" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\DebugView\GSDebugViewShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugView\PSDebugViewShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugView\VSDebugViewShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\Fonts\df.hlsl" />
     <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />
     <FxCompile Include="Shaders\Fonts\VSFontsShader.hlsl" />
+    <FxCompile Include="Shaders\MBOIT\CSMBOIT.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\MBOIT\PSMBOIT.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Graphics\Effect\MBOIT\Readme.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

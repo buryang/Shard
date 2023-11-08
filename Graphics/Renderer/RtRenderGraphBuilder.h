@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer/RtRenderPass.h"
+#include "Renderer/RtRenderGraph.h"
 #include "Renderer/RtRenderGraphExe.h"
 #include "RHI/RHIGlobalEntity.h"
 
@@ -14,18 +15,36 @@ namespace Shard
 		public:
 			struct BuildConfig
 			{
-				bool	aync_enable_{ false };
-				bool	culling_passes_{ false };
-				bool	res_aliasing_enable_{ false };
+				union
+				{
+					struct
+					{
+						uint32_t	aync_enable_ : 1;
+						uint32_t	culling_passes_ : 1;
+						uint32_t	res_aliasing_enable_ : 1;
+						uint32_t	hw_raytrace_enable_ : 1;
+					};
+					uint32_t	cfg_bits_{ 0u };
+				};
 			};
-			static RtRenderGraphExecutor::SharedPtr Compile(RtRendererGraph& graph, const BuildConfig& param);
+			void Compile(const BuildConfig& build_param);
+			void Finalize();
+			bool IsReady() const;
+			FORCE_INLINE RtRendererGraph& GetRenderGraph() {
+				return graph_;
+			}
+			FORCE_INLINE RtRenderGraphExecutor::SharedPtr GetRenderGraphExe() {
+				return graph_exe_;
+			}
 		private:
 			DISALLOW_COPY_AND_ASSIGN(RtRenderGraphBuilder);
-			void CullingNoUsePasses(RtRendererGraph& graph);
-			void AnalysisResourceUsage(const RtRendererGraph& graph, RtRenderGraphExecutor::SharedPtr executor);
+			void CullingNoUsePasses();
+			void AnalysisResourceUsage();
 			//build resource barrier
-			void AddResourceTransition(RtRenderGraphExecutor::SharedPtr executor);
-			bool ValidateFinalizeGraph(const RtRendererGraph& graph);
+			void AddResourceTransition();
+		private:
+			RtRendererGraph	graph_;
+			RtRenderGraphExecutor::SharedPtr	graph_exe_;
 		};
 	}
 }

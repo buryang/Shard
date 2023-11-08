@@ -17,6 +17,28 @@ namespace Shard
 			schedule_context_ = context;
 		}
 
+		void RtRendererPass::GetInputFields(Vector<RtField>& input_fields)
+		{
+			auto& fields = GetSchduleContext().GetFields();
+			input_fields.reserve(fields.size() / 2);
+			for (auto [_, f] : fields) {
+				if (f.IsInput()) {
+					input_fields.push_back(f);
+				}
+			}
+		}
+
+		void RtRendererPass::GetOutputFields(Vector<RtField>& output_fields)
+		{
+			auto& fields = GetSchduleContext().GetFields();
+			output_fields.reserve(fields.size() / 2);
+			for (auto [_, f] : fields) {
+				if (f.IsOutput()) {
+					output_fields.push_back(f);
+				}
+			}
+		}
+
 		RtBarrierBatch::Ptr RtRendererPass::GetOrCreatePrologureBarrier(Utils::Allocator* alloc)
 		{
 			if (nullptr == barriers_prologue_) {

@@ -15,7 +15,7 @@ struct FontPSParams
 VK_PUSH_CONSTANT
 FontPSParams font_ps_params;
 
-FontPSOutput main(FTVSOutput input) 
+FontPSOutput Main(FTVSOutput input) 
 {
     FTPSOutput output;
     [likely]
@@ -45,7 +45,7 @@ FontPSOutput main(FTVSOutput input)
     return output;
 }
 #else
-FontPSOutput main(FTVSOutput input)
+FontPSOutput Main(FTVSOutput input)
 {
     FTPSOutput output;
     return output;

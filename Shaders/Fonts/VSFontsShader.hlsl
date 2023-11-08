@@ -2,7 +2,7 @@
 #include "../BindlessResource.hlsli"
 
 #ifdef FREE_TYPE_ALGO
-FTVSOutput main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
+FTVSOutput Main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
     FTVSOutput output;
     uint vid = instance_id * 4 + vertex_id;
@@ -12,7 +12,7 @@ FTVSOutput main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
     return output;
 }
 #elif defined(GLYPH_OUTLINE_ALGO)
-FTVSOutput main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
+FTVSOutput Main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
     
 }

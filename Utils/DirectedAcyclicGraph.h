@@ -10,7 +10,7 @@ namespace Shard
 		{
 		public:
 			//shuold not be so much node 
-			enum class Flags : uint32_t
+			enum class EFlags : uint32_t
 			{
 				eValid			= 0x0,
 				eGraphRoot		= 0x1,
@@ -18,9 +18,9 @@ namespace Shard
 				eInValid		= 0x100,
 			};
 			NodeData() = default;
-			Flags GetFlags() const { return flags_; }
-			void SetFlags(Flags flags) { flags_ = flags; }
-			bool IsValid() const { return !Utils::HasAnyFlags(GetFlags(), Flags::eInValid); }
+			EFlags GetFlags() const { return flags_; }
+			void SetFlags(EFlags flags) { flags_ = flags; }
+			bool IsValid() const { return !Utils::HasAnyFlags(GetFlags(), EFlags::eInValid); }
 			void AddInEdge(uint32_t edge);
 			void AddOutEdge(uint32_t edge);
 			void RemoveInEdge(uint32_t edge_index);
@@ -32,7 +32,7 @@ namespace Shard
 			FORCE_INLINE uint32_t GetOutEdgeCount()const { return out_edges_.size(); }
 		private:
 			uint32_t				index_{ -1 };
-			Flags					flags_{ Flags::eValid };
+			EFlags					flags_{ EFlags::eValid };
 			SmallVector<uint32_t, 4>	in_edges_;
 			SmallVector<uint32_t, 4>	out_edges_;
 		};
@@ -74,7 +74,7 @@ namespace Shard
 			Node* GetNode(uint32_t node_index);
 			Edge* GetEdge(uint32_t edge_index);
 		private:
-			template<typename Method>
+			template<class, template<typename> class>
 			friend class DirectGraphVisitor;
 			DISALLOW_COPY_AND_ASSIGN(DirectedAcyclicGraph);
 		protected://ugly code 
@@ -117,11 +117,10 @@ namespace Shard
 			}
 		};
 
-		template<typename Method>
+		template<class Graph, template<typename> class Method>
 		class DirectGraphVisitor
 		{
 		public:
-			using Graph = DirectedAcyclicGraph;
 			using Node = Graph::Node;
 			using Edge = Graph::Edge;
 			DirectGraphVisitor(const Graph& graph, const Node* begin) :graph_(graph), from_(begin) {}
@@ -146,10 +145,9 @@ namespace Shard
 		private:
 			const Node* from_;
 			Method<Node>::Container vis_context_;
-			const DirectedAcyclicGraph& graph_;
+			const Graph& graph_;
 		};
 
 	}
 }
 
-#include "Utils/DirectedAcyclicGraph.inl"

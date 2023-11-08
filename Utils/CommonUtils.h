@@ -46,10 +46,10 @@
 #endif
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
-class_name(const class_name##&)=delete; \
-class_name##& operator=(const class_name##&)=delete;\
-class_name(class_name##&&)=delete;\
-class_name##& operator=(class_name##&&)=delete;
+class_name(const class_name&)=delete; \
+class_name& operator=(const class_name&)=delete; \
+class_name(class_name&&)=delete; \
+class_name& operator=(class_name&&)=delete;
 
 /*foreach varargs macro*/
 #define PARENS ()
@@ -196,19 +196,33 @@ namespace Shard::Utils {
 		return (val + alignment - 1) & ~(static_cast<T>(alignment - 1));
 	}
 
-	template<class Atomic = std::atomic_bool>
+	template<class AtomicBOOL = std::atomic_bool>
 	class SpinLock
 	{
 	public:
-		SpinLock(Atomic& sign) :sign_(sign) {
-			bool expected = false;
-			while (!sign_.compare_exchange_weak(expected, true)) {}
+		//https://rigtorp.se/spinlock/
+		SpinLock(AtomicBOOL& sign) :sign_(sign) {
+			for (;;) {
+				bool expected = false;
+				if (LIKELY(sign_.compare_exchange_weak(expected, true, std::memory_order::acquire)) {
+					return;
+				}
+				auto spin_count = max_spin_count;
+				while(--spin_count > 0 && !sign_.load(std::memory_order::relaxed)){
+					_mm_pause(); //todo
+				}
+				//slow lock
+				if (UNLIKELY(!spin_count)) {
+					std::this_thread::yield();
+				}
+			}
 		}
 		~SpinLock() {
-			sign_.exchange(false);
+			sign_.store(false, std::memory_order::release);
 		}
 	private:
-		Atomic& sign_;
+		constexpr uint32_t max_spin_count = 40u;
+		AtomicBOOL& sign_;
 	};
 
 	//string/wstring conver helper

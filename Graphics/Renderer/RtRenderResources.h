@@ -138,7 +138,8 @@ namespace Shard
 				eInput	= 0x1,
 				eOutput = 0x2,
 				eExtracted	= eOutput | 0x10,
-				eCulled	= 0x10, //field deleted
+				eExternal = 0x100, //external resource
+				eCulled	= 0x200, //field deleted
 			};
 
 			struct TextureSubField
@@ -182,6 +183,7 @@ namespace Shard
 			FORCE_INLINE bool IsConnectAble(const RtField& other)const;
 			FORCE_INLINE bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
 			FORCE_INLINE bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
+			FORCE_INLINE bool IsInput()const { return !IsOutput(); }
 			FORCE_INLINE bool IsExtract()const { return usage_ == EUsage::eExtracted; }
 			FORCE_INLINE bool IsReferenced()const { return ref_count_ > 1; }
 			FORCE_INLINE bool IsCrossQueue()const { return is_cross_queue_; }

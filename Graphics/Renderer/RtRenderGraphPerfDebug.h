@@ -2,8 +2,7 @@
 #include "Utils/CommonUtils.h"
 #include <iostream>
 
-#ifdef RENDER_GRAPH_DEBUG
-
+#ifdef DEVELOP_DEBUG_TOOLS
 namespace Shard
 {
 	namespace Renderer
@@ -11,14 +10,11 @@ namespace Shard
 		class RtRendererGraph;
 		class RtRenderGraphExecutor;
 
-		class MINIT_API RtRendererDebug
+		class MINIT_API RtRendererVisualization
 		{
 		public:
 			static void PrintRenderGraph(const RtRendererGraph& graph);
 			static void PrintRenderGraphExe(const RtRenderGraphExecutor& executor);
-		private:
-			static SmallVector<RtRendererPass*>		passes_;
-			static SmallVector<RtRenderResource*>	resources_;
 		};
 
 		class MINIT_API RtRendererEvent
@@ -32,17 +28,18 @@ namespace Shard
 			~RtRendererEvent() {
 				auto end_time = std::chrono::high_resolution_clock::now();
 				auto time_gap = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_);
-				//todo
-				
+				LOG(INFO) << std::format("{} execute time: \t {}", event_info, time_gap);
 			}
 		private:
 			std::string event_info_;
 			std::chrono::time_point<std::chrono::steady_clock>	start_time_;
 		};
 			
-		#define RENDER_EVENT RtRendererEvent
 	}
 }
 
-#endif 
+#define RENDER_EVENT(fmt, ...) Shard::Renderer::RtRendererEvent event(fnt, __VAR_ARGS__);
+#else
+#define RENDER_EVENT(fmt, ...)
+#endif
 

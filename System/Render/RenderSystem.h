@@ -12,7 +12,7 @@ namespace Shard::Renderer
 	public:
 		void Init() override;
 		void UnInit() override;
-		void Tick(float dt) override;
+		void Update(float dt) override;
 		void SetWindow(Utils::WindowHandle win);
 		void ReloadRender(); 
 	private:

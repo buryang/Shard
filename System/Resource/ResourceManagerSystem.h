@@ -24,12 +24,10 @@ namespace Shard::System::Resource
 		String	ext_type_; //fourcc extension type
 	};
 
-	class MINIT_API ResourceRecord
+	struct ResourceRecord
 	{
-	public:
 		using Ptr = ResourceRecord*;
 		using Blob = Vector<uint8_t>;
-	private:
 		Blob	resource_blob_;
 	};
 

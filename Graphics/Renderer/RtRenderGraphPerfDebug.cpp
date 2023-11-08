@@ -1,6 +1,17 @@
 #include "Renderer/RtRenderGraphPerfDebug.h"
 
-#ifdef RENDER_GRAPH_DEBUG
+#ifdef DEVELOP_DEBUG_TOOLS
 
+namespace Shard::Renderer
+{
+	void RtRendererVisualization::PrintRenderGraph(const RtRendererGraph& graph)
+	{
+
+	}
+
+	void RtRendererVisualization::PrintRenderGraphExe(const RtRenderGraphExecutor& executor)
+	{
+	}
+}
 
 #endif

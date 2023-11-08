@@ -1,6 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "Core/RenderGlobalParams.h"
+#include "Core/EngineGlobalParams.h"
 #include "RHI/RHIResources.h"
 #include "RHI/RHICommand.h"
 #include "RHI/RHIGlobalEntity.h"
