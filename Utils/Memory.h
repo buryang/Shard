@@ -384,9 +384,9 @@ namespace Shard
 					uint32_t free_blks_{ 0u };
 					Chunk* prev_{ nullptr };
 					Chunk* next_{ nullptr };
-					void* ledger_{ nullptr };
-					void* memory_{ nullptr };
 					FreeBlock* free_list_{ nullptr };
+					std::uintptr_t bump_ptr_{ nullptr };
+					void* memory_{ nullptr };
 				};
 
 
@@ -504,7 +504,7 @@ namespace Shard
 				}
 				else
 				{
-					//consumer in another thread
+					//consumer in another thread, delay deallcate
 					memory_pool_->deallocate_external(ptr, sizeof(T) * n);
 				}
 			}
