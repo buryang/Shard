@@ -1,5 +1,5 @@
 #pragma once
-#include "RHI/VulkanRHI.h"
+#include "VulkanRHI.h"
 
 namespace Shard
 {

@@ -14,7 +14,42 @@ namespace Shard
 	/*for:"this feature is not used, the implementation will 
 	  perform its own memory allocations. Since most memory 
 	  allocations are off the critical path", so just set null*/
-	VkAllocationCallbacks* g_host_alloc = VK_NULL_HANDLE;
+#ifdef VULKAN_USER_ALLOCATION
+	namespace Memory
+	{
+		extern Utils::StaticPoolAllocator<uint8_t, POOL_RHI_ID> g_rhi_allocator;
+		/*Memory alignment maybe an issue to implement VkAllocationCallback (there is
+		  no _aligned_realoc function available, but only _aligned_malloc and _aligned_free).
+		  But only if Vulkan requests alignments bigger than malloc's default 
+		  (8 bytes for x86, 16 for AMD64, etc. must check ARM defaults). But so far, seens 
+		  Vulkan actually request memory with lower alignment than malloc() defaults,*/
+		static void* pfn_vulkan_alloc(void* user_data, size_t size, size_t alignment, VkSystemAllocationScope allocation_scope) { 
+			const auto alloc_size = sizeof(uintptr_t) + size; //save size in extra memory
+			uintptr_t* data = reinterpret_cast<uintptr_t*>(g_rhi_allocator.Alloc(alloc_size));
+			*data++ = alloc_size;
+			return data;
+		}
+		static void* pfn_vulkan_realloc(void*, void* orignal, size_t size, size_t alignment, VkSystemAllocationScope allocation_scope) {
+			void* new_data = pfn_vulkan_alloc(nullptr, size, alignment, allocation_scope); //todo
+			memcpy(new_data, orignal, size);
+			pfn_vulkan_free(nullptr, orignal);
+			return new_data;
+		}
+		static void pfn_vulkan_free(void*, void* memory) {
+			uintptr_t* data = reinterpret_cast<uintptr_t*>(memory) - 1;
+			g_rhi_allocator.DeAlloc(reinterpret_cast<uint8_t*>(data), *data);
+		}
+		VkAllocationCallbacks g_vulkan_allocator{ .pUserData = nullptr,
+													.pfnAllocation = &pfn_vulkan_alloc,
+													.pfnReallocation = &pfn_vulkan_realloc,
+													.pfnFree = &pfn_vulkan_free,
+													.pfnInternalAllocation = nullptr,
+													.pfnInternalFree = nullptr };
+	}
+	VkAllocationCallbacks* g_host_alloc = &g_vulkan_allocator;
+#else
+	VkAllocationCallbacks* g_host_alloc = nullptr;
+#endif
 
 	//whether use ASYNC COMPUTE
 	REGIST_PARAM_TYPE(BOOL, DEVICE_ASYNC_COMPUTE, true);

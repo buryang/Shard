@@ -106,10 +106,5 @@ namespace Shard
 	static inline VkPhysicalDevice GetGlobalPhyDevice() {
 		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->GetPhyHandle();
 	}
-
-	static inline const VkAllocationCallbacks* GetGlobalAllocationCallBacks() {
-		return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanCallBack();
-	}
-
 }
 

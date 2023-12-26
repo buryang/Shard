@@ -1,6 +1,25 @@
 #include "RHISyncVulkan.h"
 
 namespace Shard::RHI::Vulkan {
+
+	void RHICreateTransition(const Renderer::RtBarrierBatch& barrier_info, RHITransitionInfo::Ptr& trans)
+	{
+		auto vulkan_info = trans->GetMetaData<VulkanTransitionInfo>();
+		for (auto& trans : barrier_info.transitions_) {
+
+		}
+	}
+
+	void RHIBeginTransition(RHICommandContext::Ptr cmd, const RHITransitionInfo::Ptr trans)
+	{
+
+	}
+
+	void RHIEndTransition(RHICommandContext::Ptr cmd, const RHITransitionInfo::Ptr trans)
+	{
+
+	}
+
 	RHIEventVulkan::RHIEventVulkan(const RHIEventInitializer& initializer):RHIEvent(initializer)
 	{
 		VkEventCreateInfo create_info{

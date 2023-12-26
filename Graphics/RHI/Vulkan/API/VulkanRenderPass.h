@@ -1,6 +1,6 @@
 #pragma once
-#include "RHI/VulkanRHI.h"
-#include "RHI/VulkanFrameBuffer.h"
+#include "VulkanRHI.h"
+#include "VulkanFrameBuffer.h"
 
 namespace Shard
 {

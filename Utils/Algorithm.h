@@ -1,29 +1,75 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 
-//https://www.lenshood.dev/2021/04/19/lock-free-ring-buffer/#ring-buffer
 namespace Shard
 {
 	namespace Utils
 	{
-		template <class T, class StorageClass>
-		class TRingBuffer : public RingBuffer
+		//https://www.lenshood.dev/2021/04/19/lock-free-ring-buffer/#ring-buffer
+		template <class T, template<typename> class ContainerType>
+		class TRingBuffer 
 		{
 		public:
-			using Handle = size_t;
+			using StorageClass = ContainerType<T>;
+			using Handle = StorageClass::size_type;
 			using ElementType = T;
-			TRingBuffer(size_t capacity);
+			TRingBuffer(size_type capacity);
 			virtual bool Poll(ElementType& el);
 			virtual bool Offer(const ElementType& el);
-			size_t	GetCapacity()const {
+			size_type GetCapacity()const {
 				return capacity_;
 			}
-			virtual ~TRingBuffer() {}
+			virtual ~TRingBuffer() = default;
 		private:
 			StorageClass	storage_;
 			std::atomic<Handle> head_{ 0u };
 			std::atomic<Handle> tail_{ 0u };
-			const size_t capacity_;
+			const size_type capacity_;
+		};
+
+		//lock-free treiber stack https://en.wikipedia.org/wiki/Treiber_stack
+		template<typename T, template<typename> class ContainerType>
+		class TTreiberStack
+		{
+			struct alignas(128) TopNode //align with cache line
+			{
+				uint32_t	index_{ 0u };
+				uint32_t	version_{ 0u }; //use to avoid ABA
+			};
+			std::atomic<TopNode>	top_node_;
+			ContainerType<T>& node_container_;
+		public:
+			using ElementType = T;
+			explicit TTreiberStack(ContainerType<ElementType>& nodes) :node_container_(nodes) {
+
+			}
+			void Push(ElementType&& ele) {
+				do { //todo overflow
+					auto local_top_node = top_node_.load(std::memory_order::relaxed);
+					node_container_[local_top_node.index_ + 1] = ele;
+					TopNode new_top_node{ local_top_node.index_ + 1, local_top_node.version_ + 1 };
+					if (top_node_.compare_and_exchange_weak(local_top_node, new_top_node, std::memory_order::memory_order_seq_cst, std::memory_order::relaxed)) {
+						break;
+					}
+				} while (true);
+
+			}
+			ElementType Poll() {
+				ElementType ele{};
+				do {
+					auto local_top_node = top_node_.load(std::memory_order::relaxed);
+					if (local_top_node.index_ < 0u) {
+						break;
+					}
+					ele = node_container_[local_top_node.index_];
+					TopNode new_top_node{ local_top_node.index_ - 1, local_top_node.version_ + 1 };
+					if (top_node_.compare_and_exchange_weak(local_top_node, new_top_node, std::memory_order::memory_order_seq_cst, std::memory_order::relaxed))
+					{
+						break;
+					}
+				} while (true);
+				return ele;
+			}
 		};
 	}
 }

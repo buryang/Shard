@@ -108,6 +108,7 @@
     <ClInclude Include="Graphics\Renderer\RtRenderShader.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderArchive.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderFactory.h" />
+    <ClInclude Include="Graphics\RHI\RHICommonUtils.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
@@ -176,7 +177,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
-    <None Include="Graphics\Renderer\RtRenderResources.inl" />
     <None Include="Graphics\Renderer\RtRenderShaderUtils.inl" />
     <None Include="Shaders\BindlessResource.hlsli" />
     <None Include="Shaders\BSDF.hlsli" />
@@ -249,26 +249,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -348,12 +348,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL;APPLICATION_RUNTIME</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;VULKAN_USER_ALLOCATION;RAY_TRACING;USE_SDL;USE_STD_COROUTINE;APPLICATION_RUNTIME</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/Zc:externConstexpr %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:externConstexpr</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -368,12 +368,12 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;RAY_TRACING;USE_SDL;APPLICATION_RUNTIME</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;VK_KHR_acceleration_structure;VUlKAN_BACKEND;VULKAN_USER_ALLOCATION;RAY_TRACING;USE_SDL;USE_STD_COROUTINE;APPLICATION_RUNTIME</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/Zc:externConstexpr %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/Zc:externConstexpr</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

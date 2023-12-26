@@ -51,6 +51,7 @@ namespace Shard
 			virtual ~RHIVirtualCommandContext() = default;
 		protected:
 			Vector<const RHICommandPacketInterface::Ptr> record_cmds_;
+			mutable uint32_t	record_count_;
 		};
 	}
 }

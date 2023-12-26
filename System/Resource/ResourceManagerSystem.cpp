@@ -27,13 +27,19 @@ namespace Shard::System::Resource
 			eastl::swap(pending_requests_, active_requests_);
 		}
 
+		/*
+		Utils::Coro<void> LoadResource(ResourceID resource_id) {
+			resource_provider_->ResponseRequest(resource_id, ); //todo sync conflict
+			co_return;
+		}
+
 		async_load_worker_ = Utils::Schedule([&, this]() {
 			for (auto iter = active_requests_.begin(); iter != active_requests_.end(); ++iter) {
 				//deal with load request here
-				resource_provider_->ResponseRequest(iter->resource_id_, );
+				Utils::Schedule(LoadResource(iter->resource_id));
 			}
 		});
-
+		*/
 	}
 
 	void ResourceManagerSystem::UnInit()

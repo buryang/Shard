@@ -92,7 +92,17 @@ namespace Shard
 		{
 			vec3	pos_;
 			vec3	normal_;
+			vec3	tangent_;
+			vec3	bitangent_;
 			vec2	tex_coord_;
+		};
+
+		//https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/
+		struct VertexCompressed
+		{
+			uint16_t position[4];
+			uint16_t qtangent[4]; //https://pdfs.semanticscholar.org/73b6/fa8f3ab6348975c3715c2f2d152f6b5c5296.pdf
+			uint16_t uv[2];
 		};
 
 		Vertex GetVertex(uint32_t face, uint32_t vert)const

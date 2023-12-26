@@ -30,4 +30,6 @@ namespace Shard::RHI
 	/*---------event function define here------*/
 	RHIEvent::~RHIEvent() {}
 	RHIFence::~RHIFence() {}
+
+	Utils::StaticPoolAllocator<uint8_t, POOL_RHI_ID>	g_rhi_allocator;
 }

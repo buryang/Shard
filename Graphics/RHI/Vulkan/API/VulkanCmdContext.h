@@ -1,7 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "RHI/Vulkan/API/VulkanRHI.h"
-#include "RHI/Vulkan/API/VulkanPrimitive.h"
 #include "RHI/Vulkan/RHISyncVulkan.h"
 #include <mutex>
 

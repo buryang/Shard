@@ -70,7 +70,10 @@ namespace Shard::Renderer
 			return false;
 		}
 		template<typename T>
-		requires std::conditional_t<std::is_function_v<typename T::Create>, std::conditional_t<typename T::CreateFromArchive, std::conditional_t<typename T::ShouldCompile, std::true_type, std::false_type>, std::false_type>, std::false_type>>::value
+		requires std::conditional_t<std::is_function_v<typename T::Create>, 
+									std::conditional_t<std::is_function_v<typename T::CreateFromArchive>, 
+									std::conditional_t<std::is_function_v<typename T::ShouldCompile>,
+									std::true_type, std::false_type>, std::false_type>, std::false_type>::value
 		bool BindTraitsFuncDelegate<T>() {
 			SetCreateShaderFunc(typename T::Create);
 			SetCreateShaderFromArchiveFunc(typename T::CreateFromArchive);
@@ -223,7 +226,7 @@ namespace Shard::Renderer
 			return shaders_[uint32_t(handle)];
 		}
 	private:
-		LAYOUT_VECTOR_FIELD(,RHI::RHIShader::Ptr, shaders_);
+		LAYOUT_VECTOR_FIELD(,Renderer::RtRenderShader::Ptr, shaders_);
 		END_DECLARE_TYPE_LAYOUT_DEF(RtShaderContent);
 	};
 

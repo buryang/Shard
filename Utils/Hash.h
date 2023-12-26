@@ -1,10 +1,15 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "Utils/FileArchive.h"
 #include <ThirdParty/CSHA/SHA1.h>
 #include <folly/Hash.h>
 #include <blake3.h>
 
 namespace Shard::Utils {
+
+	template<typename T>
+	concept Integral = std::is_integral_v<T>; 
+
 	template<typename Hash, uint32_t hash_size=20*8>
 	class HashSignature {
 	public:
@@ -24,17 +29,18 @@ namespace Shard::Utils {
 		FORCE_INLINE static constexpr uint32_t GetHashSize() { return MAX_HASH_SIZE; }
 		FORCE_INLINE static const HashSignature& Zero() { static HashSignature zero; return zero; }
 		FORCE_INLINE constexpr bool operator==(const HashSignature& rhs) const {
-			auto ret = std::memcmp(hash_, rhs.hash_, size_);
+			auto ret = std::memcmp(hash_, rhs.hash_, MAX_HASH_SIZE/8);
 			return !ret;
 		}
 		FORCE_INLINE constexpr bool operator!=(const HashSignature& rhs) const {
 			return !(*this == rhs);
 		}
-		friend IOArchive& operator << (IOArchive& ar, HashSignature& hash) {
-			return ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
+		FORCE_INLINE operator Integral auto () const { return *reinterpret_cast<Integral auto*>(hash_); }
+		friend void operator << (IOArchive& ar, const HashSignature& hash) {
+			ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
 		}
 	private:
-		alignas(32) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0u };
+		alignas(size_type) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0u };
 	};
 
 	//hash conainters
@@ -172,7 +178,7 @@ namespace Shard::Utils {
 		blake3_hasher hasher;
 		blake3_hasher_init(&hasher);
 		blake3_hasher_update(&hasher, bytes, size);
-		blake3_hasher_finalize(&hasher, hash.GetBytes(), hash_zie);
+		blake3_hasher_finalize(&hasher, hash.GetBytes(), hash_size);
 		return hash;
 	}
 }

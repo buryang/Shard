@@ -6,9 +6,6 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shard", "EngineCore.vcxproj", "{6F2D2B3F-7A7F-43CC-89BF-C87EACD6DE09}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTest", "UnitTest.vcxproj", "{54AC93F7-B375-4DD5-80F4-39912A40FEB0}"
-	ProjectSection(ProjectDependencies) = postProject
-		{6F2D2B3F-7A7F-43CC-89BF-C87EACD6DE09} = {6F2D2B3F-7A7F-43CC-89BF-C87EACD6DE09}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Example", "Example\Example.vcxproj", "{3C98FCEE-7800-478B-A6CC-22D2988C94BE}"
 EndProject

@@ -1,6 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/Hash.h"
+#include "Graphics/RHI/RHICommonUtils.h"
 
 namespace Shard::RHI {
 
@@ -17,42 +18,49 @@ namespace Shard::RHI {
 		using HashType = Utils::Blake3Hash64;
 		RHIShader(const RHIShaderInitializer& initializer) {}
 		virtual ~RHIShader() = 0;
+		OVERLOAD_OPERATOR_NEW(RHIShader);
 	};
 
 	class RHIComputeShader : public RHIShader {
 	public:
 		using Ptr = RHIComputeShader*;
 		RHIComputeShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIComputeShader);
 	};
 
 	class RHIVertexShader : public RHIShader {
 	public:
 		using Ptr = RHIVertexShader*;
 		RHIVertexShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIVertexeShader);
 	};
 
 	class RHIHullShader : public RHIShader {
 	public:
 		using Ptr = RHIHullShader*;
 		RHIHullShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIHullShader);
 	};
 
 	class RHIDomainShader : public RHIShader {
 	public:
 		using Ptr = RHIDomainShader*;
 		RHIDomainShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIDomainShader);
 	};
 
 	class RHIGeometryShader : public RHIShader {
 	public:
 		using Ptr = RHIGeometryShader*;
 		RHIGeometryShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIGeometryShader);
 	};
 
 	class RHIPixelShader : public RHIShader {
 	public:
 		using Ptr = RHIPixelShader*;
 		RHIPixelShader(const RHIShaderInitializer& initializer) : RHIShader(initializer) {}
+		OVERLOAD_OPERATOR_NEW(RHIPixelShader);
 	};
 
 	class RHIRayGenShader : public RHIShader {
@@ -250,6 +258,7 @@ namespace Shard::RHI {
 	public:
 		using Ptr = RHIPipelineStateObject*;
 		RHIPipelineStateObject(const RHIPipelineStateObjectInitializer& initializer) {};
+		OVERLOAD_OPERATOR_NEW(RHIPipelineStateObject);
 		virtual ~RHIPipelineStateObject() = 0;
 	};
 

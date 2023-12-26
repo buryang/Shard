@@ -50,7 +50,7 @@ namespace Shard::Utils {
 		return *this;
 	}
 	
-	FileArchive& FileArchive::Serialize(void* data, uint32_t size)
+	void FileArchive::Serialize(void* data, uint32_t size)
 	{
 		if (IsReading()) {
 			archive_stream_.read(reinterpret_cast<char*>(data), size);
@@ -58,7 +58,17 @@ namespace Shard::Utils {
 		else {
 			archive_stream_.write(reinterpret_cast<char*>(data), size);
 		}
-		return *this;
+	}
+
+	void IOArchive::Serialize(void* data, SizeType size)
+	{
+		if (IsReading()) {
+
+		}
+		else
+		{
+
+		}
 	}
 
 	constexpr uint64_t CalcFileArchiveCrc(const FileArchive& archive, FileArchive::PositionType beg, FileArchive::PositionType end) {

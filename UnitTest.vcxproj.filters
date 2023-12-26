@@ -18,28 +18,7 @@
     <ClCompile Include="Test\main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Test\TestAssimpReader.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Test\TestVulkanAPI.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Test\TestGltfReader.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Test\TestRenderGraph.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Test\TestJobSystem.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Test\TestSimpleCoro.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Test\TestMetaInitRender.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="TestInputSystem.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

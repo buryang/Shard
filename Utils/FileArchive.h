@@ -18,6 +18,7 @@ namespace Shard::Utils {
 		bool IsReading()const { return archive_mode_ & eRead; }
 		virtual bool IsEof() const = 0;
 		virtual constexpr SizeType Tell()const = 0;
+		virtual void Serialize(void* data, SizeType size) = 0;
 		virtual ~IOArchive() = default;
 	protected:
 		EArchiveMode	archive_mode_{ eUndefined };
@@ -36,15 +37,15 @@ namespace Shard::Utils {
 		constexpr SizeType Tell()const override;
 		FileArchive& Seek(PositionType pos);
 		bool IsEof() const override { return archive_stream_.eof(); }
-		FileArchive& Serialize(void* data, SizeType size);
+		void Serialize(void* data, SizeType size) override;
 		template <typename T>
 		friend FileArchive& operator << (FileArchive& archive, T&& value) {
 			assert(archive.archive_mode_ != FileArchive::eUndefined);
 			if (archive.IsReading()) {
-				archive.archive_stream_ >> value;
+				archive.archive_stream_ >> std::forward<T>(value);
 			}
 			else {
-				archive.archive_stream_ << value;
+				archive.archive_stream_ << std::forward<T>(value);
 			}
 			return archive;
 		}
@@ -62,10 +63,17 @@ namespace Shard::Utils {
 		BinaryArchive(Blob* binary, EArchiveMode mode);
 		constexpr SizeType Tell()const override;
 		bool IsEof() const override { return curr_pos_ == archive_blob_->end(); }
-		BinaryArchive& Serialize(void* data, SizeType size);
+		void Serialize(void* data, SizeType size) override;
 		template <typename T>
 		friend BinaryArchive& operator <<(BinaryArchive& archive, T&& value) {
+			assert(archive_blob_ != nullptr);
+			if (archive.IsReading()) {
+				//todo
+			}
+			else
+			{
 
+			}
 		}
 	private:
 		Blob* archive_blob_{ nullptr };

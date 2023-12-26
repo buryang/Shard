@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils/Hash.h"
 #include "Utils/SimpleEntitySystem.h"
-#include "Utils/SimpleJobSystem.h"
+#include "Utils/SimpleCoro.h"
 #include <shared_mutex>
 
 namespace Shard::System::Resource
@@ -31,12 +31,14 @@ namespace Shard::System::Resource
 		Blob	resource_blob_;
 	};
 
+	//todo sync/async resource response
 	class MINIT_API ResourceProviderBase
 	{
 	public:
 		using Ptr = ResourceProviderBase*;
 		virtual ~ResourceProviderBase() = default;
-		virtual void ResponseRequest(ResourceID resource_id);
+		virtual void ResponseRequest(ResourceID resource_id) {}
+		virtual void AsyncResponseRequest(ResourceID resource_id) {}
 	};
 
 	class MINIT_API LocalHostResourceProvider : public ResourceProviderBase

@@ -1,3 +1,5 @@
+#include <thread>
+#include "Utils/CommonUtils.h"
 #include "Utils/Platform.h"
 #include "Utils/SimpleJobSystem.h"
 
@@ -5,15 +7,27 @@ namespace Shard
 {
 	namespace Utils
 	{
-		static constexpr auto MAX_PER_THREAD_JOBS = 256u;
+		static constexpr auto MAX_PER_THREAD_JOBS = 64u;
+
+		//storage for coro frame/job entity here
+		namespace {
+			ALIGN_CACHELINE SimpleJobSystem g_job_sys;
+			/*real application spend up to 20% of execution time in memory allocator routines, can never
+			achive more than a 5x speedup*/
+		}
+
+		namespace TLS
+		{
+			thread_local JobEntry* g_current_job{ nullptr }; //atomic operator
+			thread_local uint32_t g_current_gid{ -1 };
+		}
 
 		SimpleJobSystem& SimpleJobSystem::Instance()
 		{
-			static SimpleJobSystem js;
-			return js;
+			return g_job_sys;
 		}
 
-		void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size, bool use_dedicate_core)
+		void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size, const float tls_ratio, bool use_dedicate_core)
 		{	
 			//ugly only config once time
 			static std::atomic<bool> initable{ false };
@@ -22,7 +36,7 @@ namespace Shard
 				return;
 			}
 
-			const auto thread_loop = [&, this](const uint32_t group_id) {
+			const auto thread_loop = [&, this](std::stop_token stop_token, const uint32_t group_id) {
 				if (use_dedicate_core)
 				{
 					auto& thread_handle = thread_pool_[group_id];
@@ -30,48 +44,60 @@ namespace Shard
 					//todo thread affinity
 					thread_affinity_[group_id] = GetCPUBindToThread(thread_handle);
 				}
-				while (!is_terminated_.load(std::memory_order::memory_order_acquire))
+				//set thread local resource
+				TLS::g_current_gid = group_id;
+				while (!stop_token.stop_requested())
 				{
-					JobEntry* curr_job = nullptr;
-					auto ret = local_queues_[group_id].Poll(curr_job);
+					TLS::g_current_job = nullptr;
+					auto ret = local_queues_[group_id].Poll(TLS::g_current_job);
 					if (!ret)
 					{
-						ret = global_queues_[group_id].Poll(curr_job);
+						ret = global_queues_[group_id].Poll(TLS::g_current_job);
 					}
 
 					auto try_count = max_try_count_;
 					while (!ret && try_count >= 0)
 					{
 						auto tid = try_count % thread_pool_.size();
-						ret = global_queues_[tid].Poll(curr_job);
+						ret = global_queues_[tid].Poll(TLS::g_current_job);
 						//todo thread affinity check 
 						//maybe not need this; just do task in affinity ....
-						if(use_dedicate_core && ret){
-							if (curr_job->core_affinity_ & thread_affinity_[group_id] == 0u) {
-								global_queues_[tid].Offer(curr_job); //reoffer to old queue
+						if (use_dedicate_core && ret) {
+							if ((TLS::g_current_job->core_affinity_ & thread_affinity_[group_id]) == 0u) {
+								global_queues_[tid].Offer(TLS::g_current_job); //reoffer to old queue
 								ret = false;
 							}
 						}
 						try_count--;
+						_mm_pause();//
 					}
 
 					if (ret)
 					{
-						curr_job->operator()();
+						TLS::g_current_job->operator()();
+
+						//finish job,release resource 
+						const auto is_coro = TLS::g_current_job->IsCoro();
+						if (!is_coro) {
+							assert(TLS::g_current_job->ref_count_.load() == 1);
+							ChildFinished(TLS::g_current_job);
+						}
 					}
-					else
+					else[[unlikely]]
 					{
-						//if no task input, sleep 5ms
-						std::this_thread::sleep_for(std::chrono::milliseconds(5));
+						//if no task input, yield
+						std::this_thread::yield();
+						
 					}
 				}
 
-				//to do unfinish jobs ?
 			};
 
-			auto thread_count = std::clamp(group_count, 1u, std::thread::hardware_concurrency()-1);
+			const auto thread_count = std::clamp(group_count, 1u, std::thread::hardware_concurrency()-1);
 
-			allocator_.Init(thread_count * MAX_PER_THREAD_JOBS);
+			//init thread local storage
+			const auto tls_count = std::max(1u, uint32_t(thread_count * tls_ratio));
+
 			//init job queue
 			for (auto n = 0; n < thread_count; ++n)
 			{
@@ -85,25 +111,35 @@ namespace Shard
 			thread_pool_.reserve(thread_count);
 			for (auto n = 0; n < thread_count; ++n)
 			{
-				thread_pool_.push_back(std::thread(thread_loop, n));
+				thread_pool_.emplace_back(std::jthread(thread_loop, n));
 				thread_pool_.back().detach();
 			}
 		}
 
-		void Utils::SimpleJobSystem::UnInit()
+		void SimpleJobSystem::UnInit()
 		{
-			is_terminated_.store(true, std::memory_order::memory_order_release);
-
+#if 0
 			for (auto& th:thread_pool_)
 			{
+				th.request_stop();
 				th.join();
 			}
-			//allocator_.UnInit();
-		}
+#else
+			for (auto n = 0; n < thread_pool_.size(); ++n) {
+				//todo: add terminate function to each thread to finish current jobs
+				auto terminate = [&, this]() {
+					auto& th = thread_pool_[n]; 
+					assert(std::this_thread::get_id() == th.get_id()); //kill current thread
+					th.request_stop();
+				};
+				Schedule(terminate, nullptr, n, false);
+			}
 
-		JobEntry* SimpleJobSystem::NewJobEntry()
-		{
-			allocator_.Alloc();
+			for (auto& th : thread_pool_) {
+				th.join();
+			}
+#endif
+			//allocator_.UnInit();
 		}
 
 		bool SimpleJobSystem::Execute(JobEntry* job)
@@ -136,25 +172,52 @@ namespace Shard
 			return ret;
 		}
 
-		void JobEntryStorage::Init(size_t capacity)
+		bool SimpleJobSystem::ChildFinished(JobEntry* job)
 		{
-			jobs_.resize(capacity);
+
+			if (job->ref_count_.load() == 1u) {
+				if (!job->IsCoro()) {
+					OnFinish(job);
+				}
+				else
+				{
+					Execute(job);
+				}
+				return true;
+			}
+			else
+			{
+				job->DecRef(); //todo bug
+			}
+			return false;
 		}
 
-		JobEntry* JobEntryStorage::Get(size_t index)
+		JobEntry* SimpleJobSystem::GetCurrentJob()
 		{
-			return jobs_[index];
+			//running in a job entry, so no need to do lock
+			return TLS::g_current_job;
 		}
 
-		bool JobEntryStorage::Set(size_t index, JobEntry* job)
+		uint32_t SimpleJobSystem::GetCurrentGroupID() const
 		{
-			std::swap(jobs_[index], job);
-			return true;
+			return TLS::g_current_gid;
 		}
 
-		void JobEntry::Wait()
+		void SimpleJobSystem::OnFinish(JobEntry* job)
 		{
-			is_finished_.wait(false, std::memory_order_acquire);
+			if (job->subsequent_ != nullptr)
+			{
+				if (nullptr != job->parent_) {
+					job->parent_->AddRef();
+					job->subsequent_->parent_ = job->parent_;
+				}
+				SimpleJobSystem::Instance().Execute(job->subsequent_);
+			}
+			if (nullptr != job->parent_) {
+				ChildFinished(job->parent_);
+			}
+			//delete job;
+			job->DecRef();
 		}
 
 }

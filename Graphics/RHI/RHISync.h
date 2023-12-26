@@ -1,7 +1,6 @@
 #pragma once
-#include "Utils/CommonUtils.h"
-#include "Renderer/RtRenderBarrier.h"
-#include "RHI/RHICommand.h"
+#include "Graphics/RHI/RHICommonUtils.h"
+#include "Graphics/RHI/RHICommand.h"
 
 namespace Shard::RHI {
 
@@ -62,7 +61,7 @@ namespace Shard::RHI {
 		void Enqueue(Span<RHITransitionInfo::Ptr>& trans);
 		void Submit(RHICommandContext::Ptr cmd);
 	private:
-		SmallVector<>;
+		SmallVector<RHITransitionInfo> transition_queue_;
 	};
 
 	void RHICreateTransition(const Renderer::RtBarrierBatch& barrier_info, RHITransitionInfo::Ptr& trans);

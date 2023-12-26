@@ -47,12 +47,6 @@ namespace Shard::RHI {
 				assert(nullptr != device_);
 				return device_;
 			}
-			FORCE_INLINE bool SetVulkanCallBack(VkAllocationCallbacks* clk) {
-				alloc_clk_ = clk;
-			}
-			FORCE_INLINE const VkAllocationCallbacks* GetVulkanCallBack() const {
-				return alloc_clk_;
-			}
 			~RHIGlobalEntityVulkan() {
 				UnInit();
 			}
@@ -70,9 +64,6 @@ namespace Shard::RHI {
 			//memory resource manager
 			RHIPooledTextureAllocatorVulkan	pooled_repo_;
 			RHITransientResourceAllocatorVulkan::SharedPtr transient_repo_;
-			
-			//memory alloc wrapper for vulkan
-			VkAllocationCallbacks* alloc_clk_{ nullptr };
 
 			//bindless heap ?
 			RHIResourceBindlessSetVulkan::SharedPtr	bindless_heap_;

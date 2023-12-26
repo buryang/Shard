@@ -24,18 +24,10 @@ namespace Shard::RHI::Vulkan {
 	};
 
 	//alignment of vulkan transition info
-	constexpr uint32_t ALIGN_TRANSITION_INFO_SIZE = std::alignment_of(VulkanTransitionInfo);
+	constexpr auto ALIGN_TRANSITION_INFO_SIZE = std::alignment_of_v<VulkanTransitionInfo>;
 
 	static FORCE_INLINE VkAccessFlags TransRtFieldAccessToVulkanAccess() {
 		return 0;
-	}
-
-	void RHICreateTransition(const Renderer::RtBarrierBatch& barrier_info, RHITransitionInfo::Ptr& trans)
-	{
-		auto vulkan_info = trans->GetMetaData<VulkanTransitionInfo>();
-		for (auto& trans : barrier_info.transitions_) {
-
-		}
 	}
 
 	class RHIEventVulkan : public RHIEvent

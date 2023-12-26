@@ -1,14 +1,23 @@
 #pragma once
 
-#ifdef _MSC_VER
-#define MINIT_API __declspec(dllexport)
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-#else 
-#define MINIT_API
+#if __cplusplus < 202002L
+	#error only support c++ version above c++20
 #endif 
+
+#ifdef _MSC_VER
+	#define MINIT_API __declspec(dllexport)
+	#define GLOG_NO_ABBREVIATED_SEVERITIES
+#else 
+	#define MINIT_API
+#endif 
+
 
 #define FORCE_INLINE	__forceinline 
 #define ALIGN_AS(align)	alignas(align) 
+#define ALIGN_CACHELINE alignas(std::hardware_destructive_interference_size)
+
+#pragma warning(push)
+#pragma warning(disable:4996)
 
 #define GLM_FORCE_CTOR_INIT
 #include "glm/glm.hpp"
@@ -28,22 +37,25 @@
 #include "eastl/span.h"
 #include "eastl/optional.h"
 #include "eastl/string.h"
+#include "EASTL/sort.h"
 #include "eastl/bitset.h"
 #include "eastl/bitvector.h"
 #include "eastl/unique_ptr.h"
 #include "eastl/shared_ptr.h"
 #include "eastl/internal/thread_support.h"
 #include "eastl/algorithm.h"
-#include "folly/format.h"
+#include "folly/Poly.h"
 #include "fmt/format.h"
 #include <memory>
 #include <algorithm>
 #include <cassert>
 #ifdef _WIN32
-#include <stringapiset.h>
+#include <windows.h>
 #else
 #include <codecvt>
 #endif
+
+#pragma warning(pop)
 
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
 class_name(const class_name&)=delete; \
@@ -204,12 +216,12 @@ namespace Shard::Utils {
 		SpinLock(AtomicBOOL& sign) :sign_(sign) {
 			for (;;) {
 				bool expected = false;
-				if (LIKELY(sign_.compare_exchange_weak(expected, true, std::memory_order::acquire)) {
+				if (LIKELY(sign_.compare_exchange_weak(expected, true, std::memory_order::acquire))) {
 					return;
 				}
 				auto spin_count = max_spin_count;
 				while(--spin_count > 0 && !sign_.load(std::memory_order::relaxed)){
-					_mm_pause(); //todo
+					_mm_pause(); //https://stackoverflow.com/questions/7488196/what-is-the-different-of-busy-loop-with-sleep0-and-pause-instruction
 				}
 				//slow lock
 				if (UNLIKELY(!spin_count)) {
@@ -221,7 +233,7 @@ namespace Shard::Utils {
 			sign_.store(false, std::memory_order::release);
 		}
 	private:
-		constexpr uint32_t max_spin_count = 40u;
+		static constexpr uint32_t max_spin_count = 40u;
 		AtomicBOOL& sign_;
 	};
 

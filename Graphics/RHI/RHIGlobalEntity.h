@@ -1,10 +1,10 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Core/EngineGlobalParams.h"
-#include "RHI/RHIResources.h"
-#include "RHI/RHICommand.h"
-#include "RHI/RHIResourceBinding.h"
-#include "RHI/RHIShaderLibrary.h"
+#include "Graphics/RHI/RHIResources.h"
+#include "Graphics/RHI/RHICommand.h"
+#include "Graphics/RHI/RHIResourceBinding.h"
+#include "Graphics/RHI/RHIShaderLibrary.h"
 
 namespace Shard::RHI
 {
@@ -33,6 +33,10 @@ namespace Shard::RHI
 	REGIST_PARAM_TYPE(UINT, RHI_ENTITY_BACKEND, ERHIBackEnd::eVulkan);
 	REGIST_PARAM_TYPE(UINT, RHI_FEATURE_LEVEL, ERHIFeatureLevel::eSM5);
 	REGIST_PARAM_TYPE(BOOL, RHI_ASYNC_COMPUTE, false);
+
+	//rhi mulithread config
+	REGIST_PARAM_TYPE(BOOL, RHI_EXECUTE_BYPSS, false); //whether generate immediate command buffer
+	REGIST_PARAM_TYPE(BOOL, RHI_EXECUTE_PARALLEL, false); //whether generate command in parallel mode
 
 	//like unreal global dynamic RHI
 	class MINIT_API RHIGlobalEntity
@@ -86,3 +90,4 @@ namespace Shard::RHI
 #define REGIST_GLOBAL_ENTITY(name, back_end, creat_func) \
 static constexpr bool gxxx_##name##_created = RHIGlobalEntity::RegistCreateFunc(back_end, create_func);
 }
+

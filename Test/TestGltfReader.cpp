@@ -1,6 +1,6 @@
-﻿#include "gtest/gtest.h"
-#include <string>
+﻿#include <string>
 #include "Scene/Scene.h"
+#include "gtest/gtest.h"
 
 using namespace tinygltf;
 
@@ -30,11 +30,11 @@ TEST(TEST_Scene_MODULE, TEST_GLTF_READER)
 
 TEST(TEST_Scene_MODULE, TEST_Scene_API)
 {
-	using namespace Shard;
+	namespace ss = Shard::Scene;
 	using Mesh = Shard::Mesh;
 
-	SceneGltfParser parser;
-	SceneProxyHelper proxy;
+	ss::SceneGltfParser parser;
+	ss::SceneProxyHelper proxy;
 	parser.Import("D:/Data/gltf/Sponza/glTF/Sponza.gltf", proxy);
 
 	Mesh mesh = proxy.GetMesh();

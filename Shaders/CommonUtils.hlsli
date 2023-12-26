@@ -218,5 +218,5 @@ uint Morton3D(float3 xyz)
     return (expand_xyz.x << 2) + (expand_xyz.y << 1) + expand_xyz.z;
 }
 
-
+//https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/
 #endif //_COMMON_UTILS_INC_

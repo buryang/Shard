@@ -6,6 +6,7 @@
 //https://github.com/google/filament/blob/main/shaders/src/brdf.fs
 //https://github.com/thefranke/dirtchamber/blob/master/shader/brdf.hlsl
 //https://boksajak.github.io/files/CrashCourseBRDF.pdf
+//https://google.github.io/filament/Filament.html 
 
 #define MIN_DIELECTRICS_F0 0.04f
 
@@ -1250,5 +1251,7 @@ float3 BRDF_GetDiffuse(BRDFState brdf)
 {
     return 0.f;//todo
 }
+
+//todo sheen LTC approx https://github.com/tizian/ltc-sheen
 
 #endif //_BSDF_INC_

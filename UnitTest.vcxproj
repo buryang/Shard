@@ -19,47 +19,40 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TestInputSystem.cpp" />
     <ClCompile Include="Test\main.cpp" />
-    <ClCompile Include="Test\TestAssimpReader.cpp" />
-    <ClCompile Include="Test\TestGltfReader.cpp" />
     <ClCompile Include="Test\TestJobSystem.cpp" />
-    <ClCompile Include="Test\TestMetaInitRender.cpp" />
-    <ClCompile Include="Test\TestRenderGraph.cpp" />
-    <ClCompile Include="Test\TestSimpleCoro.cpp" />
-    <ClCompile Include="Test\TestVulkanAPI.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{54ac93f7-b375-4dd5-80f4-39912a40feb0}</ProjectGuid>
     <RootNamespace>UnitTest</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -93,13 +86,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit;D:\Exp\Source\MetaInit\ThirdParty\SDL\include</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib</LibraryPath>
+    <IncludePath>D:\VulkanSDK\1.2.162.0\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\Source\MetaInit;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\VulkanSDK\1.2.176.1\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\MetaInit;D:\Exp\Source\MetaInit\ThirdParty\SDL\include</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\Exp\MetaInit\x64\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\VulkanSDK\1.2.162.0\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\Source\MetaInit;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -135,9 +128,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;USE_STD_COROUTINE;EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <EnableModules>true</EnableModules>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,10 +151,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;USE_STD_COROUTINE;EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <EnableModules>true</EnableModules>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -249,7 +249,7 @@ namespace Shard
 
 			struct BucketType512
 			{
-				static constexpr auto BLK_SIZE = 128u;
+				static constexpr auto BLK_SIZE = 512u;
 				static constexpr auto BLK_COUNT = 100u;
 			};
 

@@ -141,7 +141,7 @@ namespace Shard::System
 		};
 
 		//common event warpper for diff platform
-		struct alignas(128) InputMessage
+		struct ALIGN_CACHELINE InputMessage
 		{
 			uint8_t	data_[128]; //copy from SDL_Event struct
 		};

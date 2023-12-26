@@ -1,7 +1,6 @@
 #include "assimp/Importer.hpp"
 #include "assimp/Scene.h"
 #include "assimp/postprocess.h"
-
 #include "gtest/gtest.h"
 
 using namespace Assimp;

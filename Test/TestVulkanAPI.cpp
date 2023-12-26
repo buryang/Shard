@@ -90,7 +90,7 @@ TEST(TEST_RHI_MODULE, TEST_API_TUTORIAL)
 		{
 			std::vector<VkCooperativeMatrixPropertiesNV> device_cms(device_cm_count);
 			vkGetPhysicalDeviceCooperativeMatrixPropertiesNV(phd, &device_cm_count, device_cms.data());
-			for (auto cm : device_cms)
+			for (auto& cm : device_cms)
 			{
 				//
 			}

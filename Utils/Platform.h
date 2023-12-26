@@ -25,6 +25,12 @@ namespace Shard::Utils
 	uint32_t GetCPUBindToThread(std::thread& th);
 	void SetThreadPriority(std::thread& th, int32_t policy, int32_t priority);
 
+#if _HAS_CXX20
+	void BindThreadToCPU(std::jthread& th, uint32_t core_id);
+	uint32_t GetCPUBindToThread(std::jthread& th);
+	void SetThreadPriority(std::jthread& th, int32_t policy, int32_t priority);
+#endif 
+
 	//process
 	bool IsProcessRunning(PID process_id);
 	void TerminateProcess(PID process_id);

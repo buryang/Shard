@@ -268,7 +268,11 @@ namespace Shard::Utils::MemoryPool
 			}
 			auto* ptr = GetBlockInChunk(active_chunk_, blk_size_);
 			if (is_chunk_full(active_chunk_)) {
-				TryRecyleExternalFrees(); //before alloc a new chunk, try recyle
+				/*
+				* before alloc a new chunk, try recyle;
+				* maybe it's slow and waste a lot of memory
+				*/
+				TryRecyleExternalFrees(); 
 				auto* prev_chunk = active_chunk_->prev_;
 				if (prev_chunk == nullptr) {
 					prev_chunk = AllocChunk();
@@ -396,10 +400,6 @@ namespace Shard::Utils::MemoryPool
 		static inline size_type ConvertNumToPow2(size_type number) {
 			const auto clz = 1u << __builtin_clzll(number);
 			const auto ceil_pow = 1 << (sizeof(size_t) * 8u - clz + 1u);
-			const auto floor_pow = 1 << (sizeof(size_t) * 8u - clz);
-			if (ceil_pow - number > number - floor_pow) {
-				return floor_pow;
-			}
 			return ceil_pow;
 		}
 

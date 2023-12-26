@@ -20,10 +20,10 @@ namespace Shard
 		struct has_update_func : std::false_type {};
 		template<typename System>
 		struct has_update_func<System, std::void_t<decltype(std::declval<System>.Update())>> : std::true_type {};
-		template<typename, typename = void>
+		template<typename, typename, typename = void>
 		struct has_message : std::false_type {};
 		template<typename System, typename MessageType>
-		struct has_message<System, std::void_t<decltype(std::declval<System>().Deal(std::declval<MessageType>()))> > : std::true_type {};
+		struct has_message<System, MessageType, std::void_t<decltype(std::declval<System>().Deal(std::declval<MessageType>()))> > : std::true_type {};
 		template<typename, typename = void>
 		struct has_component : std::false_type{};
 		template<typename System>
@@ -1116,7 +1116,7 @@ namespace Shard
 					using ComponentAllocator = std::allocator_traits<Allocator>::rebind_alloc<Component>;
 					auto* data = std::allocator_traits<ComponentAllocator>::allocate(alloc_, 1);
 					std::allocator_traits<ComponentAllocator>::construct(alloc_, data, std::forward<Args>(args)...);
-					single_data_.insert(std::make_pair(typeid(Component), data); //todo
+					single_data_.insert(std::make_pair(typeid(Component), data)); //todo
 					return;
 				}
 				LOG(ERROR) << "already has one singleton instance";

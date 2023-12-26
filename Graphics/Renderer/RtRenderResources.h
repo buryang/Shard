@@ -256,17 +256,23 @@ namespace Shard
 			RtRenderResource(const RtField& field) { Init(field); }
 			virtual void Init(const RtField& field);
 			virtual ~RtRenderResource() {}
-			bool IsExternal()const;
-			bool IsTransient()const;
-			bool IsOutput()const;
+			bool IsExternal()const {
+				return is_external_;
+			}
+			bool IsTransient()const {
+				return is_transient_;
+			}
+			bool IsOutput()const {
+				return is_output_;
+			}
 			bool IsValid(float time) const {
 				return time >= life_time_.first && time <= life_time_.second;
 			}
 			void IncrRef(uint32_t ref) const{
-				ref_count_ += ref;
+				ref_count_.fetch_add(ref);
 			}
 			void DecrRef(uint32_t ref) const{
-				ref_count_ -= ref;
+				ref_count_.fetch_sub(ref);
 				assert(ref_count_ >= 0);
 			}
 		private:
@@ -274,7 +280,7 @@ namespace Shard
 			uint8_t	is_external_:1{ 0 };
 			uint8_t	is_transient_:1{ 1 };
 			uint8_t	is_output_ : 1{ 0 };
-			mutable uint32_t	ref_count_{ 0 };
+			mutable std::atomic_uint	ref_count_{ 0u };
 		};
 
 		/*warper for rhi resource*/
@@ -316,5 +322,3 @@ namespace Shard
 
 	}
 }
-
-#include "Renderer/RTRenderResources.inl"

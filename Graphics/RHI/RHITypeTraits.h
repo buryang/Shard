@@ -1,9 +1,10 @@
 #pragma once
-#include "Utils/CommonUtils.h"
-#include "RHI/RHIResources.h"
-#include "RHI/RHIImGuiLayer.h"
-#include "RHI/RHIShaderLibrary.h"
-#include "RHI/RHIGlobalEntity.h"
+#include "Utils/Memory.h"
+#include "Graphics/RHI/RHICommonUtils.h"
+#include "Graphics/RHI/RHIResources.h"
+#include "Graphics/RHI/RHIImGuiLayer.h"
+#include "Graphics/RHI/RHIShaderLibrary.h"
+#include "Graphics/RHI/RHIGlobalEntity.h"
 
 namespace Shard::RHI {
 	template <uint32_t backend>
@@ -64,7 +65,8 @@ namespace Shard::RHI {
 		using RHITexture = Vulkan::RHITextureVulkan;
 		using RHIBuffer = Vulkan::RHIBufferVulkan;
 		using RHIResourceBindlessHeap = Vulkan::RHIResourceBindlessSetVulkan;
-
+#if defined(DEVELOP_BUBUG_TOOLS) && defined(ENABLE_IMGUI)
 		using RHIImGuiLayerWrapper = RHIImGuiLayerWrapperVulkan;
+#endif
 	};
 }

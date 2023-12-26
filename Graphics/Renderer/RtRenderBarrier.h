@@ -50,7 +50,7 @@ namespace Shard
 		struct RtAliasingBarrier
 		{
 			RtRenderResource::Ptr	resource_;
-			yyy flags_;
+			//yyy flags_;
 		};
 
 		struct RtUAVBarrier

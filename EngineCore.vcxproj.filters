@@ -271,11 +271,9 @@
     <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
     <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
     <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
+    <ClInclude Include="Graphics\RHI\RHICommonUtils.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Graphics\Renderer\RtRenderResources.inl">
-      <Filter>Renderer</Filter>
-    </None>
     <None Include="Utils\DirectedAcyclicGraph.cpp">
       <Filter>Utils</Filter>
     </None>

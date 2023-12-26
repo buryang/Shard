@@ -1,8 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "RHI/VulkanPrimitive.h"
-#include "RHI/VulkanRenderPass.h"
 #include "Scene/Scene.h"
+#include "VulkanRenderPass.h"
 
 namespace Shard
 {

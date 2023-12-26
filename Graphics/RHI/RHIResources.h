@@ -1,9 +1,9 @@
 #pragma once
 #include "eastl/shared_ptr.h"
-#include "Utils/CommonUtils.h"
 #include "Core/EngineGlobalParams.h"
-#include "Renderer/RtRenderResources.h"
-#include "RHI/RHIGlobalEntity.h"
+#include "Graphics/Renderer/RtRenderResources.h"
+#include "Graphics/RHI/RHICommonUtils.h"
+#include "Graphics/RHI/RHIGlobalEntity.h"
 
 namespace Shard
 {
@@ -37,6 +37,7 @@ namespace Shard
 			FORCE_INLINE bool IsTransient() const {
 				return is_transient_;
 			}
+			OVERLOAD_OPERATOR_NEW(RHIResource);
 		protected:
 			uint32_t RefInCr() {
 				return ++ref_count_;
@@ -124,6 +125,7 @@ namespace Shard
 			FORCE_INLINE const RHITextureInitializer& GetTextureDesc() const {
 				return desc_;
 			}
+			OVERLOAD_OPERATOR_NEW(RHITexture);
 		protected:
 			const RHITextureInitializer& desc_;
 		};
@@ -170,6 +172,7 @@ namespace Shard
 				return desc_;
 			}
 			size_t GetOccupySize() const override;
+			OVERLOAD_OPERATOR_NEW(RHIBuffer);
 		protected:
 			const RHIBufferInitializer& desc_;
 		};
@@ -197,6 +200,7 @@ namespace Shard
 				eNum,
 			};
 			virtual ~RHIAccelerate() {}
+			OVERLOAD_OPERATOR_NEW(RHIAccelerate);
 		private:
 			const RHIAccelerateDesc& desc_;
 		};
@@ -213,6 +217,7 @@ namespace Shard
 		public:
 			RHITextureSRV(const RHITextureSRVInitializer& desc);
 			virtual ~RHITextureSRV() {}
+			OVERLOAD_OPERATOR_NEW(RHITextureSRV);
 		private:
 			const RHITextureSRVInitializer& desc_;
 		};
@@ -229,6 +234,7 @@ namespace Shard
 		public:
 			RHITextureUAV(const RHITextureUAVInitializer& desc);
 			virtual ~RHITextureUAV() {}
+			OVERLOAD_OPERATOR_NEW(RHITextureUAV);
 		};
 
 		class RHISampler : public RHIResource
@@ -236,6 +242,7 @@ namespace Shard
 		public:
 			using Ptr = RHISampler*;
 			virtual ~RHISampler() {}
+			OVERLOAD_OPERATOR_NEW(RHISampler);
 		};
 	}
 }
