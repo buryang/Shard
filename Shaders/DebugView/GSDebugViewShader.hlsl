@@ -22,7 +22,7 @@ void mainLineWidth(line float4 input[2] : POSITION0,  out TriangleStream< GSOutp
     float3 unit_z = normalize(float3(0, 0, -1)); //z tangent
     float3 normal = normalize(cross(unit_z, dir) * ratio);
 
-        GSOutput v[4];
+     GSOutput v[4];
     float3 dir_offset = dir * ratio * line_params.line_width;
     float3 normal_scaled = normal * ratio * line_params.line_width;
 

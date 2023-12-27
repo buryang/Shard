@@ -8,23 +8,23 @@
 // that the light is (at least partially) above the surface.
 float I_DiffuseLine(float3 C, float3 A, float hl)
 {
-        // Solve C.z + h * A.z = 0.
+     // Solve C.z + h * A.z = 0.
     float h = -C.z * rcp(A.z); // May be Inf, but never NaN
 
-        // Clip the line segment against the z-plane if necessary.
+     // Clip the line segment against the z-plane if necessary.
     float h2 = (A.z >= 0) ? max(hl, h)
-                                                  : min(hl, h); // P2 = C + h2 * A
+                                : min(hl, h); // P2 = C + h2 * A
     float h1 = (A.z >= 0) ? max(-hl, h)
-                                                  : min(-hl, h); // P1 = C + h1 * A
+                                : min(-hl, h); // P1 = C + h1 * A
 
-        // Normalize the tangent.
+     // Normalize the tangent.
     float as = dot(A, A); // |A|^2
     float ar = rsqrt(as); // 1/|A|
     float a = as * ar; // |A|
     float3 T = A * ar; // A/|A|
 
-        // Orthogonal 2D coordinates:
-        // P(n, t) = n * N + t * T.
+     // Orthogonal 2D coordinates:
+     // P(n, t) = n * N + t * T.
     float tc = dot(T, C); // C = n * N + tc * T
     float3 P0 = C - tc * T; // P(n, 0) = n * N
     float ns = dot(P0, P0); // |P0|^2
@@ -33,8 +33,8 @@ float I_DiffuseLine(float3 C, float3 A, float hl)
     float n = ns * nr; // |P0|
     float Nz = P0.z * nr; // N.z = (P0/n).z
 
-        // P(n, t) - C = P0 + t * T - P0 - tc * T
-        // = (t - tc) * T = h * A = (h * a) * T.
+     // P(n, t) - C = P0 + t * T - P0 - tc * T
+     // = (t - tc) * T = h * A = (h * a) * T.
     float t2 = tc + h2 * a; // P2.t
     float t1 = tc + h1 * a; // P1.t
     float s2 = ns + t2 * t2; // |P2|^2
@@ -43,12 +43,12 @@ float I_DiffuseLine(float3 C, float3 A, float hl)
     float r2 = s1 * (mr * mr); // 1/|P2|^2
     float r1 = s2 * (mr * mr); // 1/|P1|^2
 
-        // I = (i1 + i2 + i3) / Pi.
-        // i1 =  N.z * (P2.t / |P2|^2 - P1.t / |P1|^2).
-        // i2 = -T.z * (P2.n / |P2|^2 - P1.n / |P1|^2).
-        // i3 =  N.z * ArcCos[Dot[P1, P2]/(|P1|*|P2|)] / n.
+     // I = (i1 + i2 + i3) / Pi.
+     // i1 =  N.z * (P2.t / |P2|^2 - P1.t / |P1|^2).
+     // i2 = -T.z * (P2.n / |P2|^2 - P1.n / |P1|^2).
+     // i3 =  N.z * ArcCos[Dot[P1, P2]/(|P1|*|P2|)] / n.
     float i12 = (Nz * t2 - (T.z * n)) * r2
-                          - (Nz * t1 - (T.z * n)) * r1;
+                 - (Nz * t1 - (T.z * n)) * r1;
     // Guard against numerical errors.
     float dt = min(1, (ns + t1 * t2) * mr);
     float i3 = Nz * acos(dt) * nr;

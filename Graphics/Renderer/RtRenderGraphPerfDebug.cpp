@@ -4,14 +4,14 @@
 
 namespace Shard::Renderer
 {
-        void RtRendererVisualization::PrintRenderGraph(const RtRendererGraph& graph)
-        {
+     void RtRendererVisualization::PrintRenderGraph(const RtRendererGraph& graph)
+     {
 
-        }
+     }
 
-        void RtRendererVisualization::PrintRenderGraphExe(const RtRenderGraphExecutor& executor)
-        {
-        }
+     void RtRendererVisualization::PrintRenderGraphExe(const RtRenderGraphExecutor& executor)
+     {
+     }
 }
 
 #endif
