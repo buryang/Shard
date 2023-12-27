@@ -8,31 +8,31 @@
 
 namespace Shard::Renderer {
 
-	REGIST_PARAM_TYPE(FLOAT, RENDER_TARGET_FPS, 30);
-	REGIST_PARAM_TYPE(BOOL, RENDER_SKIP_FRAME, false);
-	REGIST_PARAM_TYPE(BOOL, RENDER_FIXED_FPS, false);
-	REGIST_PARAM_TYPE(BOOL, RENDER_DELAY_DEL, false);//whether delay render delete
+    REGIST_PARAM_TYPE(FLOAT, RENDER_TARGET_FPS, 30);
+    REGIST_PARAM_TYPE(BOOL, RENDER_SKIP_FRAME, false);
+    REGIST_PARAM_TYPE(BOOL, RENDER_FIXED_FPS, false);
+    REGIST_PARAM_TYPE(BOOL, RENDER_DELAY_DEL, false);//whether delay render delete
 
-	void RenderSystem::Init()
-	{
+    void RenderSystem::Init()
+    {
 #ifdef DEVELOP_DEBUG_TOOLS
-		Effect::RtDebugViewRender::Init();
+        Effect::RtDebugViewRender::Init();
 #endif
-	}
+    }
 
-	void RenderSystem::Unit()
-	{
+    void RenderSystem::Unit()
+    {
 #ifdef DEVELOP_DEBUG_TOOLS
-		Effect::RtDebugViewRender::UnInit();
+        Effect::RtDebugViewRender::UnInit();
 #endif
-	}
+    }
 
-	void RenderSystem::Tick(float dt)
-	{
-	}
+    void RenderSystem::Tick(float dt)
+    {
+    }
 
-	void RenderSystem::ReloadRender()
-	{
-	}
+    void RenderSystem::ReloadRender()
+    {
+    }
 
 }

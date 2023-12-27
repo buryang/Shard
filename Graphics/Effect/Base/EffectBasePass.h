@@ -5,9 +5,9 @@
 
 namespace Shard::Effect
 {
-	class MINIT_API EffectDrawBase
-	{
-	public:
-		static void Draw(Renderer::RtRenderGraphBuilder& builder);
-	};
+    class MINIT_API EffectDrawBase
+    {
+    public:
+        static void Draw(Renderer::RtRenderGraphBuilder& builder);
+    };
 }

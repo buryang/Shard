@@ -7,97 +7,97 @@
 
 namespace Shard
 {
-	namespace Runtime
-	{
-		struct ECSSpriteImageComponent
-		{
-			Texture::Ptr	sprite_{ nullptr };
-		};
+    namespace Runtime
+    {
+        struct ECSSpriteImageComponent
+        {
+            Texture::Ptr    sprite_{ nullptr };
+        };
 
-		class MINIT_API RuntimeSpriteRender2D : public RuntimeRenderBase
-		{
-		public:
-			void Render() override;
-		};
+        class MINIT_API RuntimeSpriteRender2D : public RuntimeRenderBase
+        {
+        public:
+            void Render() override;
+        };
 
-		//render for load 2d screen etc
-		class MINIT_API RuntimeHDRPRenderer2D final : public RuntimeSceneRenderBase
-		{
-		public:
-		protected:
-			void RenderScene() override;
-		};
+        //render for load 2d screen etc
+        class MINIT_API RuntimeHDRPRenderer2D final : public RuntimeSceneRenderBase
+        {
+        public:
+        protected:
+            void RenderScene() override;
+        };
 
-		class MINIT_API RuntimeHDRPRenderer3D final : public RuntimeSceneRenderBase
-		{
-		public:
-			//fixme register parameter anywhere like ue
-			struct RendererCfg
-			{
+        class MINIT_API RuntimeHDRPRenderer3D final : public RuntimeSceneRenderBase
+        {
+        public:
+            //fixme register parameter anywhere like ue
+            struct RendererCfg
+            {
 #ifdef RAY_TRACING
-				struct RayTracingCfg
-				{
-					union {
-						struct {
-							uint32_t	use_rt_AO_ : 1;
-							uint32_t	use_rt_GI_ : 1;
-							uint32_t	use_rt_Occlusion_ : 1;
-						};
-						uint32_t	packed_bits_{ 0u };
-					};
+                struct RayTracingCfg
+                {
+                    union {
+                        struct {
+                            uint32_t    use_rt_AO_ : 1;
+                            uint32_t    use_rt_GI_ : 1;
+                            uint32_t    use_rt_Occlusion_ : 1;
+                        };
+                        uint32_t    packed_bits_{ 0u };
+                    };
 
-					//cpu culling config
-					float	cull_maximum_minradius_;
-					float	cull_frustum_angle_;
-				};
+                    //cpu culling config
+                    float    cull_maximum_minradius_;
+                    float    cull_frustum_angle_;
+                };
 #endif
-				struct RasterCfg
-				{
-					union {
-						struct {
+                struct RasterCfg
+                {
+                    union {
+                        struct {
 
-							//cpu culling now
-							uint32_t	use_cpu_culling_ : 1;
-							uint32_t	use_soft_raster_ : 1;
-						};
-						uint32_t	packed_bits_{ 0u };
-					};
-					float	min_triangle_threshold_{};
-					float	max_triangle_threshold_{};
-					//todo
-				};
+                            //cpu culling now
+                            uint32_t    use_cpu_culling_ : 1;
+                            uint32_t    use_soft_raster_ : 1;
+                        };
+                        uint32_t    packed_bits_{ 0u };
+                    };
+                    float    min_triangle_threshold_{};
+                    float    max_triangle_threshold_{};
+                    //todo
+                };
 
-				//render graph parameters
-				union {
-					struct {
+                //render graph parameters
+                union {
+                    struct {
 
-						uint32_t						use_immediate_mode_ : 1;
-						uint32_t						use_async_compute_ : 1;
-						uint32_t						use_custom_msaa_ : 1;
+                        uint32_t                        use_immediate_mode_ : 1;
+                        uint32_t                        use_async_compute_ : 1;
+                        uint32_t                        use_custom_msaa_ : 1;
 
-						//render effect
-						uint32_t						with_velocity_rendered_ : 1;
-						uint32_t						with_volumetric_cloud_rendered_ : 1;
-						uint32_t						with_volumetric_fog_rendered_ : 1;
-						uint32_t						with_sky_atmosphere_rendered_ : 1;
-					};
-					uint32_t	packed_bits_{ 0u };
-				};
+                        //render effect
+                        uint32_t                        with_velocity_rendered_ : 1;
+                        uint32_t                        with_volumetric_cloud_rendered_ : 1;
+                        uint32_t                        with_volumetric_fog_rendered_ : 1;
+                        uint32_t                        with_sky_atmosphere_rendered_ : 1;
+                    };
+                    uint32_t    packed_bits_{ 0u };
+                };
 
-				void Load(const std::string& path);
-				void Dump(const std::string& path);
-			};
-			RuntimeHDRPRenderer3D(RendererCfg& cfg);
-			const RendererCfg& Config()const;
-		protected:
-			void RenderScene() override;
-		private:
-			bool GatherDyamicMeshDrawCommand(Renderer::RtRenderGraphBuilder& builder);
-			bool GatherRayTracingWorld(Renderer::RtRenderGraphBuilder& builder);
-		private:
-			RendererCfg	config_;
-			Vector<DrawWorkCommandIR>	static_mesh_draws_;
-		};
+                void Load(const std::string& path);
+                void Dump(const std::string& path);
+            };
+            RuntimeHDRPRenderer3D(RendererCfg& cfg);
+            const RendererCfg& Config()const;
+        protected:
+            void RenderScene() override;
+        private:
+            bool GatherDyamicMeshDrawCommand(Renderer::RtRenderGraphBuilder& builder);
+            bool GatherRayTracingWorld(Renderer::RtRenderGraphBuilder& builder);
+        private:
+            RendererCfg    config_;
+            Vector<DrawWorkCommandIR>    static_mesh_draws_;
+        };
 
-	}
+    }
 }

@@ -3,21 +3,21 @@
 
 namespace Shard
 {
-	namespace Runtime
-	{
+    namespace Runtime
+    {
 
-		class MINIT_API RuntimeMeshElement
-		{
-		public:
-			//property
-			bool	
-		};
+        class MINIT_API RuntimeMeshElement
+        {
+        public:
+            //property
+            bool    
+        };
 
-		class MINIT_API RuntimeMeshBatch
-		{
-		public:
-		private:
-			Vector<RuntimeMeshElement>	elements_;
-		};
-	}
+        class MINIT_API RuntimeMeshBatch
+        {
+        public:
+        private:
+            Vector<RuntimeMeshElement>    elements_;
+        };
+    }
 }
