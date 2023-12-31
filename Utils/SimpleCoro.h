@@ -26,61 +26,6 @@ namespace Shard
         class CoroPromiseBase;
         template<typename RetVal = void> class CoroPromise;
 
-        class CoroBase
-        {
-        public:
-            CoroBase() = default;
-            explicit CoroBase(CoroPromiseBase* promise) :promise_(promise) {}
-            bool resume() noexcept;
-            CoroPromiseBase* promise()noexcept { return promise_; }
-            virtual ~CoroBase() = default;
-        protected:
-            CoroPromiseBase* promise_{ nullptr };
-        };
-
-        //class coroutine return object 
-        template<typename RetVal = void>
-        class [[nodiscard]] Coro final: public CoroBase
-        {
-        public:
-            using promise_type = CoroPromise<RetVal>;
-            //https://en.cppreference.com/w/cpp/coroutine/coroutine_traits
-            using PromiseType = promise_type;//for compiler to def promise type
-            using CoroHandle = impl::coroutine_handle<PromiseType>;
-            Coro() = default;
-            explicit Coro(CoroHandle handle) noexcept;
-            Coro(Coro&& rhs)noexcept;
-            Coro& operator=(Coro&& rhs);
-            ~Coro();
-            bool IsReady()const;
-            RetVal GetValue();
-            CoroHandle GetHandle();
-            bool IsParentCoro()const;
-        private:
-            void EnsureValid()const;
-        private:
-            CoroHandle        handle_;
-        };
-
-        template<>
-        class [[nodiscard]] Coro<void> final: public CoroBase
-        {
-        public:
-            using promise_type = CoroPromise<void>;
-            using PromiseType = promise_type;
-            using CoroHandle = impl::coroutine_handle<PromiseType>;
-            Coro() = default;
-            explicit Coro(CoroHandle handle) noexcept;
-            Coro(Coro&& rhs)noexcept;
-            Coro& operator=(Coro&& rhs)noexcept;
-            ~Coro();
-            bool IsParentCoro()const;
-        private:
-            void EnsureValid()const;
-        private:
-            CoroHandle        handle_;
-        };
-
         /*
         * The void-returning version of await_suspend() unconditionally transfers
         * execution back to the caller/resumer of the coroutine when the call to
@@ -93,14 +38,17 @@ namespace Shard
         {
         public:
             using CoroHandle = impl::coroutine_handle<CoroPromise<RetVal>>;
-            explicit AwaitTuple(std::tuple<Ts&&...> tuple);
+            /** 
+             * \param tuple: which convert to awaitable
+             */
+            AwaitTuple(std::tuple<Ts&&...> tuple);
             constexpr bool await_ready() noexcept;
             void await_suspend(CoroHandle handle)noexcept;
-            //return result from co_
-            decltype(auto) await_resume();
+            //return result from coroutine
+            decltype(auto) await_resume()noexcept;
         private:
-            std::tuple<Ts&...>        tuple_;
-            size_type    number_{ 0u };
+            std::tuple<Ts&...>  tuple_;
+            size_type   number_{ 0u };
         };
 
         template<typename RetVal>
@@ -151,10 +99,10 @@ namespace Shard
         };
 
         //Promise interface specifies methods for customising the behaviour of the coroutine itself. 
-        class CoroPromiseBase : public TJobEntry<CoroPromiseBase> //use crtp here
+        class CoroPromiseBase : public JobEntry 
         {
         public:
-            explicit CoroPromiseBase(impl::coroutine_handle<> coro) noexcept : TJobEntry<CoroPromiseBase>(), coro_(coro) {}
+            explicit CoroPromiseBase(impl::coroutine_handle<> coro) noexcept : JobEntry(), coro_(coro) {}
             virtual ~CoroPromiseBase() = default;
             constexpr bool IsCoro() const final {
                 return true;
@@ -171,6 +119,13 @@ namespace Shard
             void UnableSelfDeConstruct() {
                 is_self_deconstruct_ = false;
             }
+            void operator()(void)override {
+                resume();
+                NotifyFinished();
+            }
+            void Release()override {
+
+            }
             virtual void resume() = 0;
             void unhandled_exception() {
                 auto except = std::current_exception();
@@ -186,34 +141,46 @@ namespace Shard
             * await_resume() method of the awaiter. ALWAYS SUSPEND AND USE JOB SYSTEM TO EXECUTE IT
             */
             impl::suspend_always initial_suspend() noexcept { return {}; }
-            /*
+            /**  
             *https://lewissbaker.github.io/2018/09/05/understanding-the-promise-type say:
             *the size passed to operator new is not sizeof(P) but is rather the size of the entire coroutine frame.
             * so, children class use the base class overload new is ok?
             */
-            //template<typename... Args>
-            //void* operator new(std::size_t size, Args&&... args) noexcept;
-            //void operator delete(void* ptr, std::size_t size) noexcept;
+            template<typename ...ARGS>
+            void* operator new(std::size_t size, ARGS&&... args) {
+                auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
+                const auto alloc_size = size + sizeof(std::uintptr_t);
+                auto* ptr = allocator->allocate(alloc_size);
+                *reinterpret_cast<std::uintptr_t*>(ptr) = (std::uintptr_t)allocator; //record the allocator of this thread
+                return ptr + sizeof(std::uintptr_t);
+            }
+            void operator delete(void* ptr, std::size_t size) {
+                auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
+                auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>*>(raw_ptr); //will release in another thread...
+                allocator->deallocate((uint8_t*)raw_ptr, size + sizeof(std::uintptr_t));
+            }
         protected:
             impl::coroutine_handle<>    coro_;
-            bool is_parent_coro_{ SimpleJobSystem::Instance().GetCurrentJob() == nullptr || SimpleJobSystem::Instance().GetCurrentJob()->IsCoro() };
-            bool is_self_deconstruct_{ false };
+            bool    is_parent_coro_{ SimpleJobSystem::Instance().GetCurrentJob() == nullptr || SimpleJobSystem::Instance().GetCurrentJob()->IsCoro() };
+            bool    is_self_deconstruct_{ false };
         };
-
+        
         template<typename RetVal>
         class  CoroPromise final : public CoroPromiseBase
         {
         public:
             using CoroHandle = impl::coroutine_handle<CoroPromise<RetVal> >;
-            using TaskEntry = JobEntry::TaskEntry <impl::coroutine_handle<CoroHandle> >;
             CoroPromise();
             JobEntry::JobDeAllocator GetDeAllocator() const;
             void return_value(RetVal val);
-#pragma warning(suppress:3394)
-            static Coro<RetVal> get_return_object_on_allocation_failure() noexcept;
+            static Coro<RetVal> get_return_object_on_allocation_failure();
             Coro<RetVal> get_return_object() noexcept;
             void resume()final;
-            //await transform
+            /**
+             * \brief Called by co_await to create an awaitable for coroutines, Functions, vectors, or tuples thereof.
+             * \param[in] func The coroutine, Function or vector to await.
+             * \returns the awaitable for this parameter type of the co_await operator.
+             */
             template<typename U>
             AwaitTuple<RetVal, U> await_transform(U&& func)noexcept;
             template<typename... Ts>
@@ -233,8 +200,8 @@ namespace Shard
             friend class YieldAwaiter<RetVal>;
             friend class FinalAwaiter<RetVal>;
             //de-coroutine for function
-            std::shared_ptr<std::pair<bool, RetVal> >    func_value_;
-            std::pair<bool, RetVal>    value_;
+            std::shared_ptr<std::pair<bool, RetVal> >   func_value_;
+            std::pair<bool, RetVal> value_;
         };
 
         template<>
@@ -242,27 +209,85 @@ namespace Shard
         {
         public:
             using CoroHandle = impl::coroutine_handle<CoroPromise<void> >;
-            using TaskEntry = JobEntry::TaskEntry<CoroHandle>;
             CoroPromise();
             JobEntry::JobDeAllocator GetDeAllocator()const final;
             void return_void() noexcept {}
             void resume() final;
+            template<typename U>
+            AwaitTuple<void, U> await_transform(U&& func) noexcept;
+            template<typename ...T>
+            AwaitTuple<void, T...> await_transform(std::tuple<T...>&& tuple) noexcept;
+            template<typename ...T>
+            AwaitTuple<void, T...> await_transform(std::tuple<T...>& tuple) noexcept;
             YieldAwaiter<void> yield_value() noexcept { return {}; }
             FinalAwaiter<void> final_suspend() noexcept { return {}; }
-#pragma warning(suppress:3394) //todo some time compile failed 
-            static Coro<void> get_return_object_on_allocation_failure() noexcept;
+            static Coro<void> get_return_object_on_allocation_failure();
             Coro<void> get_return_object() noexcept;
         private:
             friend class Coro<void>;
             friend class YieldAwaiter<void>;
             friend class FinalAwaiter<void>;
-            std::shared_ptr<std::pair<bool, void> >    func_value_;
-            TaskEntry    task_entry_;
+            std::shared_ptr<std::pair<bool, bool> >    func_value_; //todo 
+        };
+
+        class CoroBase
+        {
+        protected:
+            CoroPromiseBase* promise_{ nullptr };
+        public:
+            CoroBase() = default;
+            explicit CoroBase(CoroPromiseBase* promise) :promise_(promise) {}
+            bool resume() noexcept;
+            CoroPromiseBase* promise() noexcept { return promise_; }
+            virtual ~CoroBase() = default;
+        };
+
+        //class coroutine return object 
+        template<typename RetVal = void>
+        class [[nodiscard]] Coro final: public CoroBase
+        {
+        public:
+            using promise_type = CoroPromise<RetVal>;
+            //https://en.cppreference.com/w/cpp/coroutine/coroutine_traits
+            using PromiseType = promise_type;//for compiler to def promise type
+            using CoroHandle = impl::coroutine_handle<PromiseType>;
+            Coro() = default;
+            explicit Coro(CoroHandle handle) noexcept;
+            Coro(Coro&& rhs)noexcept;
+            Coro& operator=(Coro&& rhs)noexcept;
+            ~Coro();
+            bool IsReady()const;
+            RetVal GetValue();
+            CoroHandle GetHandle();
+            bool IsParentCoro()const;
+        private:
+            void EnsureValid()const;
+        private:
+            CoroHandle        handle_;
+        };
+
+        template<>
+        class [[nodiscard]] Coro<void> final : public CoroBase
+        {
+        public:
+            using promise_type = CoroPromise<void>;
+            using PromiseType = promise_type;
+            using CoroHandle = impl::coroutine_handle<PromiseType>;
+            Coro() = default;
+            explicit Coro(CoroHandle handle) noexcept;
+            Coro(Coro&& rhs)noexcept;
+            Coro& operator=(Coro&& rhs)noexcept;
+            ~Coro();
+            bool IsParentCoro()const;
+        private:
+            void EnsureValid()const;
+        private:
+            CoroHandle        handle_;
         };
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T>>
-        uint32_t Schedule(T&& coro, JobEntry* parent=SimpleJobSystem::Instance().GetCurrentJob());
+        decltype(auto) Schedule(T&& coro, JobEntry* parent=SimpleJobSystem::Instance().GetCurrentJob());
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T>>

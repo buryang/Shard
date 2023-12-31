@@ -48,43 +48,39 @@ namespace Shard
             }
         };
 
-        class CoroPromiseBase;
-        template<typename Handle>
         class TJobEntry : public JobEntry
         {
+        private:
+            std::function<void(void)>   handle_;
         public:
             TJobEntry() = default;
+            template<typename Handle>
+            requires(std::is_invocable_v<Handle>)
             explicit TJobEntry(Handle&& handle) {
-                if constexpr (!std::is_same_v<CoroPromiseBase, std::decay_t<Handle>> && std::is_invocable_v<Handle>) {
-                    new(handle_)Handle(std::move(handle));
-                }
+                handle_ = std::forward<Handle>(handle);
             }
+            virtual ~TJobEntry() = default;
             void operator()(void) override {
-                if constexpr (std::is_invocable_v<Handle>) {
-                    (*reinterpret_cast<Handle*>handle_)();
-                }
-                if constexpr (std::is_same_v<CoroPromiseBase, std::decay_t<Handle>>) {
-                    static_cast<CoroPromiseBase*>(this)->resume();
-                }
+                handle_();
                 NotifyFinished();
+            }
+            void Release() override {
+
             }
             template<typename ...ARGS>
             void* operator new(std::size_t size, ARGS&&... args) {
                 auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
                 const auto alloc_size = size + sizeof(std::uintptr_t);
                 auto* ptr = allocator->allocate(alloc_size);
-                *reinterpret_cast<std::uintptr_t*>(ptr) = allocator; //record the allocator of this thread
+                *reinterpret_cast<std::uintptr_t*>(ptr) = (std::uintptr_t)allocator; //record the allocator of this thread
                 return ptr + sizeof(std::uintptr_t);
             }
             void operator delete(void* ptr, std::size_t size) {
-                auto* raw_ptr = (uint8_t*)(ptr)-sizeof(std::uintptr_t);
-                auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>*>(raw_ptr); //will release in another thread...
-                allocator->deallocate(raw_ptr, size + sizeof(std::uintptr_t));
+                auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
+                auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>* >(raw_ptr); //will release in another thread...
+                allocator->deallocate((uint8_t*)raw_ptr, size + sizeof(std::uintptr_t));
             }
-        private:
-            alignas(Handle) uint8_t handle_[sizeof(Handle)]; //for this donot need default constructor
         };
-
 
         template<typename T>
         class JobEntryStorage
@@ -102,6 +98,9 @@ namespace Shard
                 std::swap(container_[index], val);
                 return true;
             }
+            void Reserve(size_type sz) {
+                container_.reserve(sz);
+            }
             ~JobEntryStorage() = default;
         private:
             Vector<T>    container_;
@@ -116,7 +115,7 @@ namespace Shard
             void Init(const uint32_t group_count, const uint32_t queue_size, const float tls_ratio = 0.5f, bool use_dedicate_core = false);
             void UnInit();
             bool Execute(JobEntry* job);
-            /*
+            /**
             * A child that finished calls this function for its parent, thus decreasing
             * the number of left children by one.
             */
@@ -141,7 +140,7 @@ namespace Shard
         JobEntry* Schedule(F&& function, JobEntry* parent = nullptr, uint32_t affinity = 0xFFFFFFFF, bool stealable = true)
         {
             //fixme life time of task and entry
-            JobEntry* job_entry = new TJobEntry<F>(std::forward<F>(function));
+            JobEntry* job_entry{ new TJobEntry(std::forward<F>(function)) };
             job_entry->parent_ = parent;
             job_entry->subsequent_ = nullptr;
             job_entry->core_affinity_ = affinity;

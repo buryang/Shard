@@ -1,4 +1,5 @@
 #include "folly/portability//Builtins.h"
+#include "Algorithm.h"
 
 namespace Shard::Utils
 {
@@ -23,7 +24,18 @@ namespace Shard::Utils
     template<class T, template<typename> class ContainerType>
     inline TRingBuffer<T, ContainerType>::TRingBuffer(size_type capacity):capacity_(ConvertNumToPow2(capacity))
     {
-        storage_.reverse(GetCapacity());
+        storage_.Reserve(GetCapacity());
+    }
+
+    template<class T, template<typename> class ContainerType>
+    inline TRingBuffer<T, ContainerType>::TRingBuffer(TRingBuffer&& other):storage_(std::move(other.storage_)), head_(other.head_.load()), tail_(other.tail_.load()), capacity_(other.capacity_)
+    {
+    }
+
+    template<class T, template<typename> class ContainerType>
+    inline void TRingBuffer<T, ContainerType>::operator=(TRingBuffer&& other)
+    {
+        new (this)TRingBuffer<T, ContainerType>(other);
     }
 
     template<class T, template<typename> class ContainerType>

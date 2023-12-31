@@ -94,7 +94,7 @@ namespace Shard {
         eNum,
     };
 
-    /*texture clear value*/
+    /**texture clear value*/
     struct PixClearValue {
         struct DSV
         {

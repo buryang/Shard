@@ -46,7 +46,7 @@ namespace Shard
             bool operator!=(const Entity& rhs) const {
                 return !(*this == rhs);
             }
-            operator bool() const {
+            explicit operator bool() const {
                 return generation_ > 0;
             }
             uint32_t    id_ : 20;
@@ -78,7 +78,7 @@ namespace Shard
             using iterator_category = std::random_access_iterator_tag;
         public:
             SparseSetIterator() = default;
-            SparseSetIterator(const Container& container, const difference_type index):container(std::addressof(container)), offset_(index) {
+            SparseSetIterator(const Container& container, const difference_type index):container_(std::addressof(container)), offset_(index) {
 
             }
             value_type operator*()const {
@@ -107,27 +107,27 @@ namespace Shard
             difference_type    offset_{ 0u };
         };
 
-        template<typename ValueType, typename Allocator>
+        template<typename ElementType, template <typename> typename AllocatorType>
         class SparseSet
         {
         public:
-            using ValueType = ValueType;
+            using ValueType = ElementType;
+            using Allocator = AllocatorType<ValueType>;
+            using ThisType = SparseSet<ValueType, AllocatorType>;
             using SizeType = Vector<ValueType>::size_type;
             using Iterator = SparseSetIterator<Vector<ValueType>>;
             using ConstIterator = Vector<ValueType>::const_iterator;
-            using ThisType = SparseSet<SizeType, ValueType>;
-            using DenseAllocatorType = std::allocator_traits<Allocator>::rbind_alloc<ValueType>;
-
-            SparseSet() :SparseSet(0u, Allocator()) {}
+       
+            SparseSet() = default;
             explicit SparseSet(SizeType size, Allocator& alloc) : dense_(alloc), page_alloc_(alloc) {
                 Resize(size);
             }
             void Resize(SizeType size) { //deprecated todo
-                const auto old_size = Size();
-                sparse_.resize(size);
+                const auto old_size = Count();
                 if (old_size > size) {
                     //to do
                 }
+                dense_.resize(size);
                 const auto page_size = std::ceil(float(old_size) / SparsePage::PAGE_SIZE);
                 //todo renew pages
             }
@@ -226,10 +226,11 @@ namespace Shard
                 return -1;
             }
         private:
-            using PageAllocatorType = std::allocator_traits<Allocator>::rbind_alloc<SparsePage>;
-            Vector<ValueType, DenseAllocatorType>    dense_;
+            using DenseAllocatorType = std::allocator_traits<Allocator>::rebind_alloc<ValueType>;
+            using PageAllocatorType = std::allocator_traits<Allocator>::rebind_alloc<SparsePage>;
+            Vector<ValueType, DenseAllocatorType>   dense_;
             SmallVector<SparsePage*, SparsePage::PAGE_COUNT>    sparse_pages_;
-            PageAllocatorType&    page_alloc_;
+            PageAllocatorType*  page_alloc_{nullptr};
         };
 
         class ComponentRepoBase
@@ -629,7 +630,7 @@ namespace Shard
             {
                 return group_cursor_ <= 0u;
             }
-            bool operator bool() const {
+            explicit operator bool() const {
                 return IsEmpty();
             }
             template<typename Type, typename ...Other>
@@ -788,7 +789,7 @@ namespace Shard
             bool IsEmpty() const {
                 return entities_.empty();
             }
-            operator bool()const {
+            explicit operator bool()const {
                 return IsEmpty();
             }
             size_type Size()const {

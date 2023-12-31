@@ -208,7 +208,7 @@ namespace Shard::Renderer {
 #define SHADER_PARAMETER_ALIGNMENT 16
 #define BEGIN_SHADER_PARAMETER_STRUCT(TName, PREFIX, ...) \
 PREFIX alignas(SHADER_PARAMETER_ALIGNMENT) class TName{ \    
-private: static constexpr uint32_t counter_base = __COUNTER__; \
+private: static constexpr uint32_t counter_base{ __COUNTER__ }; \
 protected:\
     template <uint32_t index> class InternalLinkType { \
     public:\

@@ -8,27 +8,23 @@ namespace Shard
     namespace Utils
     {
         static constexpr auto MAX_PER_THREAD_JOBS = 64u;
-
-        //storage for coro frame/job entity here
-        namespace {
-            ALIGN_CACHELINE SimpleJobSystem g_job_sys;
-            /*real application spend up to 20% of execution time in memory allocator routines, can never
-            achive more than a 5x speedup*/
-        }
+        /*real application spend up to 20% of execution time in memory allocator routines, can never
+         achive more than a 5x speedup*/
 
         namespace TLS
         {
             thread_local JobEntry* g_current_job{ nullptr }; //atomic operator
-            thread_local uint32_t g_current_gid{ -1 };
+            thread_local uint32_t g_current_gid = -1;
         }
 
         SimpleJobSystem& SimpleJobSystem::Instance()
         {
+            ALIGN_CACHELINE static SimpleJobSystem g_job_sys;
             return g_job_sys;
         }
 
         void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size, const float tls_ratio, bool use_dedicate_core)
-        {    
+        {
             //ugly only config once time
             static std::atomic<bool> initable{ false };
             bool expected = false;
@@ -83,23 +79,23 @@ namespace Shard
                             ChildFinished(TLS::g_current_job);
                         }
                     }
-                    else[[unlikely]]
-                    {
-                        //if no task input, yield
-                        std::this_thread::yield();
-                        
-                    }
+                    else [[unlikely]]
+                        {
+                            //if no task input, yield
+                            std::this_thread::yield();
+
+                        }
                 }
 
-            };
+                };
 
-            const auto thread_count = std::clamp(group_count, 1u, std::thread::hardware_concurrency()-1);
+            const auto thread_count = std::clamp(group_count, 1u, std::thread::hardware_concurrency() - 1);
 
             //init thread local storage
             const auto tls_count = std::max(1u, uint32_t(thread_count * tls_ratio));
 
             //init job queue
-            for (auto n = 0; n < thread_count; ++n)
+            for (auto n = 0u; n < thread_count; ++n)
             {
                 local_queues_.emplace_back(JobRingBuffer(queue_size));
                 global_queues_.emplace_back(JobRingBuffer(queue_size));
@@ -109,7 +105,7 @@ namespace Shard
                 thread_affinity_.resize(thread_count);
             }
             thread_pool_.reserve(thread_count);
-            for (auto n = 0; n < thread_count; ++n)
+            for (auto n = 0u; n < thread_count; ++n)
             {
                 thread_pool_.emplace_back(std::jthread(thread_loop, n));
                 thread_pool_.back().detach();
@@ -119,7 +115,7 @@ namespace Shard
         void SimpleJobSystem::UnInit()
         {
 #if 0
-            for (auto& th:thread_pool_)
+            for (auto& th : thread_pool_)
             {
                 th.request_stop();
                 th.join();
@@ -128,10 +124,10 @@ namespace Shard
             for (auto n = 0; n < thread_pool_.size(); ++n) {
                 //todo: add terminate function to each thread to finish current jobs
                 auto terminate = [&, this]() {
-                    auto& th = thread_pool_[n]; 
+                    auto& th = thread_pool_[n];
                     assert(std::this_thread::get_id() == th.get_id()); //kill current thread
                     th.request_stop();
-                };
+                    };
                 Schedule(terminate, nullptr, n, false);
             }
 
@@ -147,7 +143,7 @@ namespace Shard
             bool ret{ false };
             SmallVector<uint32_t> affinity_groups;
             for (auto n = 0; n < thread_pool_.size(); ++n) {
-                if (thread_affinity_.empty() || thread_affinity_[n]&job->core_affinity_) {
+                if (thread_affinity_.empty() || thread_affinity_[n] & job->core_affinity_) {
                     affinity_groups.emplace_back(n);
                 }
             }
@@ -157,7 +153,7 @@ namespace Shard
                 auto group_id = affinity_groups[std::rand() % affinity_groups.size()];
 
                 //FIXME put into local/global queue?
-                if (job->stealable_ && std::rand()%2)
+                if (job->stealable_ && std::rand() % 2)
                 {
                     ret = global_queues_[group_id].Offer(job);
                 }
@@ -220,4 +216,5 @@ namespace Shard
             job->DecRef();
         }
 
+    }
 }

@@ -5,14 +5,14 @@ namespace Shard
     namespace Utils
     {
         template<typename T>
-        class Handle
+        class Handle final
         {
         public:
             explicit Handle(uint32_t index = 0, uint8_t generation=0) : index_(index), generation_(generation) {}
             bool IsValid()const { return generation_ != 0; }
             uint32_t Index()const { return index_; }
             uint8_t    Generation()const { return generation_; }
-            operator uint32_t()const { return Index(); }
+            explicit operator uint32_t()const { return Index(); }
             Handle operator++(int) {
                 Handle temp(*this);
                 generation_++;
@@ -30,11 +30,11 @@ namespace Shard
             bool operator>(Handle other)const { return Index() > other.Index(); }
         private:
             uint32_t    index_{ 0u };
-            uint8_t        generation_{ 0u };
+            uint8_t generation_{ 0u };
         };
 
         template<typename T>
-        class HandleManager
+        class HandleManager 
         {
         public:
             using Type = T;
@@ -72,17 +72,18 @@ namespace Shard
                 generation[handle.Index()] = handle.Generation();
             }
         protected:
-            Vector<uint8_t>        generation_;
+            Vector<uint8_t> generation_;
             Vector<uint32_t>    free_list_;
         };
 
-        template<typename Allocator, typename T>
+        template<typename T, template<typename>typename Allocator>
         class ResourceManager : public HandleManager<T>
         {
         public:
             using Type = HandleManager<T>::Type;
             using Handle = HandleManager<T>::Handle;
-            ResourceManager(Allocator& alloc) : alloc_(alloc) {}
+            using AllocatorType = Allocator<T>;
+            ResourceManager(AllocatorType& alloc) : alloc_(alloc) {}
             template<typename DerivedType = Type, typename... Args>
             requires std::is_convertible_v<DerivedType*, Type*>
             Handle Alloc(Args&&... args) {
@@ -115,9 +116,9 @@ namespace Shard
                 return nullptr;
             }
         private:
-            Allocator&            alloc_;
+            AllocatorType&  alloc_;
             //no destruct T
-            Vector<T*>            storage_;
+            Vector<T*>  storage_;
         };
 
     }

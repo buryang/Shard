@@ -216,7 +216,10 @@ namespace Shard
                 static constexpr size_type MaxSize = 0u;
             };
 
-            //todo size from https://www.bsdcan.org/2006/papers/jemalloc.pdf
+            /* todo size from https ://www.bsdcan.org/2006/papers/jemalloc.pdf
+            *https://github.com/google/tcmalloc/blob/master/tcmalloc/size_classes.cc
+            *https://google.github.io/tcmalloc/design.html for more information
+            */
             struct BucketType16
             {
                 static constexpr auto BLK_SIZE = 16u;
@@ -385,7 +388,7 @@ namespace Shard
                     Chunk* prev_{ nullptr };
                     Chunk* next_{ nullptr };
                     FreeBlock* free_list_{ nullptr };
-                    std::uintptr_t bump_ptr_{ nullptr };
+                    std::uintptr_t bump_ptr_{ 0u }; //why not nullptr?
                     void* memory_{ nullptr };
                 };
 
@@ -424,6 +427,12 @@ namespace Shard
                 private:
                     Array<ScalableBucket, PoolBucketInfo_TypeCount<SCALABLE_BUCKET_FAKE_ID>::value>    buckets_;
                 };
+
+                template<size_type id = 0u>
+                ScalablePool* TLSScalablePoolInstance() {
+                    thread_local ScalablePool pool;
+                    return &pool;
+                }
             }
 
         }
@@ -467,9 +476,9 @@ namespace Shard
             POOL_JOBSYSTEM_ID = POOL_DEFAULT_ID,
             POOL_RHI_ID = POOL_DEFAULT_ID,
 #else
-            // GUID first 64bit for static pool allocator ID
-            POOL_JOBSYSTEM_ID    = 0x09CD85C7477D493E,
-            POOL_RHI_ID            = 0xA14FB580D83043EE,
+            // GUID first 32bit for static pool allocator ID
+            POOL_JOBSYSTEM_ID   = 0x09CD85C7,
+            POOL_RHI_ID         = 0xA14FB580,
 #endif
         };
 
@@ -477,6 +486,9 @@ namespace Shard
         template<typename T>
         class ScalablePoolAllocator
         {
+        private:
+            MemoryPool::Scalable::ScalablePool* memory_pool_{ nullptr };
+            const std::thread::id   owner_id_{ std::this_thread::get_id() };
         public:
             using value_type = T;
             template<typename U>
@@ -484,17 +496,14 @@ namespace Shard
                 using other = ScalablePoolAllocator<U>;
             };
         public:
-            ScalablePoolAllocator() {
-                memory_pool_ = new Scalable::ScalablePool;
+            explicit ScalablePoolAllocator(MemoryPool::Scalable::ScalablePool* pool):memory_pool_(pool) {
+                assert(pool != nullptr);
             }
             template<typename U>
             ScalablePoolAllocator(const ScalablePoolAllocator<U>& other) :memory_pool_(other.memory_pool_) {}
             template<typename U>
             ScalablePoolAllocator(ScalablePoolAllocator<U>&& other) : memory_pool_(std::exchange(other.memory_pool_, nullptr)) {}
-
-            virtual ~ScalablePoolAllocato() {
-                delete std::exchange(memory_pool_, nullptr);
-            }
+            virtual ~ScalablePoolAllocator() = default;
             [[nodiscard]] T* allocate(size_type n) {
                 return static_cast<T*>(memory_pool_->allocate(sizeof(T) * n));
             }
@@ -516,9 +525,7 @@ namespace Shard
             friend bool operator!=(const ScalablePoolAllocator& lhs, const ScalablePoolAllocator<U>& rhs) {
                 return !(lhs == rhs);
             }
-        private:
-            Scalable::ScalablePool* memory_pool_{ nullptr };
-            const std::thread::id    owner_id_{ std::this_thread::get_id() };
+
         };
 
         //scalable pool allocator for every thread
@@ -526,7 +533,8 @@ namespace Shard
         requires(!std::is_void_v<T>)
         static decltype(auto) TLSScalablePoolAllocatorInstance()
         {
-            thread_local ScalablePoolAllocator<T> allocator;
+            //all class in one thread shared a unique memory pool
+            thread_local ScalablePoolAllocator<T> allocator{ MemoryPool::Scalable::TLSScalablePoolInstance<id>() };
             return &allocator;
         }
 

@@ -32,7 +32,7 @@ namespace Shard
         }
 
         template<typename RetVal>
-        inline Coro<RetVal>::Coro(CoroHandle handle) noexcept :CoroBase(static_cast<CoroPromiseBase*>(handle.address())), handle_(handle)
+        inline Coro<RetVal>::Coro(CoroHandle handle) noexcept :CoroBase(&handle.promise()), handle_(handle)
         {
         }
 
@@ -43,7 +43,7 @@ namespace Shard
         }
 
         template<typename RetVal>
-        inline Coro<RetVal>& Coro<RetVal>::operator=(Coro&& rhs)
+        inline Coro<RetVal>& Coro<RetVal>::operator=(Coro&& rhs) noexcept
         {
             assert(this != &rhs);
             promise_ = std::exchange(rhs.promise_, {});
@@ -101,7 +101,7 @@ namespace Shard
             }
         }
 
-        inline Coro<void>::Coro(CoroHandle handle) noexcept : CoroBase(static_cast<CoroPromiseBase*>(handle.address())), handle_(handle)
+        inline Coro<void>::Coro(CoroHandle handle) noexcept : CoroBase(&handle.promise()), handle_(handle)
         {
         }
 
@@ -124,17 +124,22 @@ namespace Shard
         }
 
         template<typename RetVal, typename ...Ts>
-        inline AwaitTuple<RetVal, Ts...>::AwaitTuple(std::tuple<Ts&&...> tuple) :tuple_(tuple)
+        inline AwaitTuple<RetVal, Ts...>::AwaitTuple(std::tuple<Ts&&...> tuple) :tuple_(std::forward<std::tuple<Ts&&...> >(tuple))
         {
 
         }
 
         namespace {
+
+            template<typename>
+            constexpr auto is_vector = false;
+            template<typename T>
+            constexpr auto is_vector<Vector<T> > = true;
             //Note that templates cannot be declared in a function
             template<typename U>
             std::size_t SizeImpl(U& children)
             {
-                if constexpr (std::is_same_v<std::decay_t<U>, Vector>) {
+                if constexpr (is_vector<std::decay_t<U> >) {
                     return children.size();
                 }
 
@@ -144,7 +149,7 @@ namespace Shard
             template<typename T>
             decltype(auto) GetValueImpl(T& t)
             {
-                return std::make_tuple();
+                return std::make_tuple();//for Coro<void>
             }
 
             template<typename T> 
@@ -158,7 +163,7 @@ namespace Shard
             requires (!std::is_void_v<T>)
             decltype(auto) GetValueImpl(Vector<Coro<T>>& coros)
             {
-                SmallVector<T> ret{ coros.size() };
+                Vector<T> ret{ coros.size() };
                 for (auto& coro : coros) { ret.emplace_back(coro.GetValue()); }
                 return std::make_tuple(std::move(ret));
             }
@@ -181,8 +186,8 @@ namespace Shard
             //single tuple element call
             const auto g = [&, this]<std::size_t index>() {
                 using tt = decltype(tuple_);
-                using T = decltype(std::get<index>(tuple_));
-                auto children = std::forward<T>(std::get<index>(std::forward<tt>(tuple_)));
+                using T = decltype(std::get<index>(std::forward<tt>(tuple_)));
+                decltype(auto) children = std::forward<T>(std::get<index>(std::forward<tt>(tuple_)));
 
                 //todo schedule
                 Schedule(children, &handle.promise());
@@ -197,22 +202,24 @@ namespace Shard
         }
 
         template<typename RetVal, typename ...Ts>
-        inline decltype(auto) AwaitTuple<RetVal, Ts...>::await_resume()
+        inline decltype(auto) AwaitTuple<RetVal, Ts...>::await_resume() noexcept
         {
             auto f = [&, this]<typename ...Us>(Us&... args) {
                 return std::tuple_cat(GetValueImpl(args)...);
             };
             auto ret = std::apply(f, tuple_);
-            if constexpr (std::tuple_size_v<decltype<ret>> == 0)
+            if constexpr (std::tuple_size_v<decltype(ret) > == 0u)
             {
                 return;
             }
-            else if constexpr (std::tuple_size_v<decltype(ret)> == 1)
+            else if constexpr (std::tuple_size_v<decltype(ret) > == 1u)
             {
                 return std::get<0>(ret);
             }
-
-            return ret;
+            else //must keep, for compile
+            {
+                return ret;
+            }
         }
 
         template<typename RetVal>
@@ -253,7 +260,8 @@ namespace Shard
             AWAIT_SUSPEND_PROC();
             return promise.IsParentCoro();
         }
-        bool FinalAwaiter<void>::await_suspend(impl::coroutine_handle<CoroPromise<void>> h) noexcept
+
+        inline bool FinalAwaiter<void>::await_suspend(impl::coroutine_handle<CoroPromise<void>> h) noexcept
         {
             AWAIT_SUSPEND_PROC();
             return promise.IsParentCoro();
@@ -281,31 +289,10 @@ namespace Shard
                 }
             }
         }
-        /*
-        template<typename ...Args>
-        inline void* CoroPromiseBase::operator new(std::size_t size, Args&&... args) noexcept
-        {
-            auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t>();
-            const auto alloc_size = size + sizeof(std::uintptr_t);
-            auto* ptr = allocator->allocate(alloc_size);
-            *reinterpret_cast<std::uintptr_t*>(ptr) = allocator;
-            return ptr + sizeof(std::uintptr_t);
-        }
-
-        void CoroPromiseBase::operator delete(void* ptr, std::size_t size) noexcept
-        {
-            auto* raw_ptr = (uint8_t*)(ptr) - sizeof(std::uintptr_t);
-            auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>*>(raw_ptr);
-            allocator->deallocate(raw_ptr, size+sizeof(std::uintptr_t));
-        }
-        */
-
+       
         template<typename RetVal>
         inline CoroPromise<RetVal>::CoroPromise():CoroPromiseBase(CoroHandle::from_promise(*this))
         {
-            new(&task_entry_) CoroPromise::TaskEntry(coro_); //todo
-            //convert corohandle to task
-            SetTask(&task_entry_);
         }
 
         template<typename RetVal>
@@ -323,7 +310,7 @@ namespace Shard
             }
             else
             {
-                *fuc_value_ = std::make_pair(true, t);
+                *func_value_ = std::make_pair(true, val);
             }
 
         }
@@ -332,7 +319,7 @@ namespace Shard
         inline void CoroPromise<RetVal>::resume()  
         {
             if (!IsParentCoro() && func_value_.get() != nullptr) {
-                *func_value_ = false;
+                (*func_value_).first = false;
             }
             if (coro_ && !coro_.done()) {
                 coro_.resume();
@@ -344,10 +331,10 @@ namespace Shard
         inline YieldAwaiter<RetVal> CoroPromise<RetVal>::yield_value(RetVal val)
         {
             if (!IsParentCoro()) {
-                *func_value_ = std::make_pair(true, t);
+                *func_value_ = std::make_pair(true, val);
             }
             else {
-                value_ = std::make_pair(true, t);
+                value_ = std::make_pair(true, val);
             }
             return {};
         }
@@ -360,7 +347,7 @@ namespace Shard
         }
 
         template<typename RetVal>
-        inline Coro<RetVal> CoroPromise<RetVal>::get_return_object()
+        inline Coro<RetVal> CoroPromise<RetVal>::get_return_object() noexcept
         {
             if (!IsParentCoro()) {
                 *func_value_ = std::make_pair(false, RetVal{});
@@ -380,23 +367,13 @@ namespace Shard
         template<typename RetVal> template<typename... Ts>
         inline AwaitTuple<RetVal, Ts...> CoroPromise<RetVal>::await_transform(std::tuple<Ts...>&& tuple) noexcept
         {
-            return { std::forward<std::tuple<Ts...>>(tuple); };
+            return { std::forward<std::tuple<Ts...> >(tuple) };
         }
 
         template<typename RetVal> template<typename ...Ts>
         inline AwaitTuple<RetVal, Ts...> CoroPromise<RetVal>::await_transform(std::tuple<Ts...>& tuple) noexcept
         {
-            return { std::forward<std::tuple<Ts...>>(tuple); };
-        }
-
-        template<typename RetVal>
-        inline Coro<RetVal> CoroPromise<RetVal>::get_return_object() noexcept
-        {
-            if (!is_parent_coro_) {
-                func_value_ = std::make_shared(std::make_pair(false, RetVal{}));
-            }
-            auto handle = Coro<Function, RetVal>::CoroHandle::from_promise(*this);
-            return { handle };
+            return { std::forward<std::tuple<Ts...> >(tuple) };
         }
 
         inline CoroPromise<void>::CoroPromise():CoroPromiseBase(CoroHandle::from_promise(*this))
@@ -430,20 +407,39 @@ namespace Shard
             return Coro<void>(CoroHandle::from_promise(*this));
         }
 
+        template<typename U>
+        inline AwaitTuple<void, U> CoroPromise<void>::await_transform(U&& func) noexcept
+        {
+            return { std::tuple<U&&>(std::forward<U>(func)) };
+        }
+
+        template<typename... T>
+        inline AwaitTuple<void, T...> CoroPromise<void>::await_transform(std::tuple<T...>&& tuple) noexcept
+        {
+            return { std::forward<std::tuple<T...> >(tuple) };
+        }
+
+        template<typename ...T>
+        inline AwaitTuple<void, T...> CoroPromise<void>::await_transform(std::tuple<T...>& tuple) noexcept
+        {
+            return { std::forward<std::tuple<T...> >(tuple) };
+        }
+
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T> >
-        uint32_t Schedule(T&& coro, JobEntry* parent)
+        decltype(auto) Schedule(T&& coro, JobEntry* parent)
         {
-            auto promise = coro.Handle().promise();
+            auto promise = coro.promise();
             if (nullptr != promise) {
-                promise.parent_ = parent;
+                promise->parent_ = parent;
                 if (parent != nullptr) {
-                    parent.ref_count_.fetch_add(1, std::memory_order::relaxed);
+                    parent->ref_count_.fetch_add(1, std::memory_order::relaxed);
                 }
                 //set coro affinity todo
-                promise.EnableSelfDeConstruct(); //delete by jobsystem
+                promise->EnableSelfDeConstruct(); //delete by jobsystem
             }
-            SimpleJobSystem::Instance().Execute(&promise);
+            SimpleJobSystem::Instance().Execute(promise);
+            return promise;
         }
 
         template<typename T>
@@ -455,7 +451,6 @@ namespace Shard
             {
                 curr_job->subsequent_ = coro.Handle().promise();
                 coro.Handle().promise().EnableSelfDeConstruct();
-
             }
         }
 
@@ -467,23 +462,22 @@ namespace Shard
                 return std::tuple<Ts&&...>(std::forward<Ts>(args)...);
             }
 
-
             template<typename T>
             Coro<> MakeCoro(T&& coro) {
-                co_await coro;
+                co_await std::forward<T>(coro);
             }
 
             template<typename T, typename U, typename ...Ts>
             Coro<> MakeCoro(T&& coro, U&& prev, Ts&&... more_prevs)
             {
-                co_await MakeCoro<U, Ts...>(prev, std::forward<Ts...>(more_prevs)...);
-                co_await coro;
+                co_await MakeCoro<U, Ts...>(prev, std::forward<Ts>(more_prevs)...);
+                co_await std::forward<T>(coro);
             }
 
             template<typename ...Ts>
             decltype(auto) Sequential(Ts&&... args)
             {
-                return std::tuple{ MakeCoro(std::forward<Ts...>(args)...) };
+                return std::tuple{ MakeCoro(std::forward<Ts>(args)...) };
             }
         }
     }

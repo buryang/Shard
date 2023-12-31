@@ -113,7 +113,7 @@ namespace Shard::Utils::MemoryPool
     {
         const auto bucket_size = blk_size_ * blk_count_;
         memory_ = ::operator new(bucket_size);
-        const auto ledger_size = std::ceil(blk_count_ / sizeof(uint8_t));
+        const auto ledger_size = (size_type)std::ceil(blk_count_ / sizeof(uint8_t));
         ledger_ = ::operator new(ledger_size); //allocation bitmap
         std::memset(memory_, 0, bucket_size);
         std::memset(ledger_, 0, ledger_size);
@@ -253,7 +253,7 @@ namespace Shard::Utils::MemoryPool
             freed->next_ = std::exchange(chunk->free_list_, freed);
         }
 
-        /*
+        /**
         * todo: realize a method like https://www.intel.com/content/dam/www/public/us/en/-
         * documents/research/2007-vol11-iss-4-intel-technology-journal.pdf
         */
@@ -262,7 +262,10 @@ namespace Shard::Utils::MemoryPool
             const auto is_chunk_full = [&, this](const Chunk* chunk)->bool {
                 return chunk->free_blks_ == 0u;
             };
-            
+            const auto is_chunk_space_reuse = [&, this](const Chunk* chunk)->bool {
+                return chunk->free_blks_ >= uint32_t(blk_count_ * 0.20f);
+            };
+
             if (active_chunk_ == nullptr) {
                 active_chunk_ = AllocChunk();
             }
@@ -273,12 +276,14 @@ namespace Shard::Utils::MemoryPool
                 * maybe it's slow and waste a lot of memory
                 */
                 TryRecyleExternalFrees(); 
-                auto* prev_chunk = active_chunk_->prev_;
-                if (prev_chunk == nullptr) {
-                    prev_chunk = AllocChunk();
-                    prev_chunk->next_ = active_chunk_;
+                if (!is_chunk_space_reuse(active_chunk_)) { //test whether has enougth space
+                    auto* prev_chunk = active_chunk_->prev_;
+                    if (prev_chunk == nullptr) {
+                        prev_chunk = AllocChunk();
+                        prev_chunk->next_ = active_chunk_;
+                    }
+                    active_chunk_ = prev_chunk;
                 }
-                active_chunk_ = prev_chunk;
             }
             return ptr;
         }

@@ -76,7 +76,7 @@ namespace Shard
         VkImageView    Get();
         VkFormat Format()const { return format_; }
         VkImageViewType ViewType()const { return view_type_; }
-        operator VulkanImage::Ptr(){ return image_; }
+        explicit operator VulkanImage::Ptr(){ return image_; }
     private:
         VulkanImage::Ptr        image_;
         VkImageView                handle_{ VK_NULL_HANDLE };
@@ -160,7 +160,7 @@ namespace Shard
             VkFormat format, uint32_t offset, uint32_t range);
         ~VulkanBufferView();
         Handle Get();
-        operator VulkanBuffer::SharedPtr() { return buffer_; }
+        explicit operator VulkanBuffer::SharedPtr() { return buffer_; }
     private:
         VulkanBuffer::SharedPtr    buffer_;
         Handle    handle_{ VK_NULL_HANDLE };

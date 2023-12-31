@@ -13,7 +13,10 @@ namespace Shard
             using StorageClass = ContainerType<T>;
             using Handle = StorageClass::size_type;
             using ElementType = T;
-            TRingBuffer(size_type capacity);
+            TRingBuffer() = default;
+            explicit TRingBuffer(size_type capacity);
+            TRingBuffer(TRingBuffer&& other);//todo a atomic not moveable
+            void operator=(TRingBuffer&& other);
             virtual bool Poll(ElementType& el);
             virtual bool Offer(const ElementType& el);
             size_type GetCapacity()const {
@@ -24,7 +27,7 @@ namespace Shard
             StorageClass    storage_;
             std::atomic<Handle> head_{ 0u };
             std::atomic<Handle> tail_{ 0u };
-            const size_type capacity_;
+            const size_type capacity_{ 0u };
         };
 
         //lock-free treiber stack https://en.wikipedia.org/wiki/Treiber_stack

@@ -245,7 +245,7 @@ namespace Shard::RHI::Vulkan
             RHIBufferInitializer    buffer_desc_;
             RHIResource::Ptr    handle_{ nullptr };
             uint32_t    last_stamp_{ 0 };
-            operator RHIResource::Ptr() {
+            explicit operator RHIResource::Ptr() {
                 return handle_;
             }
             uint32_t LastStamp()const {

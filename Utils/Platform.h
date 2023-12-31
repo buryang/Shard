@@ -40,9 +40,9 @@ namespace Shard::Utils
 
 	struct MonitorSetting
 	{
-		uint32_t	fps_;
-		uint32_t	bits_per_pixel_;
-		vec2	resolution_;
+		uint32_t    fps_;
+		uint32_t    bits_per_pixel_;
+		vec2        resolution_;
 	};
 
 	const MonitorSetting& GetMonitorSetting();
