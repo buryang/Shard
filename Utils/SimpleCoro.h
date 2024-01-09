@@ -119,11 +119,11 @@ namespace Shard
             void UnableSelfDeConstruct() {
                 is_self_deconstruct_ = false;
             }
-            void operator()(void)override {
+            void operator()(void) final {
                 resume();
                 NotifyFinished();
             }
-            void Release()override {
+            void Release() final {
 
             }
             virtual void resume() = 0;
@@ -155,10 +155,12 @@ namespace Shard
                 return ptr + sizeof(std::uintptr_t);
             }
             void operator delete(void* ptr, std::size_t size) {
+                const auto alloc_size = size + sizeof(std::uintptr_t);
                 auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
-                auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>*>(raw_ptr); //will release in another thread...
-                allocator->deallocate((uint8_t*)raw_ptr, size + sizeof(std::uintptr_t));
+                auto* allocator = (ScalablePoolAllocator<uint8_t>*)(*reinterpret_cast<std::uintptr_t*>(raw_ptr)); //will release in another thread...
+                allocator->deallocate((uint8_t*)raw_ptr, alloc_size);
             }
+
         protected:
             impl::coroutine_handle<>    coro_;
             bool    is_parent_coro_{ SimpleJobSystem::Instance().GetCurrentJob() == nullptr || SimpleJobSystem::Instance().GetCurrentJob()->IsCoro() };
@@ -200,7 +202,7 @@ namespace Shard
             friend class YieldAwaiter<RetVal>;
             friend class FinalAwaiter<RetVal>;
             //de-coroutine for function
-            std::shared_ptr<std::pair<bool, RetVal> >   func_value_;
+            std::shared_ptr<std::pair<bool, RetVal> >   func_value_{ new std::pair<bool, RetVal> };
             std::pair<bool, RetVal> value_;
         };
 

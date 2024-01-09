@@ -1,6 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "Utils/FileArchive.h"
+//#include "Utils/FileArchive.h"
 #include <ThirdParty/CSHA/SHA1.h>
 #include <folly/Hash.h>
 #include <blake3.h>
@@ -36,9 +36,9 @@ namespace Shard::Utils {
             return !(*this == rhs);
         }
         FORCE_INLINE operator Integral auto () const { return *reinterpret_cast<Integral auto*>(hash_); }
-        friend void operator << (IOArchive& ar, const HashSignature& hash) {
-            ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
-        }
+        //friend void operator << (IOArchive& ar, const HashSignature& hash) {
+        //    ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
+        //}
     private:
         alignas(size_type) uint8_t hash_[MAX_HASH_SIZE / 8] = { 0u };
     };

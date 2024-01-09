@@ -4,11 +4,11 @@
 namespace Shard::Utils
 {
     static inline size_type ConvertNumToPow2(size_type number) {
-        const auto clz = 1u << __builtin_clzll(number);
-        const auto ceil_pow = 1 << (sizeof(size_t) * 8u - clz + 1u);
-        const auto floor_pow = 1 << (sizeof(size_t) * 8u - clz);
+        const auto clz = __builtin_clzll(number);
+        const auto ceil_pow = 1u << (sizeof(size_type) * 8u - clz);
+        const auto floor_pow = 1u << (sizeof(size_type) * 8u - clz - 1u);
         if (ceil_pow - number > number - floor_pow) {
-            return floor_pow;
+            return std::max(1u, floor_pow);
         }
         return ceil_pow;
     }
@@ -24,7 +24,7 @@ namespace Shard::Utils
     template<class T, template<typename> class ContainerType>
     inline TRingBuffer<T, ContainerType>::TRingBuffer(size_type capacity):capacity_(ConvertNumToPow2(capacity))
     {
-        storage_.Reserve(GetCapacity());
+        storage_.Init(GetCapacity());
     }
 
     template<class T, template<typename> class ContainerType>

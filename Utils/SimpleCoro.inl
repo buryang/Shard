@@ -463,21 +463,21 @@ namespace Shard
             }
 
             template<typename T>
-            Coro<> MakeCoro(T&& coro) {
+            Coro<> SequentialImpl(T&& coro) {
                 co_await std::forward<T>(coro);
             }
 
             template<typename T, typename U, typename ...Ts>
-            Coro<> MakeCoro(T&& coro, U&& prev, Ts&&... more_prevs)
+            Coro<> SequentialImpl(T&& coro, U&& next, Ts&&... rest)
             {
-                co_await MakeCoro<U, Ts...>(prev, std::forward<Ts>(more_prevs)...);
                 co_await std::forward<T>(coro);
+                co_await SequentialImpl(next, std::forward<Ts>(rest)...);
             }
 
             template<typename ...Ts>
             decltype(auto) Sequential(Ts&&... args)
             {
-                return std::tuple{ MakeCoro(std::forward<Ts>(args)...) };
+                return SequentialImpl(std::forward<Ts>(args)...);
             }
         }
     }

@@ -226,8 +226,8 @@ namespace Shard
                 return -1;
             }
         private:
-            using DenseAllocatorType = std::allocator_traits<Allocator>::rebind_alloc<ValueType>;
-            using PageAllocatorType = std::allocator_traits<Allocator>::rebind_alloc<SparsePage>;
+            using DenseAllocatorType = std::allocator_traits<Allocator>::template rebind_alloc<ValueType>;
+            using PageAllocatorType = std::allocator_traits<Allocator>::template rebind_alloc<SparsePage>;
             Vector<ValueType, DenseAllocatorType>   dense_;
             SmallVector<SparsePage*, SparsePage::PAGE_COUNT>    sparse_pages_;
             PageAllocatorType*  page_alloc_{nullptr};

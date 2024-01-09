@@ -230,6 +230,12 @@ namespace Shard::Utils::MemoryPool
         {
         }
 
+        ScalableBucket::ScalableBucket(ScalableBucket&& other):blk_size_(other.blk_size_), blk_count_(other.blk_count_), active_chunk_(std::exchange(other.active_chunk_, nullptr))
+        {
+            //warning: when construct, free list is empty
+            assert(other.external_freed_.load() == nullptr);
+        }
+
         static void* GetBlockInChunk(Chunk* chunk, size_type blk_size) {
             --chunk->free_blks_;
             //1.alloc from bump_ptr, may create all free blocks in the
@@ -243,7 +249,7 @@ namespace Shard::Utils::MemoryPool
             if LIKELY(chunk->free_list_) {
                 return std::exchange(chunk->free_list_, chunk->free_list_->next_);
             }
-            assert(0 &&"cannot reach here");
+            assert(0 &&"get block in chunk cannot reach here");
         }
 
         static void FreeBlockToChunk(Chunk* chunk, void* ptr)
@@ -281,6 +287,7 @@ namespace Shard::Utils::MemoryPool
                     if (prev_chunk == nullptr) {
                         prev_chunk = AllocChunk();
                         prev_chunk->next_ = active_chunk_;
+                        active_chunk_->prev_ = prev_chunk;
                     }
                     active_chunk_ = prev_chunk;
                 }
@@ -344,14 +351,12 @@ namespace Shard::Utils::MemoryPool
         void ScalableBucket::deallocate_external(void* ptr, size_type size)
         {
             auto* local_block = reinterpret_cast<FreeBlock*>(ptr);
-            FreeBlock* old_block = nullptr;
+
             do
             {
                 _mm_pause();
-                old_block = external_freed_.load(std::memory_order::relaxed);
-                local_block->next_ = old_block;
-
-            } while (!external_freed_.compare_exchange_weak(old_block, local_block, std::memory_order::release));
+                local_block->next_ = external_freed_.load(std::memory_order::relaxed);
+            } while (!external_freed_.compare_exchange_weak(local_block->next_, local_block, std::memory_order::release));
         }
         ScalableBucket::~ScalableBucket()
         {
@@ -376,6 +381,8 @@ namespace Shard::Utils::MemoryPool
             chunk->free_blks_ = blk_count_;
             chunk->memory_ = (uint8_t*)ptr + sizeof(Chunk);
             chunk->bump_ptr_ = (std::uintptr_t)chunk->memory_ + blk_size_ * blk_count_;
+            chunk->prev_ = nullptr;
+            chunk->next_ = nullptr;
             return chunk;
         }
 
@@ -396,16 +403,24 @@ namespace Shard::Utils::MemoryPool
             }
             while (block)
             {
-                deallocate((void*)block, blk_size_);
-                block = block->next_;
+                auto* prev_block = std::exchange(block, block->next_);
+                deallocate((void*)prev_block, blk_size_);
             }
             return true;
         }
 
         static inline size_type ConvertNumToPow2(size_type number) {
-            const auto clz = 1u << __builtin_clzll(number);
-            const auto ceil_pow = 1 << (sizeof(size_t) * 8u - clz + 1u);
+            const auto clz = __builtin_clzll(number);
+            const auto ceil_pow = 1 << (sizeof(size_t) * 8u - clz);
             return ceil_pow;
+        }
+
+        ScalablePool::ScalablePool() noexcept
+        {
+            const auto gen_bucket = [&, this](const auto& ...bucket_info) {
+                (buckets_.emplace_back(ScalableBucket(bucket_info.BLK_SIZE)), ...);
+            };
+            std::apply(gen_bucket, PoolBucketInfo_Type<SCALABLE_BUCKET_FAKE_ID>{});
         }
 
         void* ScalablePool::allocate(size_type size)
@@ -420,6 +435,7 @@ namespace Shard::Utils::MemoryPool
                     return bucket.allocate(size);
                 }
             }
+            return nullptr;
 
         }
         void ScalablePool::deallocate(void* ptr, size_type size)
@@ -448,5 +464,22 @@ namespace Shard::Utils::MemoryPool
         }
     }
 }
+
+
+//////////////////////////////////////////////////////////
+//EASTL requires you to have an overload for the operator new
+//if EASTL_DLL == 0; todo: fixme to set EASTL_DLL
+//////////////////////////////////////////////////////////
+#if !EASTL_DLL
+void* __cdecl operator new[](size_t size, const char* name, int flags, unsigned debugFlags, const char* file, int line)
+{
+    return new uint8_t[size];
+}
+
+void* __cdecl operator new[](size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
+{
+    return _aligned_malloc(size, alignment);// , alignmentOffset);
+}
+#endif
 
 

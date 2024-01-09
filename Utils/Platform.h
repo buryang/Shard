@@ -21,11 +21,11 @@ namespace Shard::Utils
 namespace Shard::Utils
 {
 	//thread
+#if __cplusplus < 202002L
 	void BindThreadToCPU(std::thread& th, uint32_t core_id);
 	uint32_t GetCPUBindToThread(std::thread& th);
-	void SetThreadPriority(std::thread& th, int32_t policy, int32_t priority);
-
-#if _HAS_CXX20
+    void SetThreadPriority(std::thread& th, int32_t policy, int32_t priority);
+#else
 	void BindThreadToCPU(std::jthread& th, uint32_t core_id);
 	uint32_t GetCPUBindToThread(std::jthread& th);
 	void SetThreadPriority(std::jthread& th, int32_t policy, int32_t priority);

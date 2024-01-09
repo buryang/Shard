@@ -8,6 +8,7 @@ using namespace Shard::Utils;
 
 TEST(TEST_JOB_SYSTEM, TEST_CORO_TASK)
 {
+    SimpleJobSystem::Instance().Init(std::thread::hardware_concurrency(), 16);
     auto hello_world = []()->Coro<>
     {
         std::cerr << "hello world! Coro" << std::endl;
@@ -40,10 +41,10 @@ TEST(TEST_JOB_SYSTEM, TEST_CORO_TASK)
 
     //test schedule seq
     {
-        uint32_t counter = 0u;
-        auto sequential_number = [&counter]()->Coro<> {
-            auto inc_number = [&counter]()->Coro<> {
-                counter++;
+        auto counter = std::make_shared<uint32_t>(0u);
+        auto sequential_number = [counter]()->Coro<> {
+            auto inc_number = [counter]()->Coro<> {
+                (*counter)++;
                 co_return;
             };
             co_await AwaitTupleHelper::Sequential(inc_number, inc_number, inc_number);
@@ -52,17 +53,14 @@ TEST(TEST_JOB_SYSTEM, TEST_CORO_TASK)
         while (!seq_job->IsFinished()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
-        ASSERT_EQ(counter, 3);
+        ASSERT_EQ(*counter, 3);
     }
 
     //test schedule parallel
-    
     {
-        std::atomic_int counter = 0;
-        auto parallel_number = [&counter]()->Coro<> {
-            auto inc_number = [&counter]()->Coro<> {
-                auto curr_counter = counter.fetch_add(1);
-                std::cerr << "hello world! " << curr_counter << std::endl;
+        auto parallel_number = []()->Coro<> {
+            auto inc_number = []()->Coro<> {
+                std::cerr << "hello world! " << std::this_thread::get_id() << std::endl;
                 co_return;
             };
             co_await AwaitTupleHelper::Parallel(inc_number, inc_number, inc_number);
@@ -82,8 +80,11 @@ TEST(TEST_JOB_SYSTEM, TEST_FUNC_TASK)
 
     auto cycle_print = []()->void {
         uint32_t counter = 0u;
-        while (counter < 10000) {
-            std::cerr << "cycle hello world! " << counter << std::endl;
+        while (counter++ < 100u) {
+            if (counter % 10 == 0) {
+                std::cerr << "cycle hello world! " << counter << std::endl;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     };
     auto cycle_handle = Schedule(cycle_print);
@@ -91,6 +92,11 @@ TEST(TEST_JOB_SYSTEM, TEST_FUNC_TASK)
 
     std::cerr << fmt::format("hello world task state: {}", hello_handle->IsFinished()) << std::endl;
     std::cerr << fmt::format("cycle world task state: {}", cycle_handle->IsFinished()) << std::endl;
+    while (!hello_handle->IsFinished() || !cycle_handle->IsFinished()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    std::cerr << fmt::format("hello world task state aft: {}", hello_handle->IsFinished()) << std::endl;
+    std::cerr << fmt::format("cycle world task state aft: {}", cycle_handle->IsFinished()) << std::endl;
 }
 
 TEST(TEST_JOB_SYSTEM, TEST_MIX_TASK)
@@ -104,7 +110,7 @@ TEST(TEST_JOB_SYSTEM, TEST_MIX_TASK)
     ASSERT_TRUE(coro_handle != nullptr);
 
     auto hello_world_func = []() {
-        std::cerr << "hello world!, function";
+        std::cerr << "hello world!, function" << std::endl;
     };
     auto func_handle = Schedule(hello_world_func, nullptr, 0x1, false);
     ASSERT_TRUE(func_handle != nullptr);
@@ -118,3 +124,4 @@ TEST(TEST_JOB_SYSTEM, TEST_MIX_TASK)
 }
 
 #include "Utils/SimpleJobSystem.cpp"
+#include "Utils/PlatformWin32.cpp"

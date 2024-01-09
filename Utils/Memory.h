@@ -209,7 +209,7 @@ namespace Shard
         //memory pool allocator from apex.ai
         namespace MemoryPool
         {
-            template<size_type id>
+            template<size_type id = 0u>
             struct PoolBucketInfo
             {
                 using Type = std::tuple<>;
@@ -299,7 +299,7 @@ namespace Shard
             template<size_type id, size_type index>
             struct BucketBlkCount : std::integral_constant<size_type, std::tuple_element_t<index, PoolBucketInfo_Type<id>>::BLK_COUNT> {};
             template<size_type id>
-            struct PoolType : SmallVector<Bucket, PoolBucketInfo_TypeCount<id>::value, false> {};
+            struct PoolType : Array<Bucket, PoolBucketInfo_TypeCount<id>::value> {};
 
             template<size_type id, size_type ...index>
             auto& PoolInstance(std::index_sequence<index...>) noexcept{
@@ -327,7 +327,7 @@ namespace Shard
                 if LIKELY(size <= PoolBucketInfo_Type<id>::MaxSize)
                 {
                     auto& pool = PoolInstance<id>();
-                    SmallVector<Info, PoolBucketInfo_TypeCount<id>, false> delta;
+                    Array<Info, PoolBucketInfo_TypeCount<id>> delta;
                     size_type index{ 0u };
                     for (auto& bucket : pool) {
                         if (auto blk_size = bucket.GetBlkSize(); blk_size > size) {
@@ -370,13 +370,15 @@ namespace Shard
                 }
             }
 
+            enum {
+                SCALABLE_BUCKET_FAKE_ID = 1024,
+                SCALEBLE_CHUNK_SIZE = 2 * 1024 * 1024,
+            };
+
+            REGIST_POOL_ID(SCALABLE_BUCKET_FAKE_ID); //ugly
+
             namespace Scalable
             {
-                enum {
-                    SCALABLE_BUCKET_FAKE_ID = 1024,
-                    SCALEBLE_CHUNK_SIZE = 2 * 1024 * 1024,
-                };
-
                 struct FreeBlock
                 {
                     FreeBlock* next_{ nullptr };
@@ -398,6 +400,7 @@ namespace Shard
                 public:
                     friend class ScalablePool;
                     ScalableBucket(size_type blk_size);
+                    ScalableBucket(ScalableBucket&& other);
                     [[nodiscard]] void* allocate([[maybe_unused]] size_type size);
                     //default deallocate; do deallcating in this thread
                     void deallocate(void* ptr, [[maybe_unused]] size_type size);
@@ -413,19 +416,20 @@ namespace Shard
                     Chunk*    active_chunk_{ nullptr };
                     const size_type    blk_size_{ 0u };
                     const size_type    blk_count_{ 0u };
-                    //std::atomic_bool    lock_; //nouse in a single thread, but now maybe alloc in one thread and release in another
-                    std::atomic<FreeBlock*>    external_freed_;
+                    std::atomic<FreeBlock*>    external_freed_{ nullptr };
                 };
 
                 class ScalablePool
                 {
                 public:
-                    ScalablePool() = default;
+                    ScalablePool() noexcept;
                     [[nodiscard]] void* allocate(size_type size);
                     void deallocate(void* ptr, size_type size);
                     void deallocate_external(void* ptr, size_type size);
                 private:
-                    Array<ScalableBucket, PoolBucketInfo_TypeCount<SCALABLE_BUCKET_FAKE_ID>::value>    buckets_;
+                    DISALLOW_COPY_AND_ASSIGN(ScalablePool);
+                private:
+                    Array<ScalableBucket, PoolBucketInfo_TypeCount<SCALABLE_BUCKET_FAKE_ID>::value>  buckets_;
                 };
 
                 template<size_type id = 0u>

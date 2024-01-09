@@ -23,7 +23,7 @@ namespace Shard
             return g_job_sys;
         }
 
-        void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size, const float tls_ratio, bool use_dedicate_core)
+        void SimpleJobSystem::Init(const uint32_t group_count, const uint32_t queue_size, bool use_dedicate_core)
         {
             //ugly only config once time
             static std::atomic<bool> initable{ false };
@@ -31,8 +31,8 @@ namespace Shard
             if (!initable.compare_exchange_weak(expected, true, std::memory_order::memory_order_acq_rel)) {
                 return;
             }
-
-            const auto thread_loop = [&, this](std::stop_token stop_token, const uint32_t group_id) {
+            //use_dedaicate_core is in stack, so capture by value
+            const auto thread_loop = [&, this, use_dedicate_core](std::stop_token stop_token, const uint32_t group_id) {
                 if (use_dedicate_core)
                 {
                     auto& thread_handle = thread_pool_[group_id];
@@ -70,7 +70,8 @@ namespace Shard
 
                     if (ret)
                     {
-                        TLS::g_current_job->operator()();
+                        //TLS::g_current_job->operator()();
+                        std::invoke(*TLS::g_current_job);
 
                         //finish job,release resource 
                         const auto is_coro = TLS::g_current_job->IsCoro();
@@ -80,19 +81,15 @@ namespace Shard
                         }
                     }
                     else [[unlikely]]
-                        {
-                            //if no task input, yield
-                            std::this_thread::yield();
-
-                        }
+                    {
+                        //if no task input, yield
+                        std::this_thread::yield();
+                    }
                 }
 
                 };
 
             const auto thread_count = std::clamp(group_count, 1u, std::thread::hardware_concurrency() - 1);
-
-            //init thread local storage
-            const auto tls_count = std::max(1u, uint32_t(thread_count * tls_ratio));
 
             //init job queue
             for (auto n = 0u; n < thread_count; ++n)
@@ -108,7 +105,6 @@ namespace Shard
             for (auto n = 0u; n < thread_count; ++n)
             {
                 thread_pool_.emplace_back(std::jthread(thread_loop, n));
-                thread_pool_.back().detach();
             }
         }
 
@@ -134,8 +130,8 @@ namespace Shard
             for (auto& th : thread_pool_) {
                 th.join();
             }
+            thread_pool_.clear();
 #endif
-            //allocator_.UnInit();
         }
 
         bool SimpleJobSystem::Execute(JobEntry* job)
@@ -153,7 +149,7 @@ namespace Shard
                 auto group_id = affinity_groups[std::rand() % affinity_groups.size()];
 
                 //FIXME put into local/global queue?
-                if (job->stealable_ && std::rand() % 2)
+                if (job->stealable_ && std::rand() % 2u)
                 {
                     ret = global_queues_[group_id].Offer(job);
                 }

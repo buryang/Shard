@@ -24,14 +24,14 @@ namespace Shard
             uint32_t    core_affinity_{ 0xFFFFFFFF };
 
             void NotifyFinished() {
-                is_finished_.store(true, std::memory_order_release);
+                is_finished_.store(true, std::memory_order::release);
                 is_finished_.notify_one();
             }
-            void Wait()const{ is_finished_.wait(false, std::memory_order_acquire); }
-            void AddRef()const { ref_count_.fetch_add(1, std::memory_order::relaxed); }
+            void Wait()const{ is_finished_.wait(false, std::memory_order::acquire); }
+            void AddRef()const { ref_count_.fetch_add(1, std::memory_order::release); }
             void DecRef(){ 
-                ref_count_.fetch_sub(1, std::memory_order::relaxed); 
-                if (!ref_count_) {
+                ref_count_.fetch_sub(1u, std::memory_order::release); 
+                if (!ref_count_.load(std::memory_order::acquire)) {
                     auto deallocator = GetDeAllocator();
                     deallocator(this);
                 }
@@ -41,14 +41,10 @@ namespace Shard
             virtual void operator()(void) = 0;
             virtual void Release() = 0;
             virtual constexpr bool IsCoro()const { return false; }
-            virtual JobDeAllocator GetDeAllocator() const { //todo
-                return [](JobEntry* job) {
-                    delete job;
-                };
-            }
+            virtual JobDeAllocator GetDeAllocator() const = 0;
         };
 
-        class TJobEntry : public JobEntry
+        class TJobEntry final: public JobEntry
         {
         private:
             std::function<void(void)>   handle_;
@@ -67,18 +63,29 @@ namespace Shard
             void Release() override {
 
             }
+
+            JobDeAllocator GetDeAllocator() const final
+            {
+                return [](JobEntry* job) {
+                    auto* tjob = static_cast<TJobEntry*>(job);
+                    assert(tjob != nullptr);
+                    delete tjob;
+                };
+            }
+
             template<typename ...ARGS>
             void* operator new(std::size_t size, ARGS&&... args) {
                 auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
-                const auto alloc_size = size + sizeof(std::uintptr_t);
+                const auto alloc_size = size + sizeof(std::uintptr_t); 
                 auto* ptr = allocator->allocate(alloc_size);
                 *reinterpret_cast<std::uintptr_t*>(ptr) = (std::uintptr_t)allocator; //record the allocator of this thread
                 return ptr + sizeof(std::uintptr_t);
             }
             void operator delete(void* ptr, std::size_t size) {
+                const auto alloc_size = size + sizeof(std::uintptr_t);
                 auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
-                auto* allocator = reinterpret_cast<ScalablePoolAllocator<uint8_t>* >(raw_ptr); //will release in another thread...
-                allocator->deallocate((uint8_t*)raw_ptr, size + sizeof(std::uintptr_t));
+                auto* allocator = (ScalablePoolAllocator<uint8_t>*)(*reinterpret_cast<std::uintptr_t*>(raw_ptr)); //will release in another thread...
+                allocator->deallocate((uint8_t*)raw_ptr, alloc_size);
             }
         };
 
@@ -89,7 +96,7 @@ namespace Shard
             using size_type = Vector<T>::size_type;
         public:
             void Init(size_t capacity) {
-                container_.resize(capacity);
+                Resize(capacity);
             }
             T Get(size_type index) {
                 return container_[index];
@@ -98,8 +105,8 @@ namespace Shard
                 std::swap(container_[index], val);
                 return true;
             }
-            void Reserve(size_type sz) {
-                container_.reserve(sz);
+            void Resize(size_type sz) {
+                container_.resize(sz);
             }
             ~JobEntryStorage() = default;
         private:
@@ -112,7 +119,7 @@ namespace Shard
         {
         public:
             static SimpleJobSystem& Instance();
-            void Init(const uint32_t group_count, const uint32_t queue_size, const float tls_ratio = 0.5f, bool use_dedicate_core = false);
+            void Init(const uint32_t group_count, const uint32_t queue_size, bool use_dedicate_core = false);
             void UnInit();
             bool Execute(JobEntry* job);
             /**
