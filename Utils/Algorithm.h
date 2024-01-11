@@ -6,7 +6,12 @@ namespace Shard
     namespace Utils
     {
         //https://www.lenshood.dev/2021/04/19/lock-free-ring-buffer/#ring-buffer
-        template <class T, template<typename> class ContainerType>
+        /**
+         * T: element type
+         * null: object of type T, null object to fix ABA problem
+         * ContainerType: backend storage type with method Set and Get
+         */
+        template <class T, T null, template<typename> class ContainerType>
         class TRingBuffer 
         {
         public:
@@ -17,8 +22,8 @@ namespace Shard
             explicit TRingBuffer(size_type capacity);
             TRingBuffer(TRingBuffer&& other);//todo a atomic not moveable
             void operator=(TRingBuffer&& other);
-            virtual bool Poll(ElementType& el);
-            virtual bool Offer(const ElementType& el);
+            virtual bool TryPoll(ElementType& el);
+            virtual bool TryOffer(const ElementType& el);
             size_type GetCapacity()const {
                 return capacity_;
             }
