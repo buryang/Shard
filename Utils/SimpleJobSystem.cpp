@@ -71,7 +71,7 @@ namespace Shard
 
                     if (ret)
                     {
-                        //TLS::g_current_job->operator()();
+                        assert(TLS::g_current_job != nullptr);
                         std::invoke(*TLS::g_current_job);
 
                         //finish job,release resource 
@@ -108,32 +108,34 @@ namespace Shard
             }
         }
 
-        void SimpleJobSystem::UnInit()
+        void SimpleJobSystem::UnInit(bool flush)
         {
-#if 0
-            for (auto& th : thread_pool_)
-            {
-                th.request_stop();
-                th.join();
-            }
-#else
-            for (auto n = 0; n < thread_pool_.size(); ++n) {
-                //enqueue terminate function to teminate each thread
-                auto terminate = [&, this, n]() {
-                    auto& th = thread_pool_[n];
+            if (!flush) {
+                for (auto& th : thread_pool_)
+                {
                     th.request_stop();
-                };
-                Schedule(terminate, nullptr, 0xFFFFFFFF, true);
+                    th.join();
+                }
             }
+            else
+            {
+                for (auto n = 0; n < thread_pool_.size(); ++n) {
+                    //enqueue terminate function to teminate each thread
+                    auto terminate = [&, this, n]() {
+                        auto& th = thread_pool_[n];
+                        th.request_stop();
+                        };
+                    Schedule(terminate, nullptr, 0xFFFFFFFF, true);
+                }
 
-            for (auto& th : thread_pool_) {
-                th.join();
+                for (auto& th : thread_pool_) {
+                    th.join();
+                }
             }
             thread_pool_.clear();
             local_queues_.clear();
             global_queues_.clear();
             thread_affinity_.clear();
-#endif
         }
 
         bool SimpleJobSystem::Execute(JobEntry* job)

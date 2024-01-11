@@ -71,4 +71,3 @@ TEST(TEST_MEM_ALLOCATOR, TEST_SCALABLE_POOL_ALLOCATOR_MT)
     }
 }
 
-#include "Utils/Memory.cpp"

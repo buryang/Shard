@@ -107,14 +107,26 @@ namespace Shard
             ALIGN_CACHELINE SmallVector<T>   container_;
         };
 
-        using JobRingBuffer = TRingBuffer<JobEntry*, JobEntryStorage>;
+        using JobRingBuffer = TRingBuffer<JobEntry*, nullptr, JobEntryStorage>;
 
         class MINIT_API SimpleJobSystem
         {
         public:
             static SimpleJobSystem& Instance();
+            /**
+             * \param group_count: thread count
+             * \param queue_size: job queue size
+             * \param use_dedicate_core: whether each thread use dedicate core
+             */
             void Init(const uint32_t group_count, const uint32_t queue_size, bool use_dedicate_core = false);
-            void UnInit();
+            /**
+             * \param flash : flash jobs in queue before unint
+             */
+            void UnInit(bool flash = true);
+            /**
+             * \param job: job to execute
+             * \return: return true if job enqueue successfully 
+             */
             bool Execute(JobEntry* job);
             /**
             * A child that finished calls this function for its parent, thus decreasing

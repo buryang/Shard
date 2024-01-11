@@ -66,14 +66,14 @@ TEST(TEST_JOB_SYSTEM, TEST_CORO_TASK)
                 counter.fetch_add(1u, std::memory_order::acq_rel);
                 co_return;
             };
-            co_await AwaitTupleHelper::Parallel(inc_number(), inc_number(), inc_number());
+            co_await AwaitTupleHelper::Parallel(inc_number(), inc_number(), inc_number(), inc_number(), inc_number());
             flag.store(true, std::memory_order::release);
         };
         Schedule(parallel_number());
         while (!flag.load(std::memory_order::acquire)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
-        EXPECT_EQ(counter.load(), 3);
+        EXPECT_EQ(counter.load(), 5);
     }
     
 }
@@ -136,5 +136,3 @@ TEST(TEST_JOB_SYSTEM, TEST_MIX_TASK)
     SimpleJobSystem::Instance().UnInit();
 }
 
-#include "Utils/SimpleJobSystem.cpp"
-#include "Utils/PlatformWin32.cpp"
