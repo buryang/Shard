@@ -121,7 +121,6 @@ namespace Shard
             }
             void operator()(void) final {
                 resume();
-                NotifyFinished();
             }
             void Release() final {
 
@@ -149,16 +148,16 @@ namespace Shard
             template<typename ...ARGS>
             void* operator new(std::size_t size, ARGS&&... args) {
                 auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
-                const auto alloc_size = size + sizeof(std::uintptr_t);
-                auto* ptr = allocator->allocate(alloc_size);
-                *reinterpret_cast<std::uintptr_t*>(ptr) = (std::uintptr_t)allocator; //record the allocator of this thread
-                return ptr + sizeof(std::uintptr_t);
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto* ptr = allocator->allocate(alloc_offset+sizeof(std::uintptr_t));
+                *reinterpret_cast<std::uintptr_t*>(ptr+alloc_offset) = (std::uintptr_t)allocator; //record the allocator of this thread
+                return ptr;
             }
             void operator delete(void* ptr, std::size_t size) {
-                const auto alloc_size = size + sizeof(std::uintptr_t);
-                auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto raw_ptr = (std::uintptr_t)(ptr)+alloc_offset;
                 auto* allocator = (ScalablePoolAllocator<uint8_t>*)(*reinterpret_cast<std::uintptr_t*>(raw_ptr)); //will release in another thread...
-                allocator->deallocate((uint8_t*)raw_ptr, alloc_size);
+                allocator->deallocate((uint8_t*)raw_ptr, alloc_offset+sizeof(std::uintptr_t));
             }
 
         protected:
@@ -289,12 +288,12 @@ namespace Shard
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T>>
-        decltype(auto) Schedule(T&& coro, JobEntry* parent=SimpleJobSystem::Instance().GetCurrentJob());
+        void Schedule(T&& coro, JobEntry* parent=SimpleJobSystem::Instance().GetCurrentJob(), uint32_t affinity = 0xFFFFFFFF, bool stealable = true);
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T>>
-        void Continuation(T&& coro)noexcept;
-
+        bool Continuation(T&& coro)noexcept;
+        
         //functions to help co_wait tuple
         namespace AwaitTupleHelper
         {

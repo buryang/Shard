@@ -427,31 +427,34 @@ namespace Shard
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T> >
-        decltype(auto) Schedule(T&& coro, JobEntry* parent)
-        {
+        void Schedule(T&& coro, JobEntry* parent, uint32_t affinity, bool stealable)
+        {   
             auto promise = coro.promise();
+            promise->core_affinity_ = affinity;
+            promise->stealable_ = stealable;
             if (nullptr != promise) {
                 promise->parent_ = parent;
-                if (parent != nullptr) {
-                    parent->ref_count_.fetch_add(1, std::memory_order::relaxed);
+                if LIKELY(parent != nullptr) {
+                    parent->ref_count_.fetch_add(1u, std::memory_order::relaxed);
                 }
-                //set coro affinity todo
+                //todo set affinity and other parameters
                 promise->EnableSelfDeConstruct(); //delete by jobsystem
             }
             SimpleJobSystem::Instance().Execute(promise);
-            return promise;
         }
 
         template<typename T>
         requires std::is_base_of_v<CoroBase, std::decay_t<T> >
-        void Continuation(T&& coro)noexcept
+        bool Continuation(T&& coro)noexcept
         {
             auto* curr_job = SimpleJobSystem::Instance().GetCurrentJob();
-            if (nullptr != curr_job && !curr_job->IsCoro()) //todo just copy
+            if (nullptr != curr_job && !curr_job->IsCoro()) 
             {
-                curr_job->subsequent_ = coro.Handle().promise();
-                coro.Handle().promise().EnableSelfDeConstruct();
+                curr_job->subsequent_ = coro.promise();
+                coro.promise()->EnableSelfDeConstruct();
+                return true;
             }
+            return false;
         }
 
         namespace AwaitTupleHelper

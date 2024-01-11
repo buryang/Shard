@@ -15,7 +15,6 @@ namespace Shard
         {
             using JobDeAllocator = std::function<void(JobEntry*)>;
             mutable std::atomic<uint32_t>    ref_count_{ 1u };
-            std::atomic_bool    is_finished_{ false };
             JobEntry*    parent_{ nullptr };
             JobEntry*    subsequent_{ nullptr };
             //task can stealed by other thread?
@@ -23,20 +22,16 @@ namespace Shard
             //cpu affinity
             uint32_t    core_affinity_{ 0xFFFFFFFF };
 
-            void NotifyFinished() {
-                is_finished_.store(true, std::memory_order::release);
-                is_finished_.notify_one();
-            }
-            void Wait()const{ is_finished_.wait(false, std::memory_order::acquire); }
-            void AddRef()const { ref_count_.fetch_add(1, std::memory_order::release); }
+            void AddRef()const { ref_count_.fetch_add(1u, std::memory_order::release); }
             void DecRef(){ 
                 ref_count_.fetch_sub(1u, std::memory_order::release); 
                 if (!ref_count_.load(std::memory_order::acquire)) {
+                    /*for coroutine call promise'operator new to allocate promise state, so use"delete this" is error*/
                     auto deallocator = GetDeAllocator();
                     deallocator(this);
+                  
                 }
             }
-            bool IsFinished() const { return is_finished_.load(); }
             bool IsStealAble()const { return stealable_; }
             virtual void operator()(void) = 0;
             virtual void Release() = 0;
@@ -58,7 +53,6 @@ namespace Shard
             virtual ~TJobEntry() = default;
             void operator()(void) override {
                 handle_();
-                NotifyFinished();
             }
             void Release() override {
 
@@ -76,16 +70,16 @@ namespace Shard
             template<typename ...ARGS>
             void* operator new(std::size_t size, ARGS&&... args) {
                 auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
-                const auto alloc_size = size + sizeof(std::uintptr_t); 
-                auto* ptr = allocator->allocate(alloc_size);
-                *reinterpret_cast<std::uintptr_t*>(ptr) = (std::uintptr_t)allocator; //record the allocator of this thread
-                return ptr + sizeof(std::uintptr_t);
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto* ptr = allocator->allocate(alloc_offset + sizeof(std::uintptr_t));
+                *reinterpret_cast<std::uintptr_t*>(ptr + alloc_offset) = (std::uintptr_t)allocator; //record the allocator of this thread
+                return ptr;
             }
             void operator delete(void* ptr, std::size_t size) {
-                const auto alloc_size = size + sizeof(std::uintptr_t);
-                auto raw_ptr = (std::uintptr_t)(ptr)-sizeof(std::uintptr_t);
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto raw_ptr = std::uintptr_t(ptr)+alloc_offset;
                 auto* allocator = (ScalablePoolAllocator<uint8_t>*)(*reinterpret_cast<std::uintptr_t*>(raw_ptr)); //will release in another thread...
-                allocator->deallocate((uint8_t*)raw_ptr, alloc_size);
+                allocator->deallocate((uint8_t*)raw_ptr, alloc_offset + sizeof(std::uintptr_t));
             }
         };
 
@@ -110,7 +104,7 @@ namespace Shard
             }
             ~JobEntryStorage() = default;
         private:
-            Vector<T>    container_;
+            ALIGN_CACHELINE SmallVector<T>   container_;
         };
 
         using JobRingBuffer = TRingBuffer<JobEntry*, JobEntryStorage>;
@@ -127,6 +121,7 @@ namespace Shard
             * the number of left children by one.
             */
             bool ChildFinished(JobEntry* job);
+            /*return nullptr for non jobsystem thread*/
             JobEntry* GetCurrentJob();
             uint32_t GetCurrentGroupID()const;
             ~SimpleJobSystem() { UnInit(); }
@@ -144,28 +139,26 @@ namespace Shard
 
         template<typename F>
         requires std::is_convertible_v<std::decay_t<F>, std::function<void(void)>>
-        JobEntry* Schedule(F&& function, JobEntry* parent = nullptr, uint32_t affinity = 0xFFFFFFFF, bool stealable = true)
+        void Schedule(F&& function, JobEntry* parent = SimpleJobSystem::Instance().GetCurrentJob(), uint32_t affinity = 0xFFFFFFFF, bool stealable = true) //parent default value
         {
-            //fixme life time of task and entry
             JobEntry* job_entry{ new TJobEntry(std::forward<F>(function)) };
             job_entry->parent_ = parent;
             job_entry->subsequent_ = nullptr;
             job_entry->core_affinity_ = affinity;
             job_entry->stealable_ = stealable;
             SimpleJobSystem::Instance().Execute(job_entry);
-            return job_entry;
         }
 
         template<typename F>
         requires std::is_convertible_v<std::decay_t<F>, std::function<void(void)>>
-        JobEntry* Continuation(F&& function) {
+        bool Continuation(F&& function) {
             auto* parent = SimpleJobSystem::Instance().GetCurrentJob();
             if (nullptr != parent && !parent->IsCoro()) {
                 JobEntry* job_entry = new TJobEntry<F>(std::forward<F>(function));
                 parent->subsequent_ = job_entry;
-                return job_entry;
+                return true;
             }
-            return nullptr;
+            return false;
         }
 
         template<typename F>

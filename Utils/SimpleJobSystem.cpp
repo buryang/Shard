@@ -45,22 +45,23 @@ namespace Shard
                 while (!stop_token.stop_requested())
                 {
                     TLS::g_current_job = nullptr;
-                    auto ret = local_queues_[group_id].Poll(TLS::g_current_job);
+                    /* todo : too much time to deal with global queue*/
+                    auto ret = local_queues_[group_id].TryPoll(TLS::g_current_job);
                     if (!ret)
                     {
-                        ret = global_queues_[group_id].Poll(TLS::g_current_job);
+                        ret = global_queues_[group_id].TryPoll(TLS::g_current_job);
                     }
 
                     auto try_count = max_try_count_;
                     while (!ret && try_count >= 0)
                     {
                         auto tid = try_count % thread_pool_.size();
-                        ret = global_queues_[tid].Poll(TLS::g_current_job);
+                        ret = global_queues_[tid].TryPoll(TLS::g_current_job);
                         //todo thread affinity check 
                         //maybe not need this; just do task in affinity ....
                         if (use_dedicate_core && ret) {
                             if ((TLS::g_current_job->core_affinity_ & thread_affinity_[group_id]) == 0u) {
-                                global_queues_[tid].Offer(TLS::g_current_job); //reoffer to old queue
+                                global_queues_[tid].TryOffer(TLS::g_current_job); //reoffer to old queue
                                 ret = false;
                             }
                         }
@@ -76,7 +77,6 @@ namespace Shard
                         //finish job,release resource 
                         const auto is_coro = TLS::g_current_job->IsCoro();
                         if (!is_coro) {
-                            assert(TLS::g_current_job->ref_count_.load() == 1);
                             ChildFinished(TLS::g_current_job);
                         }
                     }
@@ -118,19 +118,21 @@ namespace Shard
             }
 #else
             for (auto n = 0; n < thread_pool_.size(); ++n) {
-                //todo: add terminate function to each thread to finish current jobs
-                auto terminate = [&, this]() {
+                //enqueue terminate function to teminate each thread
+                auto terminate = [&, this, n]() {
                     auto& th = thread_pool_[n];
-                    assert(std::this_thread::get_id() == th.get_id()); //kill current thread
                     th.request_stop();
-                    };
-                Schedule(terminate, nullptr, n, false);
+                };
+                Schedule(terminate, nullptr, 0xFFFFFFFF, true);
             }
 
             for (auto& th : thread_pool_) {
                 th.join();
             }
             thread_pool_.clear();
+            local_queues_.clear();
+            global_queues_.clear();
+            thread_affinity_.clear();
 #endif
         }
 
@@ -139,7 +141,7 @@ namespace Shard
             bool ret{ false };
             SmallVector<uint32_t> affinity_groups;
             for (auto n = 0; n < thread_pool_.size(); ++n) {
-                if (thread_affinity_.empty() || thread_affinity_[n] & job->core_affinity_) {
+                if (thread_affinity_.empty() || thread_affinity_[n] & job->core_affinity_) {//check whether a thread is running
                     affinity_groups.emplace_back(n);
                 }
             }
@@ -149,18 +151,19 @@ namespace Shard
                 auto group_id = affinity_groups[std::rand() % affinity_groups.size()];
 
                 //FIXME put into local/global queue?
-                if (job->stealable_ && std::rand() % 2u)
+                if (job->stealable_)
                 {
-                    ret = global_queues_[group_id].Offer(job);
+                    ret = global_queues_[group_id].TryOffer(job);
                 }
                 else
                 {
-                    ret = local_queues_[group_id].Offer(job);
+                    ret = local_queues_[group_id].TryOffer(job);
                 }
                 if (ret) {
                     break;
                 }
             }
+            assert(ret == true);
             return ret;
         }
 
@@ -177,10 +180,10 @@ namespace Shard
                 }
                 return true;
             }
-            else
-            {
-                job->DecRef(); //todo bug
-            }
+            //else
+            //{
+            //    job->DecRef(); //todo bug
+            //}
             return false;
         }
 
@@ -208,7 +211,8 @@ namespace Shard
             if (nullptr != job->parent_) {
                 ChildFinished(job->parent_);
             }
-            //delete job;
+            //release job;
+            assert(job->ref_count_.load() == 1u);
             job->DecRef();
         }
 
