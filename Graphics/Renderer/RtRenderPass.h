@@ -45,13 +45,13 @@ namespace Shard
                     if (auto iter = fields_.find(name); iter != fields_.end()) {
                         return iter->second;
                     }
-                    //todo error
+                    return {};
                 }
                 const RtField& operator[](const String& name) const {
                     if (auto iter = fields_.find(name); iter != fields_.end()) {
                         return iter->second;
                     }
-                    //todo error
+                    return {};
                 }
                 Map<String, RtField>& operator()(void) {
                     return fields_;
@@ -98,7 +98,8 @@ namespace Shard
         private:
             const String    name_;
             const EPipeLine    pipeline_;
-            uint32_t    ref_count_{ 0 };
+            uint32_t    ref_count_{ 0u };
+            uint32_t    dependency_level_{ 0u };
             EFlags    flags_{ EFlags::eNone };
             Set<PassHandle>    producers_;
             Set<PassHandle>    consumers_;

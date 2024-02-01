@@ -23,11 +23,15 @@ namespace Shard
                         uint32_t    culling_passes_ : 1;
                         uint32_t    res_aliasing_enable_ : 1;
                         uint32_t    hw_raytrace_enable_ : 1;
+                        uint32_t    barrier_split_ : 1;
                     };
                     uint32_t    cfg_bits_{ 0u };
                 };
             };
-            void Compile(const BuildConfig& build_param);
+            static void SetBuildConf(const BuildConfig& conf) {
+                build_conf_ = conf;
+            }
+            void Compile();
             void Finalize();
             bool IsReady() const;
             FORCE_INLINE RtRendererGraph& GetRenderGraph() {
@@ -43,6 +47,7 @@ namespace Shard
             //build resource barrier
             void AddResourceTransition();
         private:
+            static BuildConfig  build_conf_;
             RtRendererGraph    graph_;
             RtRenderGraphExecutor::SharedPtr    graph_exe_;
         };

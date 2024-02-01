@@ -37,6 +37,12 @@ namespace Shard
             FORCE_INLINE bool IsTransient() const {
                 return is_transient_;
             }
+            FORCE_INLINE uint32_t LifeBegin() const {
+                return life_time_.start_;
+            }
+            FORCE_INLINE uint32_t LifeEnd() const {
+                return life_time_.end_;
+            }
             OVERLOAD_OPERATOR_NEW(RHIResource);
         protected:
             uint32_t RefInCr() {
@@ -56,6 +62,11 @@ namespace Shard
             RHIGlobalEntity::Ptr parent_{ nullptr };
             uint32_t is_dedicated_ : 1;
             uint32_t is_transient_ : 1;
+            struct
+            {
+                uint16_t    start_{ 0u };
+                uint16_t    end_{ 0u };
+            }life_time_;
         };
 
 

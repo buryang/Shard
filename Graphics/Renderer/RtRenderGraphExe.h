@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Utils/Handle.h"
 #include "Utils/Memory.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
 #include "Graphics/Renderer/RtRenderResources.h"
@@ -53,6 +54,8 @@ namespace Shard
             //whether executor ready for draw
             bool IsReady()const;
         private:
+            /*todo: collection information of all memory, and do allocation*/
+            void AliasResourceMemoryAlloc();
             void ExecutePass(RHI::RHICommandContext* context, RtRendererPass& pass);
             //queue extracted output resource 
             RtRenderGraphExecutor& QueueExtractedTexture(RtField& field, RtRenderTexture::Ptr& texture);
@@ -93,9 +96,28 @@ namespace Shard
             void DoTexturePlan(RtRenderGraphExecutor& executor);
             void DoBufferPlan(RtRenderGraphExecutor& executor);
             void AddTransition(RtRenderGraphExecutor& executor, TextureSubFieldState& state_before, TextureSubFieldState state_after);
+            void AddAlias(RtRenderGraphExecutor& executor);
         private:
             SmallVector<FieldNode, 2>    producers_;
             SmallVector<FieldNode, 2>    consumers_;
+
+            struct AliasMemRegion
+            {
+                size_type   size_{ 0u };
+                struct {
+                    uint32_t    first_;
+                    uint32_t    end_;
+                }life_time_{ 0u };
+            };
+
+            struct AliasMemBucket
+            {
+                uint32_t    flags_{ 0u };
+                //at least one region for initializing
+                SmallVector<AliasMemRegion, 1u> regions_;
+            };
+
+            SmallVector<AliasMemBucket> alias_mem_bucket_;
         };
     }
 }

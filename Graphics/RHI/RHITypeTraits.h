@@ -5,6 +5,7 @@
 #include "Graphics/RHI/RHIImGuiLayer.h"
 #include "Graphics/RHI/RHIShaderLibrary.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
+#include "Graphics/RHI/RHIMemoryResidency.h"
 
 namespace Shard::RHI {
     template <uint32_t backend>
@@ -26,6 +27,7 @@ namespace Shard::RHI {
         using RHIBuffer = RHIBuffer;
         using RHISampler = RHISampler;
         using RHIImGuiLayerWrapper = RHIImGuiLayerWrapper;
+        using RHIMemoryResidencyManager = RHIMemoryResidencyManager;
     };
 
     //pre declare vulkan releate class here to avoid include too mush headers
@@ -45,6 +47,7 @@ namespace Shard::RHI {
         class RHIPipelineStateObjectLibraryVulkan;
         class RHIResourceBindlessSetVulkan;
         class RHIImGuiLayerWrapperVulkan;
+        class RHIMemoryResidencyManagerVulkan;
     }
 
     template<>
@@ -66,7 +69,8 @@ namespace Shard::RHI {
         using RHIBuffer = Vulkan::RHIBufferVulkan;
         using RHIResourceBindlessHeap = Vulkan::RHIResourceBindlessSetVulkan;
 #if defined(DEVELOP_BUBUG_TOOLS) && defined(ENABLE_IMGUI)
-        using RHIImGuiLayerWrapper = RHIImGuiLayerWrapperVulkan;
+        using RHIImGuiLayerWrapper = Vulkan::RHIImGuiLayerWrapperVulkan;
 #endif
+        using RHIMemoryResidencyManager = Vulkan::RHIMemoryResidencyManagerVulkan;
     };
 }

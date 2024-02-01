@@ -26,8 +26,14 @@ namespace Shard::RHI::Vulkan {
     //alignment of vulkan transition info
     constexpr auto ALIGN_TRANSITION_INFO_SIZE = std::alignment_of_v<VulkanTransitionInfo>;
 
-    static FORCE_INLINE VkAccessFlags TransRtFieldAccessToVulkanAccess() {
-        return 0;
+    static FORCE_INLINE VkAccessFlags TransRtFieldAccessToVulkanAccess(Renderer::EAccessFlags field_access) {
+        switch (field_access)
+        {
+        case Renderer::EAccessFlags::eReadOnly:
+            return VK_ACCESS_SHADER_READ_BIT; //todo
+        default:
+            LOG(ERROR) << "render field access flag not support";
+        }
     }
 
     class RHIEventVulkan : public RHIEvent

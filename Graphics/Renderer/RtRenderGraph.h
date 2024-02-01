@@ -14,7 +14,7 @@ namespace Shard
         class RtRenderFieldBridge;
         static constexpr const uint32_t INVALID_INDEX = -1;
 
-        class MINIT_API RtRendererGraph : public Utils::DirectedAcyclicGraph
+        class MINIT_API RtRendererGraph final : public Utils::DirectedAcyclicGraph
         {
         public:
             RtRendererGraph();
@@ -50,7 +50,8 @@ namespace Shard
             void Serialize(Utils::IOArchive& ar);
             void UnSerialize(Utils::IOArchive& ar);
             //resource delegate todo
-            
+        protected:
+            uint32_t CalcPassDependencyLevel(PassHandle pass); //todo
         private:
             friend class RtRenderGraphBuilder;
             DISALLOW_COPY_AND_ASSIGN(RtRendererGraph);

@@ -58,6 +58,7 @@ namespace Shard
         VkDevice    handle_{ VK_NULL_HANDLE };
         VkPhysicalDevice back_end_{ VK_NULL_HANDLE };
         VkPhysicalDeviceProperties back_end_properties_;
+        VkPhysicalDeviceMemoryBudgetPropertiesEXT back_end_memory_budget_; //todo
         VkPhysicalDeviceDescriptorIndexingProperties back_end_descrptor_indexing_properties_;
         VulkanCmdPoolManager    pool_manager_;
     };

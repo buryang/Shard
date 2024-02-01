@@ -1,4 +1,5 @@
 #include "eastl/sort.h"
+#include "Core/EngineGlobalParams.h"
 #include "Renderer/RtRenderGraphExe.h"
 #include "Renderer/RtRenderGraphPerfDebug.h"
 #include "RHI/RHI.h"
@@ -7,6 +8,16 @@ namespace Shard
 {
     namespace Renderer
     {
+
+        enum EResourceAliasStrategy
+        {
+            eAliasNone, 
+            eAliasResource, //pooled resource for aliasing
+            eAliasMemory, //resident memory for aliasing
+        };
+
+        REGIST_PARAM_TYPE(UINT, RESOURCE_ALIAS_STRATEGY, EResourceAliasStrategy::eAliasNone);
+
         /*gfx queue and async compute queue*/
         static constexpr uint32_t MAX_QUEUE_COUNT = 2;
         struct TextureSubFieldState

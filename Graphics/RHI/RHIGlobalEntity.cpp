@@ -31,5 +31,5 @@ namespace Shard::RHI
     RHIEvent::~RHIEvent() {}
     RHIFence::~RHIFence() {}
 
-    Utils::StaticPoolAllocator<uint8_t, POOL_RHI_ID>    g_rhi_allocator;
+    Utils::ScalablePoolAllocator<uint8_t>* g_rhi_allocator = Utils::TLSScalablePoolAllocatorInstance<uint8_t,POOL_RHI_ID>();
 }

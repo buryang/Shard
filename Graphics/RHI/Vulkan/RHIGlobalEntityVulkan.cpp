@@ -1,9 +1,10 @@
-#include "RHI/Vulkan/RHICommandVulkan.h"
-#include "RHI/Vulkan/RHIResourcesVulkan.h"
-#include "RHI/Vulkan/RHIGlobalEntityVulkan.h"
-#include "RHI/Vulkan/RHIShaderLibraryVulkan.h"
-#include "RHI/Vulkan/RHIResourceBindingVulkan.h"
 #include "RHI/RHITypeTraits.h"
+#include "RHICommandVulkan.h"
+#include "RHIResourcesVulkan.h"
+#include "RHIGlobalEntityVulkan.h"
+#include "RHIShaderLibraryVulkan.h"
+#include "RHIResourceBindingVulkan.h"
+#include "RHIMemoryResidencyVulkan.h"
 
 #define ADD_EXT_IF(CONDITION, EXT_NAME) if (CONDITION) { extensions.emplace_back(EXT_NAME); }
 #define ADD_LAYER_IF(CONDITION, LAYER_NAME) if (CONDITION) { layers.emplace_back(LAYER_NAME); }
@@ -94,13 +95,11 @@ namespace Shard::RHI::Vulkan {
         const auto& buffer_desc = buffer->GetBufferDesc();
         if (buffer_desc.is_transiant_) {
             assert(transient_repo_.get() != nullptr);
-            bool ret = transient_repo_->AllocBuffer(buffer_desc, buffer);
-            return ret;
+            return transient_repo_->AllocBuffer(buffer_desc, buffer);
         }
         else
         {
-            bool = pooled_repo_.AllocBuffer(buffer_desc, buffer);
-            return ret;
+            return pooled_repo_.AllocBuffer(buffer_desc, buffer);
         }
         return true;
     }
@@ -130,13 +129,18 @@ namespace Shard::RHI::Vulkan {
         return static_cast<RHIPipelineStateObjectLibraryInterface::Ptr>(&pso_library);
     }
 
+    RHIMemoryResidencyManager::Ptr RHIGlobalEntityVulkan::GetPrCreateMemoryResodemcyManager()
+    {
+        static RHITypeConcreteTraits<EnumToInteger(ERHIBackEnd::eVulkan)>::RHIMemoryResidencyManager residency_manager{ instance_, device_ };
+        return static_cast<RHIMemoryResidencyManager::Ptr>(&residency_manager);
+    }
+
 #if defined(DEVELOP_DEBUG_TOOLS) && defined(ENABLE_IMGUI)
     RHIImGuiLayerWrapper::Ptr RHIGlobalEntityVulkan::GetImGuiLayerWrapper()
     {
         return static_cast<RHIImGuiLayerWrapper::Ptr>(&imgui_wrapper_);
     }
 #endif
-
 
     RHIResourceBindlessHeap::SharedPtr RHIGlobalEntityVulkan::GetResourceBindlessHeap()
     {

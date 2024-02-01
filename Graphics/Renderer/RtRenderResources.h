@@ -5,6 +5,7 @@
 #include "Core/PixelInfo.h"
 #include "Renderer/RtRenderResourceDefinitions.h"
 #include "Renderer/RtRenderPass.h"
+#include <type_traits>
 
 namespace Shard
 {
@@ -122,9 +123,27 @@ namespace Shard
             }
         };
 
+        template<typename T>
+        requires std::is_integral_v<T>
+        struct HashName
+        {
+            T   name_;
+            static HashName FromString(const String& name) {
+                HashName hash_name{ static_cast<T>(CalcBlake3HashForBytes(name.data(), name.size())) }; //slow?
+                return hash_name;
+            }
+            bool operator==(const HashName& rhs) const noexcept {
+                return name_ == rhs.name_;
+            }
+            bool operator!=(const HashName& rhs) const noexcept {
+                return !(*this == rhs);
+            }
+        };
+
         class RtField
         {
         public:
+            using Name = HashName<uint32_t>;
             enum class EType : uint8_t
             {
                 eBuffer,
@@ -179,6 +198,7 @@ namespace Shard
                 return false;
             }
 
+            RtField() = default;
             FORCE_INLINE bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(layout_); }
             FORCE_INLINE bool IsConnectAble(const RtField& other)const;
             FORCE_INLINE bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
@@ -222,9 +242,9 @@ namespace Shard
             friend bool operator!=(const RtField& lhs, const RtField& rhs) { return !(lhs == rhs); }
         private:
             friend class RtRendererPass;
-            String    name_;
+            Name    name_;
             //name for producer
-            String    parent_name_;
+            Name    parent_name_;
             EType    type_;
             EUsage    usage_{ EUsage::eUnkown };
             EPixFormat    pix_fmt_{ EPixFormat::eUnkown };
@@ -277,9 +297,9 @@ namespace Shard
             }
         private:
             std::pair<uint32_t, uint32_t>    life_time_;
-            uint8_t    is_external_:1{ 0 };
-            uint8_t    is_transient_:1{ 1 };
-            uint8_t    is_output_ : 1{ 0 };
+            uint32_t    is_external_:1{ 0 };
+            uint32_t    is_transient_:1{ 1 };
+            uint32_t    is_output_ : 1{ 0 };
             mutable std::atomic_uint    ref_count_{ 0u };
         };
 

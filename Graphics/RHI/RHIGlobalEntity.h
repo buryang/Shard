@@ -5,6 +5,7 @@
 #include "Graphics/RHI/RHICommand.h"
 #include "Graphics/RHI/RHIResourceBinding.h"
 #include "Graphics/RHI/RHIShaderLibrary.h"
+#include "Graphics/RHI/RHIMemoryResidency.h"
 
 namespace Shard::RHI
 {
@@ -54,6 +55,10 @@ namespace Shard::RHI
         //only metal support shader library
         virtual RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary();
         virtual RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary();
+        /**
+        * \brief get/create memory residency manager
+        */
+        virtual RHIMemoryResidencyManager::Ptr GetPrCreateMemoryResodemcyManager();
         //bindless heap interface
         virtual RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap();
 #if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)

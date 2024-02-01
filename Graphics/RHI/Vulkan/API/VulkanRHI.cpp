@@ -17,7 +17,7 @@ namespace Shard
 #ifdef VULKAN_USER_ALLOCATION
     namespace Memory
     {
-        extern Utils::StaticPoolAllocator<uint8_t, POOL_RHI_ID> g_rhi_allocator;
+        extern Utils::ScalablePoolAllocator<uint8_t>* g_rhi_allocator;
         /*Memory alignment maybe an issue to implement VkAllocationCallback (there is
           no _aligned_realoc function available, but only _aligned_malloc and _aligned_free).
           But only if Vulkan requests alignments bigger than malloc's default 
@@ -25,7 +25,7 @@ namespace Shard
           Vulkan actually request memory with lower alignment than malloc() defaults,*/
         static void* pfn_vulkan_alloc(void* user_data, size_t size, size_t alignment, VkSystemAllocationScope allocation_scope) { 
             const auto alloc_size = sizeof(uintptr_t) + size; //save size in extra memory
-            uintptr_t* data = reinterpret_cast<uintptr_t*>(g_rhi_allocator.Alloc(alloc_size));
+            uintptr_t* data = reinterpret_cast<uintptr_t*>(g_rhi_allocator->allocate(alloc_size));
             *data++ = alloc_size;
             return data;
         }
@@ -37,7 +37,7 @@ namespace Shard
         }
         static void pfn_vulkan_free(void*, void* memory) {
             uintptr_t* data = reinterpret_cast<uintptr_t*>(memory) - 1;
-            g_rhi_allocator.DeAlloc(reinterpret_cast<uint8_t*>(data), *data);
+            g_rhi_allocator->deallocate(reinterpret_cast<uint8_t*>(data), *data);
         }
         VkAllocationCallbacks g_vulkan_allocator{ .pUserData = nullptr,
                                                     .pfnAllocation = &pfn_vulkan_alloc,

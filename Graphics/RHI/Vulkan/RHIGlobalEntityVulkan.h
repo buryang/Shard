@@ -20,6 +20,7 @@ namespace Shard::RHI {
             void CreateViewPoint() override;
             RHIShaderLibraryInterface::Ptr GetOrCreateShaderLibrary() override;
             RHIPipelineStateObjectLibraryInterface::Ptr GetOrCreatePSOLibrary() override;
+            RHIMemoryResidencyManager::Ptr GetPrCreateMemoryResodemcyManager() override;
 #if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
             RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() override;
 #endif
