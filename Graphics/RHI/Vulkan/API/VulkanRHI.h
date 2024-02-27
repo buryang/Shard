@@ -7,7 +7,7 @@
 
 namespace Shard
 {
-    extern VkAllocationCallbacks* g_host_alloc;
+    extern VkAllocationCallbacks* g_host_alloc_vulkan;
     static constexpr uint32_t MAX_QUEUE_COUNT = 16;
 
     class VulkanInstance
@@ -36,6 +36,7 @@ namespace Shard
         static SharedPtr Create(VulkanInstance::SharedPtr instance);
         FORCE_INLINE Handle Get() { return handle_; }
         FORCE_INLINE PhyHandle GetPhyHandle() { return back_end_; }
+        FORCE_INLINE bool IsUMA() const { return back_end_properties_.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU; }
         FORCE_INLINE const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const { return back_end_properties_; }
         FORCE_INLINE const VkPhysicalDeviceDescriptorIndexingProperties& GetPhysicalDeviceDescriptorIndexingProperties()const { return back_end_descrptor_indexing_properties_; }
         //function to deal with command buffer logic
@@ -58,7 +59,6 @@ namespace Shard
         VkDevice    handle_{ VK_NULL_HANDLE };
         VkPhysicalDevice back_end_{ VK_NULL_HANDLE };
         VkPhysicalDeviceProperties back_end_properties_;
-        VkPhysicalDeviceMemoryBudgetPropertiesEXT back_end_memory_budget_; //todo
         VkPhysicalDeviceDescriptorIndexingProperties back_end_descrptor_indexing_properties_;
         VulkanCmdPoolManager    pool_manager_;
     };
@@ -106,6 +106,16 @@ namespace Shard
     }
     static inline VkPhysicalDevice GetGlobalPhyDevice() {
         return RHI::Vulkan::RHIGlobalEntityVulkan::Instance()->GetVulkanDevice()->GetPhyHandle();
+    }
+
+    /**
+     * \brief vulkan chain structure next parameter altogether
+     * \param mains main struct
+     * \param news new struct to chain
+     */
+    template<typename MainT, typename NewT>
+    inline void VSChainPushFront(MainT* mains, NewT* news) {
+        news->pNext = std::exchange(mains->pNext, news);
     }
 }
 

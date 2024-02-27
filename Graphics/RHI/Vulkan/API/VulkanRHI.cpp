@@ -46,9 +46,9 @@ namespace Shard
                                                     .pfnInternalAllocation = nullptr,
                                                     .pfnInternalFree = nullptr };
     }
-    VkAllocationCallbacks* g_host_alloc = &g_vulkan_allocator;
+    VkAllocationCallbacks* g_host_alloc_vulkan = &g_vulkan_allocator;
 #else
-    VkAllocationCallbacks* g_host_alloc = nullptr;
+    VkAllocationCallbacks* g_host_alloc_vulkan = nullptr;
 #endif
 
     //whether use ASYNC COMPUTE

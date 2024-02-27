@@ -22,13 +22,6 @@ namespace Shard
             DISALLOW_COPY_AND_ASSIGN(RHIResource);
             virtual void SetUp() = 0;
             virtual void Release() = 0;
-            //FIXME whether map a cpu pointer
-            virtual void* MapBackMem() {
-                PLOG(ERROR) << "resource not support map backend memory";
-            }
-            virtual void UnMapBackMem() {
-                PLOG(ERROR) << "resource not support unmap backend memory";
-            }
             virtual size_t GetOccupySize() const = 0;
             virtual ~RHIResource() {}
             FORCE_INLINE bool IsDedicated() const { 
@@ -43,6 +36,7 @@ namespace Shard
             FORCE_INLINE uint32_t LifeEnd() const {
                 return life_time_.end_;
             }
+            FORCE_INLINE void G
             OVERLOAD_OPERATOR_NEW(RHIResource);
         protected:
             uint32_t RefInCr() {
@@ -59,9 +53,10 @@ namespace Shard
         protected:
             //no multithread 
             mutable uint32_t    ref_count_{ 0 };
-            RHIGlobalEntity::Ptr parent_{ nullptr };
-            uint32_t is_dedicated_ : 1;
-            uint32_t is_transient_ : 1;
+            RHIGlobalEntity::Ptr    parent_{ nullptr };
+            uint32_t    is_dedicated_ : 1;
+            uint32_t    is_transient_ : 1;
+            uint32_t    is_binded_ : 1;
             struct
             {
                 uint16_t    start_{ 0u };
@@ -143,7 +138,7 @@ namespace Shard
 
         struct RHIBufferInitializer
         {
-            enum class Type : uint8_t
+            enum class EType : uint8_t
             {
                 eUniform = 0x1,
                 eRawBuffer = 0x2,
@@ -155,7 +150,7 @@ namespace Shard
                 RHIBufferInitializer desc{ .size_ = field.GetLayout().width_, .is_dedicated_ = field.IsDedicated(), .is_transiant_ = field.IsTransiant() };
                 return desc;
             }
-            Type    type_;
+            EType    type_;
             uint32_t    size_;
             Renderer::EPipeLine    pipeline_{ Renderer::EPipeLine::eGraphics };
             Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };

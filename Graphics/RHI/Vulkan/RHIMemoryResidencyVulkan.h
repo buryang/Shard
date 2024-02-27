@@ -8,15 +8,22 @@ namespace Shard::RHI::Vulkan
     {
     public:
         RHIMemoryResidencyManagerVulkan(VulkanInstance::SharedPtr instance, VulkanDevice::SharedPtr device);
-        RHIManagedMemoryCreateInfo GetResourceResidencyInfo(RHI::RHIResource::Ptr res_ptr) const override;
-        bool IsManagedMemoryCreateInfoCompatible(const RHIManagedMemoryCreateInfo& lhs, const RHIManagedMemoryCreateInfo& rhs) const override;
-        RHIManangedMemoryBlock* AllocManagedBlock(RHIMemoryTypeFlags type, RHIMemoryHeapFlags heap, uint64_t sz) override;
-        RHIDedicatedMemoryBlock* AllocDedicatedBlock(const RHIManagedMemoryCreateInfo& mem_info) override;
-        RHIManagedMemory* AllocManagedMemory(const RHIManagedMemoryCreateInfo& mem_info, RHIManangedMemoryBlock* parent = nullptr) override;
+        void Init(RHIGlobalEntity::Ptr rhi_entity) override;
+        bool IsUMA() const override;
+        RHIManagedMemoryCreateInfo GetResourceResidencyInfo(RHIResource::Ptr res_ptr) const override;
+        void MakeResident(RHIResource::Ptr res_ptr, RHIManagedMemory& managed_mem, RHISizeType offset) override;
+        void MakeResident(RHIResource::Ptr res_ptr, RHIDedicatedMemoryBlock& dedicated_mem) override;
+        void Evict(RHIResource::Ptr res_ptr) override;
     protected:
-        void GetMemoryBudget(RHIMemBudget& budget, RHIMemoryTypeFlags type, RHIMemoryHeapFlags heap) const override;
+        uint32_t CalcPreferredBlockSizeHint(uint16_t heap_index)const;
+        uint8_t FindMemoryTypeIndex(RHIMemoryUsage usage, RHIMemoryFlags flags) const override;
+        void* MallocRawMemory(uint32_t flags, uint64_t size, void* plat_data = nullptr, void* user_data = nullptr) override;
+        void UpdateBudget();
     private:
         VulkanInstance::SharedPtr instance_;
         VulkanDevice::SharedPtr device_;
+        VkPhysicalDeviceMemoryProperties2 mem_props_;
+        
+        VkPhysicalDeviceMemoryBudgetPropertiesEXT mem_budget_ext_;
     };
 }
