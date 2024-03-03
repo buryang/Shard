@@ -30,13 +30,18 @@ namespace Shard
             FORCE_INLINE bool IsTransient() const {
                 return is_transient_;
             }
+            FORCE_INLINE bool IsBinded() const {
+                return bind_mem_ != nullptr;
+            }
             FORCE_INLINE uint32_t LifeBegin() const {
                 return life_time_.start_;
             }
             FORCE_INLINE uint32_t LifeEnd() const {
                 return life_time_.end_;
             }
-            FORCE_INLINE void G
+            FORCE_INLINE RHIAllocation*& GetBindMemory(){
+                return bind_mem_;
+            }
             OVERLOAD_OPERATOR_NEW(RHIResource);
         protected:
             uint32_t RefInCr() {
@@ -62,6 +67,7 @@ namespace Shard
                 uint16_t    start_{ 0u };
                 uint16_t    end_{ 0u };
             }life_time_;
+            RHIAllocation* bind_mem_{ nullptr };
         };
 
 

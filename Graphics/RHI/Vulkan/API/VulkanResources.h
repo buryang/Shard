@@ -130,8 +130,6 @@ namespace Shard
         VkDeviceSize GetSize()const;
         EResourceState GetState()const;
         VulkanBuffer& SetState(EResourceState new_state);
-        void* Map() const;
-        VulkanBuffer& Unmap();
         VulkanBuffer& Update(const uint8_t* data, size_t size, size_t offset);
         VulkanBuffer& Flush()const;
         VulkanBuffer& Clear(uint32_t data);
@@ -143,7 +141,6 @@ namespace Shard
         friend class VulkanBufferView;
         friend class VulkanImage;
         Handle    handle_{ VK_NULL_HANDLE };
-        void*    mapped_data_{ nullptr };
         //VkBuffer    stage_buffer_{ VK_NULL_HANDLE };
         VkBufferCreateInfo    prop_info_;
         EResourceState    state_{ EResourceState::eUndefined };

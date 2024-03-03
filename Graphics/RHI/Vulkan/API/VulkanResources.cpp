@@ -469,24 +469,6 @@ namespace Shard
         return prop_info_.size;
     }
 
-    void* VulkanBuffer::Map()const
-    {
-        if (!mapped_)
-        {
-            void* ptr = nullptr;
-            vmaMapMemory(graph_->GetMemeAllocator().Get(), allocation_, &ptr);
-            mapped_ = true;
-            return ptr;
-        }
-        return nullptr;
-    }
-
-    VulkanBuffer& VulkanBuffer::Unmap()
-    {
-        vmaUnmapMemory(graph_->GetMemeAllocator().Get(), allocation_);
-        return *this;
-    }
-
     VulkanBuffer& VulkanBuffer::Update(const uint8_t* data, size_t size, size_t offset)
     {
         auto ptr = Map();

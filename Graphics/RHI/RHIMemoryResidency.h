@@ -3,18 +3,30 @@
 #include "Core/EngineGlobalParams.h"
 #include "RHIResources.h"
 
+#ifdef DEBUG
+#define MEMORY_DEBUG_MARGIN 16
+#else
+#define MEMORY_DEBUG_MARGIN 0
+#endif
+
 namespace Shard::RHI
 {
     /** whether prefer to alloca dedicated memory block */
     REGIST_PARAM_TYPE(BOOL, RESIDENCY_PREFER_DEDICATED, false);
-    REGIST_PARAM_TYPE(UINT, RESIDENCY_PREFER_BLOCK_SIZE, 64 * 1024 * 1024);
+    REGIST_PARAM_TYPE(UINT, RESIDENCY_PREFER_BLOCK_SIZE, 256 * 1024 * 1024); //copy from VMA
     REGIST_PARAM_TYPE(UINT, RESIDENCY_ALLOCATE_STRATEGY, EAllocateStrategy::eTLSF);
-    REGIST_PARAM_TYPE(UINT, RESIDENCY_DEFRAG_STRATEGY, EDefrag)
+    REGIST_PARAM_TYPE(UINT, RESIDENCY_DEFRAG_STRATEGY, ERHIDefragFlagBits::eFast);
     REGIST_PARAM_TYPE(UINT, RESIDENCY_DEFRAG_MAX_BYTES, 1);
     REGIST_PARAM_TYPE(UINT, RESIDENCY_DEFRAG_MAX_ALLOCATIONS, 12);
+    REGIST_PARAM_TYPE(UINT, RESIDENCY_DEFRAG_MAX_IGNORE_ALLOCATIONS, 16);
 
     using RHIAllocHandle = uintptr_t;
     using RHISizeType = uint64_t;
+
+    namespace {
+        class AllocationRequest;
+        class MappingHysteresis;
+    }
 
     enum ERHIMemoryUsageBits : uint32_t
     {
@@ -39,30 +51,20 @@ namespace Shard::RHI
         eStrategyMinOffset   = 0x10,
         eStrategyMinTime    = 0x20,
         eStrategyMinOccupy  = 0x40,
-        eStrategyMask       = eStrategyMinOffet | eStrategyMinTime | eStrategyMinOccupy,
+        eStrategyMask       = eStrategyMinOffset | eStrategyMinTime | eStrategyMinOccupy,
 
         //dedicated flag bits
         eForceDedicated     = 0x100,
-        //mapped when allocated
         eAllocMapped        = 0x200,
-        ePersistentMap      = 0x400,
-        eAllowMap           = 0x800,
-        eMapMak             = eAllocMapped | ePersistentMap | eAllowMap,
+        //mapped when allocated
+        ePersistentMapped   = 0x400,
+        eMapMak             = eAllocMapped | ePersistentMap,
 
         //check whether allocation in budget
         eWithInBudget       = 0x1000,
     };
 
     using RHIMemoryFlags = uint32_t;
-
-    enum ERHIDefragFlagBits : uint8_t
-    {
-        eNone           = 0x0,
-        eFull           = 0x1,
-        eFast           = 0x2,
-        eExtensive      = 0x4,
-    };
-    using RHIDefragFlags = uint8_t;
 
     enum
     {
@@ -71,78 +73,68 @@ namespace Shard::RHI
         MEMORY_MAX_ALLOCATIONS = 4096u,
     };
 
-    extern std::atomic_uint32_t g_allocation_counter;
-
-    FORCE_INLINE uint32_t GetMemAllocationCount() {
-        return g_allocation_counter.load();
-    }
-    FORCE_INLINE uint32_t IncrAllocationCount() {
-        return g_allocation_counter.fetch_add(1u);
-    }
-    FORCE_INLINE uint32_t DiscrAllocationCount() {
-        return g_allocation_counter.fetch_sub(1u);
-    }
-    FORCE_INLINE bool IsAllocationExceedLimit() {
-        return GetMemAllocationCount() > MEMORY_MAX_ALLOCATIONS;
-    }
-
-    struct RHIManagedMemoryCreateInfo
-    {
-        OVERLOAD_OPERATOR_NEW(RHIManagedMemoryCreateInfo);
-        enum
-        {
-            DEDICATE_FLAGS_BIT = 0x1,
-        };
-        union
-        {
-            struct
-            {
-                RHIMemoryUsage  type_;
-                RHIMemoryFlags  flags_;
-            } mem_flags_;
-            uint64_t    packed_flags_{ 0u };
-        };
-        RHISizeType    alignment_{ 0u };
-        RHISizeType    size_{ 0u }; //assume size be 2^x
-        //rhi spec user data
-        void*   user_data_{ nullptr };
-
-        FORCE_INLINE bool IsDedicated()const { return size_ & DEDICATE_FLAGS_BIT; }
-        FORCE_INLINE RHISizeType Size()const { return size_ & ~DEDICATE_FLAGS_BIT; }
-    };
-
     struct RHIManagedMemoryBlockCreateInfo
     {
+        //RHIMemoryUsage  type_{ 0u };
+        //RHIMemoryFlags  flags_{ 0u };
+        //RHISizeType prefered_size_;
     };
 
-    struct RHIManangedMemoryBlock;
+    struct RHIManagedMemoryBlock;
     struct RHIManagedMemory
     {
         OVERLOAD_OPERATOR_NEW(RHIManagedMemory);
-        RHIManangedMemoryBlock* parent_{ nullptr };
+        RHIManagedMemoryBlock* parent_{ nullptr };
         RHISizeType    offset_{ 0u };
         RHISizeType    alignment_{ 0u };
         RHISizeType    size_{ 0u }; //assume size be 2^x
-       
-        FORCE_INLINE bool IsMapped() const { return mapped_ != nullptr; }
+        void*   user_data_{ nullptr };
     };
 
-    struct RHIManangedMemoryBlock
+    FORCE_INLINE RHIManagedMemoryBlock* GetBlock(RHIManagedMemory& memory) {
+        return memory.parent_;
+    }
+
+    struct RHIManagedMemoryBlock
     {
-        OVERLOAD_OPERATOR_NEW(RHIManangedMemoryBlock);
+        OVERLOAD_OPERATOR_NEW(RHIManagedMemoryBlock);
         void*   header_{ nullptr };
         RHISizeType size_{ 0u };
+        uint32_t    map_count_{ 0u };
+        MappingHysteresis   map_hysteresis_;
         void*   rhi_mem_{ nullptr };
+        void*   mapped_{ nullptr };
     };
 
     struct RHIDedicatedMemoryBlock
     {
-        OVERLOAD_OPERATOR_NEW(RHIDedicatedMemoryBlock);
-        void* rhi_mem_;
+        RHISizeType size_{ 0u };
+        void*   rhi_mem_{ nullptr };
+        void*   mapped_{ nullptr };
+        void*   user_data_{ nullptr };
     };
 
-    struct RHIAllocationMemory
+    struct RHIAllocationCreateInfo
     {
+        enum
+        {
+            DEDICATE_FLAGS_BIT = 0x1,
+        };
+        RHIMemoryUsage  type_{ 0u };
+        RHIMemoryFlags  flags_{ 0u };
+        RHISizeType    alignment_{ 0u };
+        RHISizeType    size_{ 0u }; //assume size be 2^x
+        //rhi spec user data
+        std::shared_ptr<void>   user_data_{ nullptr };
+
+        FORCE_INLINE void MakeDedicated() { size_ &= DEDICATE_FLAGS_BIT; }
+        FORCE_INLINE bool IsDedicated()const { return size_ & DEDICATE_FLAGS_BIT; }
+        FORCE_INLINE RHISizeType Size()const { return size_ & ~DEDICATE_FLAGS_BIT; }
+    };
+
+    struct RHIAllocation
+    {
+        OVERLOAD_OPERATOR_NEW(RHIAllocation);
         union {
             struct
             {
@@ -151,10 +143,29 @@ namespace Shard::RHI
             }managed_mem_;
             RHIDedicatedMemoryBlock dedicated_mem_;
         };
+        uint32_t    is_dedicated_ : 1;
         uint64_t    last_time_stamp_{ 0u };
-        void* mapped_{ nullptr };
-        FORCE_INLINE bool IsMapped() const { return mapped_ != nullptr; }
+        RHIAllocation() {}
     };
+
+    FORCE_INLINE RHIManagedMemoryBlock* GetBlock(RHIAllocation& memory) {
+        if (!memory.is_dedicated_) {
+            return GetBlock(memory.managed_mem_.mem_);
+        }
+        return nullptr;
+    }
+    FORCE_INLINE RHISizeType GetSize(RHIAllocation& memory) {
+        if (!memory.is_dedicated_) {
+            return memory.dedicated_mem_.size_;
+        }
+        return memory.managed_mem_.mem_.size_;//todo
+    }
+
+    template<typename MemType>
+    FORCE_INLINE bool IsMapped(const MemType& mem) { return mem.mapped_ != nullptr; }
+
+    template<typename MemType>
+    FORCE_INLINE void*& GetPrivateData(MemType& mem) { return mem.user_data_; }
 
     struct RHIMemroyStatistics
     {
@@ -203,7 +214,7 @@ namespace Shard::RHI
         void* platform_spec_{ nullptr };
     };
 
-    struct RHIMemBudget
+    struct RHIMemoryBudget
     {
         RHIMemroyStatistics stat_;
 
@@ -214,8 +225,18 @@ namespace Shard::RHI
 
     struct RHIMemoryTotalBudget
     {
-        RHIMemBudget    heap_budget_[MAX_HEAP_COUNT];
+        RHIMemoryBudget heap_budget_[MAX_HEAP_COUNT];
+        RHISizeType num_ops_{ 0u };
+        uint32_t    alloc_count_{ 0u };
     };
+
+    static FORCE_INLINE RHIMemoryDetailStatistics& GetHeapMemoryDetailStatistics(RHIMemoryTotalStatistics& statistics, uint16_t heap_index) {
+        return statistics.heap_details_[heap_index];
+    }
+
+    static FORCE_INLINE RHIMemoryBudget& GetHeapMemoryBudget(RHIMemoryTotalBudget& budgets, uint16_t heap_index) {
+        return budgets.heap_budget_[heap_index];
+    }
 
     enum class EAllocateStrategy
     {
@@ -224,33 +245,49 @@ namespace Shard::RHI
     };
 
     class RHIMemoryResidencyManager;
-    class RHIManagedMeomoryBlockVector 
+    class RHIManagedMemoryBlockVector 
     {
     public:
+        OVERLOAD_OPERATOR_NEW(RHIManagedMemoryBlockVector);
         friend class RHIMemoryResidencyDefragExecutor;
-        RHIManagedMeomoryBlockVector(RHIMemoryResidencyManager* const manager, const uint32_t min_block_count, const uint32_t max_block_count,
+        RHIManagedMemoryBlockVector(RHIMemoryResidencyManager* const manager, const uint8_t heap_index, const uint32_t min_block_count, const uint32_t max_block_count,
                                      const RHISizeType preferred_block_size, const RHISizeType expected_block_size, const float priority, EAllocateStrategy algoritm);
-        void Alloc(RHISizeType size, RHIManagedMemory*& memory);
-        void DeAlloc(RHIManagedMemory* memory);
-        bool CreateBlock(RHISizeType block_size, RHIManangedMemoryBlock*& block);
-        void RemoveBlock(RHIManangedMemoryBlock* block);
+        void Alloc(RHISizeType size, RHIAllocation*& memory);
+        void PostAlloc(RHIManagedMemoryBlock& block);
+        void DeAlloc(RHIAllocation* memory);
+        void PostDeAlloc(RHIManagedMemoryBlock& block);
+        RHIManagedMemoryBlock* GetBlock(uint32_t index) { return blocks_[index]; }
+        bool CreateBlock(RHISizeType block_size, RHIManagedMemoryBlock*& block);
+        void RemoveBlock(RHIManagedMemoryBlock* block);
+        void* MapBlock(RHIManagedMemoryBlock& block);
+        void UnMapBlock(RHIManagedMemoryBlock& block);
         uint32_t GetTotalBlockCount() const { return blocks_.size(); }
         RHISizeType CalcTotalBlockSize() const;
         RHISizeType CalcMaxBlockSize()const;
+        void SetSortIncremetal(bool value) { is_sort_incremental_ = value; }
+        void IncrementalSortBlockByFreeSize();
         void SortBlocksByFreeSize();
         bool IsEmpty()const { return blocks_.empty(); }
-        ~RHIManagedMeomoryBlockVector();
+
+        //statistics
+        void AddStatistics(RHIMemroyStatistics& stats) const;
+        void AddDetailedStatistics(RHIMemoryDetailStatistics& stats) const;
+        ~RHIManagedMemoryBlockVector();
     private:
-        bool AllocFromBlock(RHIManangedMemoryBlock* block, RHISizeType size, RHISizeType alignment, RHIManagedMemory* memory);
-        bool CommitAllocationRequest(RHIManangedMemoryBlock* block, void* user_data);
+        bool AllocPage(const RHIAllocationCreateInfo& alloc_info, RHISizeType size, RHISizeType alignment, RHIAllocation*& allocation);
+        bool AllocFromBlock(RHIManagedMemoryBlock& block, RHISizeType size, RHISizeType alignment, RHIMemoryFlags flags, void* user_data, RHIManagedMemory& memory);
+        bool CommitAllocationRequest(AllocationRequest& request, RHIManagedMemoryBlock& block, RHISizeType alignment, RHIMemoryFlags flags, void* user_data, RHIManagedMemory& memory);
     private:
+        uint32_t    is_sort_incremental_ : 1;
+        uint32_t    is_explicit_size_ : 1;
+        RHISizeType preferred_block_size_{ 0u };
+
         const float priority_{ 0.f };
+        const uint8_t   heap_index_{ 0u };
         const uint32_t    min_block_count_{ 0u };
         const uint32_t    max_block_count_{ std::numeric_limits<uint32_t>::max() };
-        const RHISizeType preferred_block_size_{ 0u };
-        const RHISizeType expected_block_size_{ 0u };
         const EAllocateStrategy strategy_{ EAllocateStrategy::eTLSF };
-        SmallVector<RHIManangedMemoryBlock*> blocks_;
+        SmallVector<RHIManagedMemoryBlock*> blocks_;
         RHIMemoryResidencyManager* const manager_{ nullptr };
         mutable std::atomic_bool    lock_{ false };
     };
@@ -258,30 +295,41 @@ namespace Shard::RHI
     class RHIDedicatedMemoryBlockList
     {
     public:
+        OVERLOAD_OPERATOR_NEW(RHIDedicatedMemoryBlockList);
         friend class RHIMemoryResidencyDefragExecutor;
-        RHIDedicatedMemoryBlockList(RHIDedicatedMemoryBlockList* const manager);
+        RHIDedicatedMemoryBlockList(RHIMemoryResidencyManager* const manager, const uint8_t heap_index);
         void Alloc(RHISizeType size, RHIDedicatedMemoryBlock*& memory);
         void DeAlloc(RHIDedicatedMemoryBlock* memory);
+        void* MapBlock(RHIDedicatedMemoryBlock& block);
+        void UnMapBlock(RHIDedicatedMemoryBlock& block);
+        void SortBySize();
+        //statistics
+        void AddStatistics(RHIMemroyStatistics& stats) const;
+        void AddDetailedStatistics(RHIMemoryDetailStatistics& stats) const;
         ~RHIDedicatedMemoryBlockList();
     private:
         struct DedicateNode{
             RHIDedicatedMemoryBlock* ptr_{ nullptr };
             DedicateNode* prev_{ nullptr };
-            DedicateNode* nexet_{ nullptr };
+            DedicateNode* next_{ nullptr };
+            uint64_t last_time_stamp_{ 0u };
         };
-        DedicateNode* blocks_;
-        RHIDedicatedMemoryBlockList* const manager_{ nullptr };
-        mutable std::atomic_bool lock_{ false };
+        const uint8_t   heap_index_{ 0u };
+        DedicateNode*   blocks_{ nullptr };
+        RHIMemoryResidencyManager* const  manager_{ nullptr };
+        mutable std::atomic_bool    lock_{ false };
     };
 
     class MINIT_API RHIMemoryResidencyManager
     {
     public:
         friend class RHIMemoryResidencyDefragExecutor;
-        friend class RHIManagedMeomoryBlockVector;
+        friend class RHIManagedMemoryBlockVector;
         friend class RHIDedicatedMemoryBlockList;
 
         using Ptr = RHIMemoryResidencyManager*;
+
+        RHIMemoryResidencyManager() = default;
         
         /**
          * \brief init manager with platform special entity
@@ -293,18 +341,36 @@ namespace Shard::RHI
          * \param res_ptr
          * \return 
          */
-        virtual RHIManagedMemoryCreateInfo GetResourceResidencyInfo(RHIResource::Ptr res_ptr) const = 0;
+        virtual RHIAllocationCreateInfo GetResourceResidencyInfo(RHIResource::Ptr res_ptr) const = 0;
         virtual bool IsUMA() const { return false;  }
+        virtual bool IsMapInResourceLevel() const { return true; }
         /*for create_info has platform special user_data, so must implement this function each platform respectively*/
-        bool IsManagedMemoryCreateInfoSupported(const RHIManagedMemoryCreateInfo& create_info) const { return FindMemoryTypeIndex(create_info.mem_flags_.type_, create_info.mem_flags_.flags_) == -1; }
-        RHIDedicatedMemoryBlock* AllocDedicatedBlock(const RHIManagedMemoryCreateInfo& mem_info);
+        bool IsManagedMemoryCreateInfoSupported(const RHIAllocationCreateInfo& create_info) const { return FindMemoryTypeIndex(create_info.mem_flags_.type_, create_info.mem_flags_.flags_) == -1; }
+        /**
+         * \brief alloc a memory block according to mem_info
+         * \param memory allocation information
+         * \return memory 
+         */
+        RHIAllocation* AllocMemory(const RHIAllocationCreateInfo& mem_info);
+        /**
+         * \brief allocate dedicate memory
+         * \return dedicated memory
+         */
+        RHIAllocation* AllocDedicatedMemory(const RHIAllocationCreateInfo& mem_info);
         /**
          * \brief allocate one memory from prev alloc block,if block is nullptr, alloc one
          * \param mem_info
-         * \return memory
+         * \return managed memory
          */
-        RHIManagedMemory* AllocManagedMemory(const RHIManagedMemoryCreateInfo& mem_info);
+        RHIAllocation* AllocManagedMemory(const RHIAllocationCreateInfo& mem_info);
+
+        void DeAlloc(RHIAllocation* allcation);
+#ifdef DEBUG
+        void WriteMagicValueToAllocation(RHIAllocation& allocation, RHISizeType offset);
+        bool VerifyAllocationMagicValue(RHIAllocation& allocation) const;
+#endif
         uint32_t GetHeapCount()const { return managed_vec_.size(); }
+        virtual void MakeResident(RHIResource::Ptr res_ptr, RHIAllocation& allocation, RHISizeType offset = 0u) = 0;
         /**
          * \brief make a resource resident on managed memory
          * \param res_ptr
@@ -326,7 +392,23 @@ namespace Shard::RHI
          *\brief unbind a resource
          * \param res_ptr
          */
-        virtual void Evict(RHI::RHIResource::Ptr res_ptr) = 0;
+        virtual void Evict(RHIResource::Ptr res_ptr) = 0;
+        /**
+         * \brief map resource to cpu 
+         * \param res_ptr
+         * \return 
+         */
+        virtual void* Map(RHIResource::Ptr res_ptr) = 0;
+        /**
+         * \brief unmap resource 
+         * \param res_ptr
+         */
+        virtual void UnMap(RHIResource::Ptr res_ptr) = 0;
+        /**
+         * \brief generate platform spec information by gusss
+         * \param create_info
+         */
+        virtual void GetAllocationBackendSpecInfoApprox(RHIAllocationCreateInfo& create_info) = 0;
         virtual ~RHIMemoryResidencyManager() = default;
 
         void Tick(float time);
@@ -334,26 +416,29 @@ namespace Shard::RHI
         DISALLOW_COPY_AND_ASSIGN(RHIMemoryResidencyManager);
     protected:
         //void CommitAllocationRequst(void* private_data, RHIManagedMemory** managed_memory);
-        const RHIMemBudget& GetMemoryBudget(uint8_t heap_index) const;
-        const RHIMemoryDetailStatistics& GetMemoryStatistics(uint8_t heap_index) const;
+        RHIMemoryBudget& GetMemoryBudget(uint8_t heap_index);
+        RHIMemoryDetailStatistics& GetMemoryStatistics(uint8_t heap_index);
         virtual void CalcMemoryStatistics(RHIMemoryDetailStatistics& statistic, uint32_t heap_index) const = 0;
         virtual uint8_t FindMemoryTypeIndex(RHIMemoryUsage usage, RHIMemoryFlags) const = 0;
         virtual RHISizeType GetMemoryHeapPreferredSize(uint8_t heap_index) = 0;
-        //virtual void CalcDeviceBudget(RHIMemoryTotalBudget& budget) = 0;
+        virtual void UpdateMemoryBudget() { mem_budget_.num_ops_ = 0u; };
         virtual void* MallocRawMemory(uint32_t flags, uint64_t size, void* plat_data = nullptr, void* user_data = nullptr) = 0;
-        /**/
-        virtual void FreeRawMemory(void* memory) = 0;
+        /*raw rhi memory operation should implement*/
+        virtual void FreeRawMemory(void* memory, RHISizeType offset, RHISizeType size, void*& mapped) = 0;
+        virtual void MapRawMemory(void* memory, RHISizeType offset, RHISizeType size, uint32_t flags, void*& mapped) {};
+        virtual void UnMapRawMemory(void* memory) {};
     protected:
-        static std::atomic_bool global_lock_;
-        static Array<RHIManagedMeomoryBlockVector*, MAX_HEAP_COUNT>   dedicated_vec_; //todo d3d12 committed 
-        static Array<RHIDedicatedMemoryBlockList*, MAX_HEAP_COUNT>    managed_vec_; //todo d3d12 placed
-        static uint64_t curr_time_stamp_;
-        static uint64_t curr_frame_index_;
-        static RHIMemoryTotalBudget mem_budget_;
-        static RHIMemoryTotalStatistics mem_statistics_;
+        std::atomic_bool global_lock_;
+        Array<RHIManagedMemoryBlockVector*, MAX_HEAP_COUNT>  managed_vec_; //todo d3d12 committed 
+        Array<RHIDedicatedMemoryBlockList*, MAX_HEAP_COUNT>  dedicated_vec_; //todo d3d12 placed
+        uint64_t curr_time_stamp_;
+        uint64_t curr_frame_index_;
+        RHIMemoryTotalBudget mem_budget_;
+        RHIMemoryTotalStatistics mem_statistics_;
     };
 
-    
+#if 1//def USE_MEMORY_DEFRAG
+
     struct RHIDefragStatistics
     {
         RHISizeType moved_bytes_{ 0u };
@@ -369,20 +454,34 @@ namespace Shard::RHI
         }
     };
 
-#if 1//def USE_MEMORY_DEFRAG
+    enum ERHIDefragFlagBits : uint32_t
+    {
+        eFast       = 0x1,
+        eBalanced   = 0x2,
+        eFull       = 0x4,
+        eExtensive  = 0x8,
+        eNeedState  = eBalanced|eExtensive,
+        eMask       = eFast|eBalanced|eFull|eExtensive,
+    };
+
+    using RHIDefragFlags = uint32_t;
 
     enum class EMoveOp
     {
-        eCopy,
-        eIgnore,
-        eDestroy,
+        eCopy       = 0x1,
+        eIgnore     = 0x2,
+        eDestroy    = 0x4,
+        /*ext bits for defrag test status*/
+        ePass       = 0x8,
+        eEnd        = 0x10,
+        eStatusMask = ePass | eEnd,
     };
 
     struct DefragMove
     {
         EMoveOp op_{ EMoveOp::eCopy };
-        RHIManagedMemory* src_{ nullptr };
-        RHIManagedMemory* dst_{ nullptr };
+        RHIAllocation* src_{ nullptr };
+        RHIAllocation* tmp_dst_{ nullptr };
     };
 
     struct DefragMoveBatchInfo
@@ -394,23 +493,33 @@ namespace Shard::RHI
     class MINIT_API RHIMemoryResidencyDefragExecutor final
     {
     public:
-        enum class EFlags
-        {
-            eFast,
-            eBlance,
-            eExtensive,
-        };
         RHIMemoryResidencyDefragExecutor(RHIMemoryResidencyManager* manager);
+        ~RHIMemoryResidencyDefragExecutor();
         void BeginDefragPass(RHIMemoryResidencyManager& manager, DefragMoveBatchInfo& moves);
-        void EndDefragPass(RHIMemoryResidencyManager& manager, const DefragMoveBatchInfo& moves);
+        void EndDefragPass(RHIMemoryResidencyManager& manager, DefragMoveBatchInfo& move_info);
         RHIDefragStatistics GetDefragPassStatistics()const { return global_stats_; }
+        EMoveOp TestMoveOp(RHISizeType size) const;
+        bool UpdatePassStatus(RHISizeType move_size);
+        auto& GetMoves() { return moves_; }
+        RHISizeType GetMovesCount() const { return moves_.size(); }
+        auto* GetDefragState() { return (flags_ & ERHIDefragFlagBits::eNeedState) ? defrag_state_.get() : nullptr; }
     private:
-        RHIMemoryResidencyManager* residency_manager_{ nullptr };
+        DISALLOW_COPY_AND_ASSIGN(RHIMemoryResidencyDefragExecutor);
+        using DefragFunc = std::function<bool(RHIMemoryResidencyDefragExecutor&, RHIManagedMemoryBlockVector& vec, uint32_t index, bool update)>;
+    private:
+        RHIDefragFlags  flags_;
+        RHIMemoryResidencyManager* const residency_manager_{ nullptr };
         RHISizeType pass_max_bytes_;
         RHISizeType pass_max_allocations_;
         RHIDefragStatistics global_stats_;
         RHIDefragStatistics pass_stats_;
-        std::shared_ptr<void> defrag_state_;
+        DefragFunc  defrag_func_;
+        uint8_t max_ignore_allocs_count_;
+        uint8_t ignore_allocs_count_{ 0u };
+        uint32_t    immovavle_block_count_{ 0u };
+        std::shared_ptr<void>   defrag_state_; 
+        using DefragMoveAllocator = std::remove_pointer_t<decltype(g_rhi_allocator)>::rebind<DefragMove>::other;
+        Vector<DefragMove, DefragMoveAllocator>  moves_{ *g_rhi_allocator };
     };
 #endif
 
