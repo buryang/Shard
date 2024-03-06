@@ -2,9 +2,13 @@
 
 #include "Utils/Handle.h"
 #include "Utils/Memory.h"
+#include "Core/EngineGlobalParams.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
 #include "Graphics/Renderer/RtRenderResources.h"
 #include "Graphics/Renderer/RtRenderPass.h"
+
+
+REGIST_PARAM_TYPE(UINT, RENDER_DEFRAG_PASS, 0);
 
 namespace Shard
 {

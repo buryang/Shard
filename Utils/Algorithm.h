@@ -7,6 +7,7 @@ namespace Shard
     {
         //https://www.lenshood.dev/2021/04/19/lock-free-ring-buffer/#ring-buffer
         /**
+         * a ring buffer suitable for MPMC  
          * T: element type
          * null: object of type T, null object to fix ABA problem
          * ContainerType: backend storage type with method Set and Get

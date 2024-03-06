@@ -7,7 +7,7 @@ $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <LocalDebuggerCommandArguments>--gtest_filter="TEST_JOB_SYSTEM.*"</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>--gtest_filter="TEST_JOB_SYSTEM.*"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--gtest_filter="TEST_JOB_SYSTEM.*:TEST_MEM_ALLOCATOR.*"  </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

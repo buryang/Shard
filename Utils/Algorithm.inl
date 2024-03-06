@@ -1,14 +1,20 @@
 #include "folly/portability//Builtins.h"
 #include "Algorithm.h"
+#include <bit>
 
 namespace Shard::Utils
 {
     static inline size_type ConvertNumToPow2(size_type number) {
+#if 0 
         const auto clz = __builtin_clzll(number);
-        const auto ceil_pow = 1u << (sizeof(size_type) * 8u - clz);
-        const auto floor_pow = 1u << (sizeof(size_type) * 8u - clz - 1u);
+        const size_type ceil_pow = 1u << (sizeof(size_type) * 8u - clz);
+        const size_type floor_pow = 1u << (sizeof(size_type) * 8u - clz - 1u);
+#else
+        const auto ceil_pow = std::bit_ceil(number);
+        const auto floor_pow = std::bit_floor(number);
+#endif
         if (ceil_pow - number > number - floor_pow) {
-            return std::max(1u, floor_pow);
+            return std::max(size_type(1u), floor_pow);
         }
         return ceil_pow;
     }

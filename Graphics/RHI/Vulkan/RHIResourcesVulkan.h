@@ -22,11 +22,11 @@ namespace Shard::RHI::Vulkan
         FORCE_INLINE VulkanImage::SharedPtr GetImpl() {
             return texture_;
         }
+        bool IsTilingOptimal()const;
         ~RHITextureVulkan() { Release(); }
     private:
         friend class RHIGlobalEntityVulkan;
         VulkanImage::SharedPtr    texture_;
-        MemoryAllocation memory_;
     };
 
     class RHIBufferVulkan final : public RHIBuffer
@@ -39,8 +39,6 @@ namespace Shard::RHI::Vulkan
         void SetUp() override;
         void Release() override;
         size_t GetOccupySize() const override;
-        void* MapBackMem() override;
-        void UnMapBackMem() override;
         //only initial vulkan buffer handle
         void SetUpHandleAlone();
         void SetUpHandleMemory(const MemoryAllocation& memory);
@@ -51,6 +49,5 @@ namespace Shard::RHI::Vulkan
     private:
         friend class RHIGlobalEntityVulkan;
         VulkanBuffer::SharedPtr buffer_;
-        MemoryAllocation memory_;
     };
 }

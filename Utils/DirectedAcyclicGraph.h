@@ -6,6 +6,8 @@ namespace Shard
 {
     namespace Utils
     {
+        constexpr uint32_t INVALID_INDEX = -1u;
+
         class NodeData
         {
         public:
@@ -31,7 +33,7 @@ namespace Shard
             FORCE_INLINE uint32_t GetInEdgeCount()const { return in_edges_.size(); }
             FORCE_INLINE uint32_t GetOutEdgeCount()const { return out_edges_.size(); }
         private:
-            uint32_t                index_{ -1 };
+            uint32_t                index_{ INVALID_INDEX };
             EFlags                    flags_{ EFlags::eValid };
             SmallVector<uint32_t, 4>    in_edges_;
             SmallVector<uint32_t, 4>    out_edges_;
@@ -43,14 +45,14 @@ namespace Shard
             EdgeData(uint32_t src, uint32_t dst, uint32_t index) :src_node_(src), dst_node_(dst), index_(index) {}
             uint32_t GetSrc() const { return src_node_; }
             uint32_t GetDst() const { return dst_node_; }
-            FORCE_INLINE bool IsSrcValid() const { return src_node_ != -1; }
-            FORCE_INLINE bool IsDstValid() const { return dst_node_ != -1; }
+            FORCE_INLINE bool IsSrcValid() const { return src_node_ != INVALID_INDEX; }
+            FORCE_INLINE bool IsDstValid() const { return dst_node_ != INVALID_INDEX; }
             FORCE_INLINE bool IsValid() const { return IsSrcValid() && IsDstValid() && src_node_ != dst_node_; }
             FORCE_INLINE uint32_t GetIndex() const { return index_; }
         private:
-            uint32_t        index_{ -1 };
-            uint32_t        src_node_{ -1 };
-            uint32_t        dst_node_{ -1 };
+            uint32_t        index_{ INVALID_INDEX };
+            uint32_t        src_node_{ INVALID_INDEX };
+            uint32_t        dst_node_{ INVALID_INDEX };
         };
 
         class DirectedAcyclicGraph
@@ -58,7 +60,6 @@ namespace Shard
         public:
             using Node = NodeData;
             using Edge = EdgeData;
-            using CallBack = std::function<void(uint32_t index)>;
             DirectedAcyclicGraph() = default;
             virtual ~DirectedAcyclicGraph() {}
             void AddEdge(uint32_t src_node, uint32_t dst_node, uint32_t edge_index);
@@ -71,17 +72,39 @@ namespace Shard
             bool IsConnected(uint32_t lhs_node, uint32_t rhs_node) const;
             //delete no used node and edge
             void Truncate();
+            /**
+             * do graph topology sort
+             */
+            void Sort();
             Node* GetNode(uint32_t node_index);
             Edge* GetEdge(uint32_t edge_index);
+        private:
+            /**
+             * calc longest path distance
+             * \param src: src node
+             * \param dst: dst node
+             * \return longest path distance 
+             */
+            float LongestPath(const Node* src, const Node* dst);
+            /**
+             * \param src
+             * \param dst
+             * \return 
+             */
+            float ShortestPath(const Node* src, const Node* dst);
+            /**
+             * test whether orphan edge exist
+             */
+            bool TestEdgeOrphan()const; 
         private:
             template<class, template<typename> class>
             friend class DirectGraphVisitor;
             DISALLOW_COPY_AND_ASSIGN(DirectedAcyclicGraph);
         protected://ugly code 
-            CallBack add_edge_clk_{ [](auto) {} };
-            CallBack add_node_clk_{ [](auto) {} };
-            CallBack rm_edge_clk_{ [](auto) {} };
-            CallBack rm_node_clk_{ [](auto) {} };
+            virtual void PostAddEdge(uint32_t edge_index) {}
+            virtual void PostAddNode(uint32_t node_index) {}
+            virtual void PostRemoveEdge(uint32_t edge_index) {}
+            virtual void PostRemoveNode(uint32_t node_index) {}
         private:
             Map<uint32_t, Node>    nodes_;
             Map<uint32_t, Edge>    edges_;
@@ -117,12 +140,14 @@ namespace Shard
             }
         };
 
+        //refactor to graph iterator
         template<class Graph, template<typename> class Method>
         class DirectGraphVisitor
         {
         public:
             using Node = Graph::Node;
             using Edge = Graph::Edge;
+            using Container = Method<Node>::Container;
             DirectGraphVisitor(const Graph& graph, const Node* begin) :graph_(graph), from_(begin) {}
             Node* Next() {
                 //context stack logic
@@ -143,8 +168,8 @@ namespace Shard
                 return node;
             }
         private:
-            const Node* from_;
-            Method<Node>::Container vis_context_;
+            const Node* from_{ nullptr };
+            Container vis_context_;
             const Graph& graph_;
         };
 

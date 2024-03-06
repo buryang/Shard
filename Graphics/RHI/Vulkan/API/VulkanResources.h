@@ -43,6 +43,8 @@ namespace Shard
         FORCE_INLINE EResourceState GetState()const { return state_; }
         FORCE_INLINE uint32_t GetLevels()const { return mips_; }
         FORCE_INLINE uint32_t GetLayers()const { return layers_; }
+        FORCE_INLINE VkImageLayout GetLayout() const { return layout_; }
+        FORCE_INLINE VkImageTiling GetTiling() const { return tiling_; }
         VulkanImage& SetState(EResourceState new_state) { state_ = new_state; return *this; }
         VulkanImage& Clear(VkClearValue value, const VkImageSubresourceRange& region);
         VulkanImage& Bind(VkDeviceMemory memory, VkDeviceSize offset);
@@ -54,13 +56,15 @@ namespace Shard
         void DownloadData(VulkanCmdBuffer::SharedPtr cmd_buffer);
     private:
         friend class VulkanImageView;
-        VkImage                    handle_{VK_NULL_HANDLE};
-        VkExtent3D                dims_;
-        VkFormat                format_;
-        EResourceState            state_{ EResourceState::eUndefined };
-        uint32_t                mips_;
-        uint32_t                layers_;
-        VkSampleCountFlags        sample_count_;
+        VkImage handle_{VK_NULL_HANDLE};
+        VkExtent3D  dims_;
+        VkFormat    format_;
+        VkImageLayout   layout_{ VK_IMAGE_LAYOUT_UNDEFINED };
+        VkImageTiling   tiling_{ VK_IMAGE_TILING_LINEAR };
+        EResourceState  state_{ EResourceState::eUndefined };
+        uint32_t    mips_;
+        uint32_t    layers_;
+        VkSampleCountFlags  sample_count_;
     };
 
     class VulkanImageView

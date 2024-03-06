@@ -118,6 +118,10 @@ namespace Shard::RHI::Vulkan
         memory_ = memory;
         texture_->Bind(memory_.mem_, memory_.offset_);
     }
+    bool RHITextureVulkan::IsTilingOptimal() const
+    {
+        return !!texture_->GetTiling();
+    }
     void RHIBufferVulkan::operator=(RHIBufferVulkan&& rhs)
     {
         buffer_ = rhs.buffer_;
@@ -142,14 +146,7 @@ namespace Shard::RHI::Vulkan
     {
         return size_t(memory_.size_);
     }
-    void* RHIBufferVulkan::MapBackMem()
-    {
-        return buffer_->Map();
-    }
-    void RHIBufferVulkan::UnMapBackMem()
-    {
-        buffer_->Unmap();
-    }
+
     void RHIBufferVulkan::SetUpHandleAlone()
     {
         const auto& buffer_info = TransBufferDescToVkBufferCreateInfo(desc_);

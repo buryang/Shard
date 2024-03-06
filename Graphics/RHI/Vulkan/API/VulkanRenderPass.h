@@ -80,7 +80,7 @@ namespace Shard
                 struct RefDesc
                 {
                     uint32_t            attach_idex_{ 0 };
-                    VkImageLayout        layout_;
+                    VkImageTiling        layout_;
                 };
                 Vector<RefDesc>        input_attachs_;
                 Vector<RefDesc>        color_attachs_;

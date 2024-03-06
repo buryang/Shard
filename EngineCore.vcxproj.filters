@@ -131,6 +131,8 @@
     <ClCompile Include="System\DebugView\DebugViewSystem.cpp" />
     <ClCompile Include="Graphics\Effect\PostProcess\EffectDepthOfField.cpp" />
     <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
+    <ClCompile Include="Graphics\RHI\RHIMemoryResidency.cpp" />
+    <ClCompile Include="Graphics\RHI\Vulkan\RHIMemoryResidencyVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene\Scene.h">
@@ -272,6 +274,8 @@
     <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
     <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
     <ClInclude Include="Graphics\RHI\RHICommonUtils.h" />
+    <ClInclude Include="Graphics\RHI\RHIMemoryResidency.h" />
+    <ClInclude Include="Graphics\RHI\Vulkan\RHIMemoryResidencyVulkan.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utils\DirectedAcyclicGraph.cpp">
@@ -294,6 +298,8 @@
     <None Include="Shaders\Lighting\LTC.hlsli" />
     <None Include="Shaders\DebugView\DebugViewCommon.hlsli" />
     <None Include="Shaders\Math.hlsli" />
+    <None Include="Shaders\ShaderPrintf.hlsli" />
+    <None Include="Shaders\ShaderAssert.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />

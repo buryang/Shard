@@ -35,18 +35,18 @@ namespace Shard
             eNonUAV = ~eUAV,
         };
 
-        /*buffer use texturelayout width to represent size*/
-        struct TextureLayout {
+        /*buffer use textureTiling width to represent size*/
+        struct TextureTiling {
             uint32_t    width_{ 0 };
             uint32_t    height_{ 0 };
             uint32_t    depth_{ 0 };
             uint32_t    mip_slices_{ 1 };
             uint32_t    array_slices_{ 1 };
             uint32_t    plane_slices_{ 1 };
-            FORCE_INLINE bool operator==(const TextureLayout& rhs)const {
+            FORCE_INLINE bool operator==(const TextureTiling& rhs)const {
                 return !std::memcmp(this, &rhs, sizeof(*this));
             }
-            FORCE_INLINE bool operator!=(const TextureLayout& rhs)const {
+            FORCE_INLINE bool operator!=(const TextureTiling& rhs)const {
                 return !(*this == rhs);
             }
         };
@@ -69,9 +69,9 @@ namespace Shard
             uint32_t    layers_{ 1 };
             uint32_t    base_plane_{ 0 };
             uint32_t    planes_{ 1 };
-            explicit TextureSubRange(const TextureLayout& layout): mips_(layout.mip_slices_),layers_(layout.array_slices_),
+            explicit TextureSubRange(const TextureTiling& layout): mips_(layout.mip_slices_),layers_(layout.array_slices_),
                                                                    planes_(layout.plane_slices_){}
-            bool IsWholeRange(const TextureLayout& layout)const{
+            bool IsWholeRange(const TextureTiling& layout)const{
                 return base_mip_ == 0 && base_layer_ == 0
                     && base_plane_ == 0 && mips_ == layout.mip_slices_
                     && layers_ == layout.array_slices_ && planes_ == layout.plane_slices_;
@@ -224,7 +224,7 @@ namespace Shard
             EType GetType()const;
             const String& GetName()const;
             const String& GetParentName()const;
-            const TextureLayout& GetLayout()const;
+            const TextureTiling& GetLayout()const;
             const TextureSubField& GetSubField()const;
             const TextureSubRange& GetSubRange()const;
             EPixFormat GetPixFormat()const;
@@ -256,7 +256,7 @@ namespace Shard
             bool    is_transiant_{ false };
             bool    is_cross_queue_{ false };
             uint32_t    sample_count_{ 1 };
-            TextureLayout    layout_;
+            TextureTiling    layout_;
             union {
                 /*texture range current field used*/
                 TextureSubRange    texture_sub_range_;

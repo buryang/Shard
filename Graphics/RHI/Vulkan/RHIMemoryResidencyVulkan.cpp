@@ -94,9 +94,9 @@ namespace Shard::RHI::Vulkan
         allocation = nullptr;
     }
 
-    void* RHIMemoryResidencyManagerVulkan::Map(RHIResource::Ptr res_ptr)
+    void* RHIMemoryResidencyManagerVulkan::Map(RHIResource::Ptr res_ptr,  RHIAllocation* allocation)
     {
-        auto* allocation = res_ptr->GetBindMemory();
+        assert(allocation != nullptr);
         if (!allocation->is_map_allowed_) {
             return nullptr;
         }
@@ -113,9 +113,9 @@ namespace Shard::RHI::Vulkan
         }
     }
 
-    void RHIMemoryResidencyManagerVulkan::UnMap(RHIResource::Ptr res_ptr)
+    void RHIMemoryResidencyManagerVulkan::UnMap(RHIResource::Ptr res_ptr, RHIAllocation* allocation)
     {
-        auto* allocation = res_ptr->GetBindMemory();
+        assert(allocation != nullptr);
         if (!allocation->is_map_allowed_) {
             return;
         }

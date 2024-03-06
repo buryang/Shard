@@ -23,7 +23,7 @@ namespace Shard::RHI::Vulkan {
         RHIResourceHandle WriteBuffer(RHIBuffer::Ptr buffer)override;
         RHIResourceHandle WriteTexture(RHITexture::Ptr texture)override;
         void Notify(const RHINotifyHeader& header, const Span<uint8_t>& notify_data)override;
-        FORCE_INLINE VkPipelineLayout GetPipelineLayout()const {
+        FORCE_INLINE VkPipelineTiling GetPipelineTiling()const {
             return pipeline_layout_;
         }
         FORCE_INLINE uint32_t GetDescriptorSetCount()const {
@@ -37,7 +37,7 @@ namespace Shard::RHI::Vulkan {
         }
     private:
         uint32_t GetDescriptorHeapIndex(uint32_t tag_flags);
-        void CreateDescriptorHeap(const RHIBindLessTableInitializer::Member& desc, VulkanPipelineLayoutDesc& pipe_desc);
+        void CreateDescriptorHeap(const RHIBindLessTableInitializer::Member& desc, VulkanPipelineTilingDesc& pipe_desc);
     private:
         Map<uint32_t, uint32_t>    tag_set_index_;
         struct HeapData {
@@ -45,6 +45,6 @@ namespace Shard::RHI::Vulkan {
             VulkanDescriptorSet::SharedPtr set_;
         };
         SmallVector<HeapData> descriptor_heaps_;
-        VkPipelineLayout    pipeline_layout_;
+        VkPipelineTiling    pipeline_layout_;
     };
 }

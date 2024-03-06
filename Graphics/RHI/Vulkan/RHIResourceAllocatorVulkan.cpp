@@ -472,17 +472,17 @@ namespace Shard::RHI::Vulkan {
     {
         return mem_props_.memoryTypes[mem_type].heapIndex;
     }
-    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapBudget(uint32_t heap_index) const
+    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapBudget(uint32_t pool_index) const
     {
-        return heap_infos_[heap_index].total_size_;
+        return heap_infos_[pool_index].total_size_;
     }
-    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapUsage(uint32_t heap_index) const
+    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapUsage(uint32_t pool_index) const
     {
-        return heap_infos_[heap_index].used_size_;
+        return heap_infos_[pool_index].used_size_;
     }
-    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapPeakUsage(uint32_t heap_index) const
+    VkDeviceSize RHIDeviceMemoryStateCounter::GetHeapPeakUsage(uint32_t pool_index) const
     {
-        return heap_infos_[heap_index].peak_size_;
+        return heap_infos_[pool_index].peak_size_;
     }
     uint32_t RHIDeviceMemoryStateCounter::GetAllocCount() const
     {

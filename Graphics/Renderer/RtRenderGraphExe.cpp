@@ -62,7 +62,7 @@ namespace Shard
         }
 
         template<typename State>
-        static void InitAllTextureSubStates(const TextureLayout& layout, const State& init_state, SmallVector<TextureSubFieldState>& states) {
+        static void InitAllTextureSubStates(const TextureTiling& layout, const State& init_state, SmallVector<TextureSubFieldState>& states) {
             const auto states_count = TextureSubRange(layout).GetSubRangeIndexCount();
             states.resize(states_count);
             for (auto n = 0; n < states_count; ++n) {

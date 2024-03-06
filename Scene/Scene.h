@@ -127,10 +127,10 @@ namespace Shard
                 SharedPtr GetPtr() {
                     return shared_from_this();
                 }
-                operator Utils::Entity() {
+                explicit operator Utils::Entity() {
                     return entity_;
                 }
-                operator bool() {
+                explicit operator bool() {
                     return bool(entity_);
                 }
                 template<typename Component, typename ...Args>

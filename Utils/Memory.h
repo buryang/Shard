@@ -475,15 +475,17 @@ namespace Shard
 
         enum
         {
-            POOL_DEFAULT_ID        = 0x0u,
+            POOL_DEFAULT_ID         = 0x0,
 #ifdef USE_UNIFORM_POOL
-            POOL_JOBSYSTEM_ID = POOL_DEFAULT_ID,
-            POOL_RHI_ID = POOL_DEFAULT_ID,
+            POOL_JOBSYSTEM_ID       = POOL_DEFAULT_ID,
+            POOL_RHI_ID             = POOL_DEFAULT_ID,
 #else
-            // GUID first 32bit for static pool allocator ID
-            POOL_JOBSYSTEM_ID   = 0x09CD85C7,
-            POOL_RHI_ID         = 0xA14FB580,
+            POOL_JOBSYSTEM_ID       = 0x1,
+            POOL_RHI_ID             = 0x2,
 #endif
+            POOL_NUM,
+            //to avoid conflict; you'd better  use 
+            //GUID first 32bit for static pool allocator ID
         };
 
         //one stateful scalable dynamic pool allocator

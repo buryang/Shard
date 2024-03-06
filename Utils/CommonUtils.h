@@ -1,8 +1,10 @@
 #pragma once
 
-#if __cplusplus < 202002L
+#if (defined(_MSVC_LANG) && _MSVC_LANG < 202002L) ||  __cplusplus < 202002L
     #error only support c++ version above c++20
 #endif 
+
+ 
 
 #ifdef _MSC_VER
     #define MINIT_API __declspec(dllexport)
@@ -13,8 +15,15 @@
 
 
 #define FORCE_INLINE    __forceinline 
+#ifdef _WIN32
+#define FORCE_NONINLINE __declspec(nonline)
+#else
+#define FORCE_NONINLINE __attribute__((noinline))
+#endif
 #define ALIGN_AS(align)    alignas(align) 
 #define ALIGN_CACHELINE alignas(std::hardware_destructive_interference_size)
+
+#define FALL_THROUGH [[fallthrough]]
 
 #pragma warning(push)
 #pragma warning(disable:4996)
@@ -49,6 +58,7 @@
 #include <memory>
 #include <algorithm>
 #include <cassert>
+#include <bit>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -193,11 +203,11 @@ namespace Shard::Utils {
     template <typename T>
     requires std::is_integral_v<T>
         static inline constexpr bool IsPow2(T x) {
-        return (x & (x - 1)) == 0;
+        return (x & (x - 1)) == 0u;
     }
 
     template<typename T, typename U>
-    requires std::is_integral_v<T>&& std::is_integral_v<U>
+    requires std::is_integral_v<T> && std::is_integral_v<U>
         static inline constexpr T AlignDown(T val, U alignment) {
         return val & (~static_cast<T>(alignment - 1));
     }
@@ -206,6 +216,38 @@ namespace Shard::Utils {
     requires std::is_integral_v<T>&& std::is_integral_v<U>
         static inline constexpr T AlignUp(T val, U alignment) {
         return (val + alignment - 1) & ~(static_cast<T>(alignment - 1));
+    }
+
+    template<typename T>
+    FORCE_INLINE constexpr T RoundDiv(T x, T y) {
+        return (x + y / (T)2) / y; 
+    }
+    
+    template<typename T>
+    concept Integer = std::is_integral_v<T>;
+
+    FORCE_INLINE constexpr uint8_t BitScanLSB(Integer auto mask)
+    {
+        if (mask) {
+            return static_cast<uint8_t>(std::countr_zero(sz));
+        }
+        return UINT8_MAX;
+    }
+
+    FORCE_INLINE constexpr uint8_t BitScanMSB(Integer auto mask)
+    {
+        if (mask) {
+            return sizeof(Integer) * 8 - 1 - static_cast<uint8_t>(std::countl_zero(mask));
+        }
+        return UINT8_MAX;
+    }
+
+    FORCE_INLINE constexpr bool IsPowOf2(Integer auto num) {
+        return (num & (num - 1)) == 0;
+    }
+
+    FORCE_INLINE constexpr uint8_t CountBits(Integer auto mask) {
+        return std::popcount(mask);
     }
 
     template<class AtomicBOOL = std::atomic_bool>
@@ -235,6 +277,43 @@ namespace Shard::Utils {
     private:
         static constexpr uint32_t max_spin_count = 40u;
         AtomicBOOL& sign_;
+    };
+
+    class MagicSpinLock
+    {
+    public:
+        static constexpr uint32_t max_spin_count = 40u;
+        static constexpr std::uintptr_t magic_value = std::numeric_limits<std::uintptr_t>::max();
+
+        MagicSpinLock(std::atomic<std::uintptr_t>& sign, std::uintptr_t val):sign_(sign){
+            assert(val != 0ull);
+            if(IsEnabled()){
+                for (;;) {
+                    auto expcected = magic_value;
+                    if (LIKELY(sign_.compare_exchange_weak(expected, val, std::memory_order::acquire))) {
+                        return;
+                    }
+                    auto spin_count = max_spin_count;
+                    while (--spin_count > 0 && !sign_.load(std::memory_order::relaxed)) {
+                        _mm_pause();
+                    }
+                    //slow lock
+                    if (UNLIKELY(!spin_count)) {
+                        std::this_thread::yield();
+                    }
+                }
+            }
+        }
+        ~MagicSpinLock() {
+            if (IsEnabled()) {
+                sign_.store(magic_value, std::memory_order::release);
+            }
+        }
+        bool IsEnabled() {
+            return sign_.load(std::memory_order_acq_rel) != (std::uintptr_t)0;
+        }
+    private:
+        std::atomic<std::uintptr_t>& sign_;
     };
 
     //string/wstring conver helper

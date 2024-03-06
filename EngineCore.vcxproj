@@ -38,7 +38,9 @@
     <ClCompile Include="Graphics\Renderer\RtRenderShaderArchive.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderFactory.cpp" />
     <ClCompile Include="Graphics\Renderer\RtRenderShaderParameters.cpp" />
+    <ClCompile Include="Graphics\RHI\RHIMemoryResidency.cpp" />
     <ClCompile Include="Graphics\RHI\RHIResourceBinding.cpp" />
+    <ClCompile Include="Graphics\RHI\Vulkan\RHIMemoryResidencyVulkan.cpp" />
     <ClCompile Include="System\App\CameraSystem.cpp" />
     <ClCompile Include="System\DebugView\DebugViewSystem.cpp" />
     <ClCompile Include="System\Render\RenderSystem.cpp" />
@@ -109,6 +111,8 @@
     <ClInclude Include="Graphics\Renderer\RtRenderShaderArchive.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderFactory.h" />
     <ClInclude Include="Graphics\RHI\RHICommonUtils.h" />
+    <ClInclude Include="Graphics\RHI\RHIMemoryResidency.h" />
+    <ClInclude Include="Graphics\RHI\Vulkan\RHIMemoryResidencyVulkan.h" />
     <ClInclude Include="Renderer\RtRenderShaderMacros.h" />
     <ClInclude Include="Graphics\Renderer\RtRenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
@@ -187,6 +191,8 @@
     <None Include="Shaders\Lighting\LTC.hlsli" />
     <None Include="Shaders\Material.hlsli" />
     <None Include="Shaders\Math.hlsli" />
+    <None Include="Shaders\ShaderAssert.hlsli" />
+    <None Include="Shaders\ShaderPrintf.hlsli" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
@@ -353,7 +359,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/Zc:externConstexpr</AdditionalOptions>
+      <AdditionalOptions>/Zc:externConstexpr /Zc:__cplusplus</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -373,7 +379,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/Zc:externConstexpr</AdditionalOptions>
+      <AdditionalOptions>/Zc:externConstexpr /Zc:__cplusplus</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

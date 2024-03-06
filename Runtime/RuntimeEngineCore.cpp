@@ -9,6 +9,13 @@ namespace fs = std::filesystem;
 namespace Shard
 {
     namespace Runtime {
+
+        //regist jobsystem configure
+        REGIST_PARAM_TYPE(UINT, JOBSYS_GRP_COUNT, 0u);
+        REGIST_PARAM_TYPE(UINT, JOBSYS_QUEUE_SIZE, 16u);
+        REGIST_PARAM_TYPE(BOOL, JOBSYS_DEDICATE_CORE, false);
+
+        //regist system configure
         REGIST_PARAM_TYPE(BOOL, SYSTEM_AFFINITY_AUTO, true);
         REGIST_PARAM_TYPE(UINT, SYSTEM_PHYX_AFFINITY, 0xFFFFFFFF);
         REGIST_PARAM_TYPE(UINT, SYSTEM_APP_AFFINITY, 0xFFFFFFFF);
@@ -43,9 +50,15 @@ namespace Shard
                 InitPlatformSpecAffinity();
             }
             //init jobsystem
-            const auto cpu_core = std::thread::hardware_concurrency();
-            constexpr auto queue_size = 8u; //todo
-            Utils::SimpleJobSystem::Instance().Init(cpu_core, queue_size, true);
+            auto cpu_core = std::thread::hardware_concurrency();
+            if (auto cores = GET_PARAM_TYPE_VAL(UINT, JOBSYS_GRP_COUNT)) {
+                cpu_core = cores;
+            }
+            auto queue_size = GET_PARAM_TYPE_VAL(UINT, JOBSYS_QUEUE_SIZE);
+            Utils::SimpleJobSystem::Instance().Init(cpu_core, queue_size, GET_PARAM_TYPE_VAL(BOOL, JOBSYS_DEDICATE_CORE));
+
+            //init work systems
+
         
         }
         void Engine::UnInit()

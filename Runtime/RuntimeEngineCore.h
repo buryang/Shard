@@ -40,16 +40,16 @@ namespace Shard
             void ResetTimeStatistics();
             //Renderer::
         private:
-            Utils::JobEntry::Ptr prev_render_{ nullptr };
-            Utils::WindowHandle    window_{ nullptr };
+            Utils::JobEntry*    prev_render_{ nullptr };
+            Utils::WindowHandle window_{ nullptr };
             bool    is_suspended_{ false };
         protected:
-            double    delta_time_{ 0.f };
-            float    acc_delta_time_{ 0.f };
-            float    average_delta_time_{ 0.f };
-            size_type    curr_frame_{ 0u };
+            double  delta_time_{ 0.f };
+            float   acc_delta_time_{ 0.f };
+            float   average_delta_time_{ 0.f };
+            size_type   curr_frame_{ 0u };
             //global internal allocator for whole engine
-            Utils::StackAllocator<void>    frame_transient_alloc_;
+            Utils::StackAllocator<void> frame_transient_alloc_;
             Utils::LinearAllocator<void>    persist_alloc_;
             Scene::WorldScene::Ptr    world_{ nullptr };
             

@@ -19,8 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="TestRHIInterface.cpp" />
     <ClCompile Include="Test\main.cpp" />
     <ClCompile Include="Test\TestJobSystem.cpp" />
+    <ClCompile Include="Test\TestMemAllocator.cpp" />
+    <ClCompile Include="Test\TestRenderGraph.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -87,12 +90,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>D:\VulkanSDK\1.2.162.0\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\Source\MetaInit;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib</LibraryPath>
+    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib;$(LibraryPath);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>D:\VulkanSDK\1.2.162.0\Include;D:\vcpkg\installed\x64-windows\include;D:\Exp\Source\MetaInit;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib</LibraryPath>
+    <LibraryPath>D:\vcpkg\installed\x64-windows\lib;D:\VulkanSDK\1.2.162.0\Lib;;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -128,21 +131,24 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NOMINMAX;USE_STD_COROUTINE;EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NOMINMAX;USE_STD_COROUTINE;EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <EnableModules>true</EnableModules>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <EnableModules>false</EnableModules>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalOptions>/Zc:__cplusplus  %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>gtest.lib;assimp-vc142-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>EASTL.lib;user32.lib</AdditionalDependencies>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>
-      <Command>copy D:\Exp\MetaInit\Externals\Assimp\bin\*.dll x64\Release\.</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -158,13 +164,14 @@
       <EnableModules>true</EnableModules>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3dll.lib;gtest.lib;assimp-vc142-mt.lib;volk.lib;abseil_dll.lib;folly.lib;MetaInit.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>eastl.lib</AdditionalDependencies>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent>

@@ -66,10 +66,10 @@ namespace Shard
     };
 
     //like dxr RootSignature
-    struct VulkanPipelineLayoutDesc
+    struct VulkanPipelineTilingDesc
     {
-        using ThisType = VulkanPipelineLayoutDesc;
-        VkPipelineLayoutCreateFlags    flags_{ 0x0 };
+        using ThisType = VulkanPipelineTilingDesc;
+        VkPipelineTilingCreateFlags    flags_{ 0x0 };
         SmallVector<VkPushConstantRange>    push_consts_;
         SmallVector<VkDescriptorSetLayout>    set_layouts_;
         //fixme with this
@@ -95,8 +95,8 @@ namespace Shard
         FORCE_INLINE static bool IsPushConstantRangeValid(const VkPushConstantRange& range) {
             return range.offset&0x3==0 && range.size&0x3==0;
         }
-        FORCE_INLINE VkPipelineLayoutCreateInfo ToVulkan() const {
-            VkPipelineLayoutCreateInfo create_info{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+        FORCE_INLINE VkPipelineTilingCreateInfo ToVulkan() const {
+            VkPipelineTilingCreateInfo create_info{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
             create_info.pNext = VK_NULL_HANDLE;
             create_info.flags = flags_;
             create_info.setLayoutCount = set_layouts_.size();

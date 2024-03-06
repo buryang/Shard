@@ -79,9 +79,9 @@ namespace Shard::RHI::Vulkan
         void Tick(float time);
         VkDeviceSize GetTotalMemorySize(bool is_gpu) const;
         uint32_t GetHeapIndexForMemType(uint32_t mem_type) const;
-        VkDeviceSize GetHeapBudget(uint32_t heap_index) const;
-        VkDeviceSize GetHeapUsage(uint32_t heap_index) const;
-        VkDeviceSize GetHeapPeakUsage(uint32_t heap_index) const;
+        VkDeviceSize GetHeapBudget(uint32_t pool_index) const;
+        VkDeviceSize GetHeapUsage(uint32_t pool_index) const;
+        VkDeviceSize GetHeapPeakUsage(uint32_t pool_index) const;
         uint32_t GetAllocCount() const;
         bool InCreAllocCount();
     private:

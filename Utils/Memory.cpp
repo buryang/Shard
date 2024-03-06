@@ -1,5 +1,6 @@
 #include "folly/portability//Builtins.h"
 #include "Utils/Memory.h"
+#include <bit>
 
 namespace Shard::Utils
 {
@@ -408,12 +409,13 @@ namespace Shard::Utils::MemoryPool
             }
             return true;
         }
-
+        /*
         static inline size_type ConvertNumToPow2(size_type number) {
             const auto clz = __builtin_clzll(number);
             const auto ceil_pow = 1 << (sizeof(size_t) * 8u - clz);
             return ceil_pow;
         }
+        */
 
         ScalablePool::ScalablePool() noexcept
         {
@@ -429,7 +431,7 @@ namespace Shard::Utils::MemoryPool
                 return ::operator new(size);
             }
 
-            const auto align_size = ConvertNumToPow2(size);
+            const auto align_size = std::bit_ceil(size);
             for (auto& bucket : buckets_) {
                 if (bucket.blk_size_ == align_size) {
                     return bucket.allocate(size);
@@ -443,7 +445,7 @@ namespace Shard::Utils::MemoryPool
             if (size > PoolBucketInfo<SCALABLE_BUCKET_FAKE_ID>::MaxSize) {
                 ::operator delete(ptr);
             }
-            const auto align_size = ConvertNumToPow2(size);
+            const auto align_size = std::bit_ceil(size);
             for (auto& bucket : buckets_) {
                 if (bucket.blk_size_ == align_size) {
                     return bucket.deallocate(ptr, size);
@@ -455,7 +457,7 @@ namespace Shard::Utils::MemoryPool
             if (size > PoolBucketInfo<SCALABLE_BUCKET_FAKE_ID>::MaxSize) {
                 ::operator delete(ptr);
             }
-            const auto align_size = ConvertNumToPow2(size);
+            const auto align_size = std::bit_ceil(size);
             for (auto& bucket : buckets_) {
                 if (bucket.blk_size_ == align_size) {
                     return bucket.deallocate_external(ptr, size);

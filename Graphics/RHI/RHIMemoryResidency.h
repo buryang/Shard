@@ -475,25 +475,25 @@ namespace Shard::RHI
          * \param memory allocation information
          * \return memory 
          */
-        RHIAllocation* AllocMemory(const RHIAllocationCreateInfo& mem_info);
+        [[nodiscard]]RHIAllocation* AllocMemory(const RHIAllocationCreateInfo& mem_info);
         /**
          * \brief create memory batch of same mem_info
          * \param mem_info
          * \param count allocation count need to allocate
          * \return 
          */
-        RHIAllocation* AllocMemoryBatch(const RHIAllocationCreateInfo& mem_info, uint32_t count);
+        [[nodiscard]]RHIAllocation* AllocMemoryBatch(const RHIAllocationCreateInfo& mem_info, uint32_t count);
         /**
          * \brief allocate dedicate memory
          * \return dedicated memory
          */
-        RHIAllocation* AllocDedicatedMemory(const RHIAllocationCreateInfo& mem_info);
+        [[nodiscard]]RHIAllocation* AllocDedicatedMemory(const RHIAllocationCreateInfo& mem_info);
         /**
          * \brief allocate one memory from prev alloc block,if block is nullptr, alloc one
          * \param mem_info
          * \return managed memory
          */
-        RHIAllocation* AllocManagedMemory(const RHIAllocationCreateInfo& mem_info);
+        [[nodiscard]]RHIAllocation* AllocManagedMemory(const RHIAllocationCreateInfo& mem_info);
         /*
         * \brief return true if multithread supported inner
         */
@@ -531,15 +531,15 @@ namespace Shard::RHI
         virtual void Evict(RHIResource::Ptr res_ptr) = 0;
         /**
          * \brief map resource to cpu 
-         * \param res_ptr
+         * \param res_ptr:resource pointer to map, allocation: allocation pointer
          * \return 
          */
-        virtual void* Map(RHIResource::Ptr res_ptr) = 0;
+        virtual void* Map([[maybe_unused]] RHIResource::Ptr res_ptr, [[maybe_unused]] RHIAllocation* allocation) = 0;
         /**
          * \brief unmap resource 
-         * \param res_ptr
+         * \param res_ptr:resource pointer to map, allocationL allocation pointer 
          */
-        virtual void UnMap(RHIResource::Ptr res_ptr) = 0;
+        virtual void UnMap([[maybe_unused]] RHIResource::Ptr res_ptr, [[maybe_unused]] RHIAllocation* allocation) = 0;
         /**
          * \brief generate platform spec information by gusss
          * \param create_info
@@ -559,10 +559,10 @@ namespace Shard::RHI
         virtual uint8_t FindMemoryPoolIndex(RHIMemoryUsage usage, RHIMemoryFlags flags, void* user_data = nullptr) const = 0;
         virtual RHISizeType GetMemoryPoolPreferredSize(uint8_t pool_index) = 0;
         virtual void UpdateMemoryBudget() { mem_budget_.num_ops_ = 0u; };
-        virtual void* MallocRawMemory(uint32_t pool_index, uint64_t size, float priority, void* plat_data = nullptr, void* user_data = nullptr) = 0;
+        virtual void* MallocRawMemory(uint32_t pool_index, uint64_t size, float priority, [[maybe_unused]] void* plat_data = nullptr, [[maybe_unused]] void* user_data = nullptr) = 0;
         /*raw rhi memory operation should implement*/
-        virtual void FreeRawMemory(void* memory, RHISizeType offset, RHISizeType size, void*& mapped) = 0;
-        virtual void MapRawMemory(void* memory, RHISizeType offset, RHISizeType size, uint32_t flags, void*& mapped) {};
+        virtual void FreeRawMemory(void* memory, RHISizeType offset, RHISizeType size, [[maybe_unused]] void*& mapped) = 0;
+        virtual void MapRawMemory(void* memory, RHISizeType offset, RHISizeType size, uint32_t flags, [[maybe_unused]] void*& mapped) {};
         virtual void UnMapRawMemory(void* memory) {};
     protected:
         std::atomic<std::uintptr_t> global_lock_{ 0ull };

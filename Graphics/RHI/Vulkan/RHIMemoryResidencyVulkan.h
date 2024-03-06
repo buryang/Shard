@@ -24,8 +24,8 @@ namespace Shard::RHI::Vulkan
         void MakeResident(RHIResource::Ptr res_ptr, RHIManagedMemory& managed_mem, RHISizeType offset) override;
         void MakeResident(RHIResource::Ptr res_ptr, RHIDedicatedMemoryBlock& dedicated_mem) override;
         void Evict(RHIResource::Ptr res_ptr) override;
-        void* Map(RHIResource::Ptr res_ptr) override;
-        void UnMap(RHIResource::Ptr res_ptr) override;
+        void* Map(RHIResource::Ptr res_ptr, RHIAllocation* allocation) override;
+        void UnMap(RHIResource::Ptr res_ptr, RHIAllocation* allocation) override;
         void GetAllocationBackendSpecInfoApprox(RHIAllocationCreateInfo& create_info) override;
     protected:
         RHISizeType CalcPreferredBlockSizeHint(uint16_t pool_index)const;

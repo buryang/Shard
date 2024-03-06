@@ -8,7 +8,7 @@ namespace Shard
         class Handle final
         {
         public:
-            explicit Handle(uint32_t index = 0, uint8_t generation=0) : index_(index), generation_(generation) {}
+            explicit Handle(uint32_t index = 0, uint8_t generation=0)noexcept : index_(index), generation_(generation) {}
             bool IsValid()const { return generation_ != 0; }
             uint32_t Index()const { return index_; }
             uint8_t    Generation()const { return generation_; }
