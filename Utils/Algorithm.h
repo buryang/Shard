@@ -80,6 +80,253 @@ namespace Shard
                 return ele;
             }
         };
+
+        template<typename Traits>
+        concept IntrusiveListTraitsConcept = requires{
+            typename Traits::ItemType;
+        }&& requires (const typename Traits::ItemType* ele) {
+                { Traits::GetPrev(ele) }->std::same_as<const typename Traits::ItemType*>;
+                { Traits::GetNext(ele) }->std::same_as<const typename Traits::ItemType*>;
+        }&& requires (typename Traits::ItemType* ele) {
+                { Traits::AccessPrev(ele) }->std::same_as<typename Traits::ItemType*&>;
+                { Traits::AccessNext(ele) }->std::same_as<typename Traits::ItemType*&>;
+        };
+
+        template<typename T>
+        requires std::is_same_v<decltype(std::declval<T>().prev_), decltype(std::declval<T>().next_)> //check whether has member prev_ & next_
+        struct DefaultIntrusiveListTraits
+        {
+            using ItemType = T;
+            using Pointer = ItemType*;
+            static const Pointer GetPrev(const Pointer ptr) {
+                return ptr->prev_;
+            }
+            static const Pointer GetNext(const Pointer ptr) {
+                return ptr->next_;
+            }
+            static Pointer& AccessPrev(Pointer ptr) {
+                return ptr->prev_;
+            }
+            static Pointer& AccessNext(Pointer ptr) {
+                return ptr->next_;
+            }
+        };
+        
+        template<IntrusiveListTraitsConcept Traits, typename ItemType>
+        class InstrusiveLinkedListIterator
+        {
+        public:
+            using value_type = ItemType;
+            using pointer = ItemType*;
+            using reference = value_type&;
+            using iterator_category = std::bidirectional_iterator_tag;
+        public:
+            InstrusiveLinkedListIterator() = default;
+            explicit InstrusiveLinkedListIterator(pointer ptr) :item_ptr_(ptr) {}
+            template<typename U>
+            explicit InstrusiveLinkedListIterator(const InstrusiveLinkedListIterator<Traits, U>& other) : item_ptr_(other.item_ptr) {}
+            reference operator*() { return *iterm_ptr_; }
+            pointer operator->() { return iterm_ptr_; }
+            auto& operator++() {
+                assert(item_ptr_ != nullptr);
+                if constexpr(requires std::is_const<value_type>) {
+                    item_ptr_ = Traits::GetNext(item_ptr_);
+                }
+                else
+                {
+                    item_ptr_ = Traits::AccessNext(item_ptr);
+                }
+                return *this;
+            }
+            auto operator++(int) {
+                auto temp = *this;
+                ++*this;
+                return temp;
+            }
+            auto& operator--() {
+                assert(item_ptr_ != nullptr);
+                if constexpr (requires std::is_const<value_type>) {
+                    item_ptr_ = Traits::GetPrev(item_ptr_);
+                }
+                else
+                {
+                    item_ptr_ = Traits::AccessPrev(item_ptr_);
+                }
+                return *this;
+            }
+            auto operator--(int) {
+                auto temp = *this;
+                --*this;
+                return temp;
+            }
+            bool operator==(const auto& rhs)const {
+                return item_ptr_ == rhs.item_ptr_;
+            }
+            bool operator!=(const auto& rhs)const {
+                return !(*this == rhs);
+            }
+        private:
+            pointer item_ptr_{ nullptr };
+        };
+        
+        //this core merged from vk_mem_allocator.h
+        template<IntrusiveListTraitsConcept Traits, template<typename, typename> class IteratorType = InstrusiveLinkedListIterator>
+        class IntrusiveLinkedList
+        {
+        public:
+            using ItemType = Traits::ItemType;
+            using Iterator = IteratorType<Traits, ItemType>;
+            using ConstIterator = IteratorType<Traits, const IteratorType>;
+        public:
+            IntrusiveLinkedList() = default;
+            ~IntrusiveLinkedList() { assert(empty()); }
+            /*stl interface*/
+            Iterator begin() {
+                return { Front(); }
+            }
+            ConstIterator cbegin()const {
+                return { Front() };
+            }
+            Iterator end() {
+                return { Back() };
+            }
+            ConstIterator cend()const {
+                return { Back() };
+            }
+            ItemType* front() {
+                return front_;
+            }
+            ItemType* back() {
+                return back_;
+            }
+            void push_back(ItemType* item) {
+                if (empty()) {
+                    front_ = item;
+                    back_ = item;
+                    Traits::AccessPrev(item) = nullptr;//
+                }
+                else {
+                    Traits::AccessNext(back_) = item;
+                    Traits::AccessPrev(item) = std::exchange(back_, item);
+                }
+                Traits::AccessNext(item) = nullptr;//
+                ++size_;
+            }
+            void push_front(ItemType* item) {
+                if (empty()) {
+                    front_ = item;
+                    back_ = item;
+                    Traits::AccessNext(item) = nullptr;//
+                }
+                else {
+                    Traits::AccessPrev(front_) = item;
+                    Traits::AccessNext(item) = std::exchange(font_, item);
+                }
+                Traits::AccessPrev(item) = nullptr; //
+                ++size_;
+            }
+            ItemType* pop_back() {
+                if (empty()) {
+                    return nullptr;
+                }
+                else
+                {
+                    auto* const prev_item = Traits::GetPrev(back_);
+                    if (prev_item != nullptr) {
+                        Traits::AccessNext(prev_item) = nullptr;
+                    }
+                    auto* output = std::exchange(back_, prev_item);
+                    Traits::AccessPrev(output) = nullptr;
+                    Traits::AccessNext(output) = nullptr;
+                    --size_;
+                    return output;
+                }
+            }
+            ItemType* pop_front() {
+                if (empty()) {
+                    return nullptr;
+                }
+                else
+                {
+                    auto* const next_item = Trait::GetNext(front_);
+                    if (nex_item != nullptr) {
+                        Traits::AccessPrev(next_item) = nullptr;
+                    }
+                    auto* output = std::exchange(front_, next_item);
+                    Traits::AccessPrev(output) = nullptr;
+                    Traits::AccessNext(output) = nullptr;
+                    --size_;
+                    return output;
+                }
+            }
+            void insert_before(ItemType* curr, ItemType* new_item) {
+                if (curr == nullptr || curr == front_) {
+                    return push_front(new_item);
+                }
+                Traits::AccessNext(new_item) = curr;
+                Traits::AccessNext(Traits::AccessPrev(curr)) = new_item;
+                Traits::AccessPrev(new_item) = std::exchange(Traits::AccessPrev(curr), new_item);
+            }
+            void insert_after(ItemType* curr, ItemType* new_item) {
+                if (curr == nullptr || curr == back_) {
+                    return push_back(new_item);
+                }
+                Traits::AccessPrev(new_item) = curr;
+                Traits::AccessPrev(Traits::AccessNext(curr)) = new_item;
+                Traits::AccessPrev(new_item) = std::exchange(Traits::AccessPrev(curr), new_item);
+            }
+            void remove(ItemType* item) {
+                if (item == front_) {
+                    front_ = Traits::GetNext(item);
+                }
+                else
+                {
+                    Traits::AccessNext(Traits::AccessPrev(item)) = Traits::GetNext(item);
+                }
+                if (item == back_) {
+                    back_ = Traits::GetPrev(item);
+                }
+                else
+                {
+                    Traits::AccessPrev(Traits::AccessNext(item)) = Traits::GetPrev(item);
+                }
+                Traits::AccessPrev(item) = nullptr;
+                Traits::AccessNext(item) = nullptr;
+                --size_;
+            }
+            Iterator insert(Iterator pos, ItemType* item) {
+                insert_after(*pos, item);
+                return Iterator(item);
+            }
+            Iterator erase(Iterator pos) {
+                auto* next = Traits::AccessNext(item);
+                remove(*pos);
+                //todo check back_ or empty
+                return Iterator(next);
+            }
+            void clear() {
+                if (!empty()) {
+                    auto* item = back_;
+                    while (item != nullptr) {
+                        auto* const prev_item = Traits::AccessPrev(item);
+                        Traits::AccessNext(item) = nullptr;
+                        Traits::AccessPrev(item) = nullptr;
+                        //todo whether delete it
+                        item = prev_item;
+                    }
+                    *this = {};
+                }
+            }
+            bool empty()const { return !size_; }
+            size_type size() const { return size_; }
+        private:
+            DISALLOW_COPY_AND_ASSIGN(IntrusiveLinkedList);
+        private:
+            size_type   size_{ 0ull };
+            ItemType*   front_{ nullptr };
+            ItemType*   back_{ nullptr };
+
+        };
     }
 }
 
