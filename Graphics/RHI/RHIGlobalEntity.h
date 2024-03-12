@@ -5,6 +5,7 @@
 #include "Graphics/RHI/RHICommand.h"
 #include "Graphics/RHI/RHIResourceBinding.h"
 #include "Graphics/RHI/RHIShaderLibrary.h"
+#include "Graphics/RHI/RHIResourcePool.h"
 #include "Graphics/RHI/RHIMemoryResidency.h"
 
 namespace Shard::RHI
@@ -39,6 +40,11 @@ namespace Shard::RHI
     REGIST_PARAM_TYPE(BOOL, RHI_EXECUTE_BYPSS, false); //whether generate immediate command buffer
     REGIST_PARAM_TYPE(BOOL, RHI_EXECUTE_PARALLEL, false); //whether generate command in parallel mode
 
+    //whether use resource pool to recyle resource
+    REGIST_PARAM_TYPE(BOOL, RHI_RESOURCE_POOL_ENABLE, false);
+    REGIST_PARAM_TYPE(UINT, RHI_RESOURCE_POOL_FRAME_GAP, 6);
+    REGIST_PARAM_TYPE(UINT64, RHI_RESOURCE_POOL_MAX_SIZE, 1024 * 1024 * 2048);
+
     //like unreal global dynamic RHI
     class MINIT_API RHIGlobalEntity
     {
@@ -61,6 +67,7 @@ namespace Shard::RHI
         virtual RHIMemoryResidencyManager::Ptr GetPrCreateMemoryResodemcyManager();
         //bindless heap interface
         virtual RHIResourceBindlessHeap::SharedPtr GetResourceBindlessHeap();
+        virtual RHIPooledResourceAllocator::Ptr GetOrCreatePooledResourceAllocator();
 #if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
         virtual RHIImGuiLayerWrapper::Ptr GetImGuiLayerWrapper() { return nullptr; }
 #endif

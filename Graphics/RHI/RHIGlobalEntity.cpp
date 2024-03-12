@@ -20,6 +20,15 @@ namespace Shard::RHI
         create_func_repo_.insert(eastl::make_pair(back_end, func));
         return true;
     }
+
+    RHIPooledResourceAllocator::Ptr RHIGlobalEntity::GetOrCreatePooledResourceAllocator()
+    {
+        if (GET_PARAM_TYPE_VAL(BOOL, RHI_RESOURCE_POOL))
+        {
+            LOG(ERROR) << "current backend not support pooled resource allocator";
+        }
+        return nullptr;
+    }
     
     RHIShaderLibraryInterface::Ptr RHIGlobalEntity::GetOrCreateShaderLibrary()
     {

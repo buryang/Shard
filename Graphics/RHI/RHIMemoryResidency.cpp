@@ -3,38 +3,54 @@
 
 namespace Shard::RHI
 {
-
-    struct BlockRange
-    {
-        RHISizeType offset_;
-        RHISizeType size_;
-        BlockRange* physic_prev_{ nullptr };
-        BlockRange* physic_next_{ nullptr };
-        BlockRange* prev_free_{ nullptr };
-        union
+    namespace{
+        struct BlockRange
         {
-            BlockRange* next_free_{ nullptr };
-            void* user_data_;
+            RHISizeType offset_;
+            RHISizeType size_;
+            BlockRange* physic_prev_{ nullptr };
+            BlockRange* physic_next_{ nullptr };
+            BlockRange* prev_free_{ nullptr };
+            union
+            {
+                BlockRange* next_free_{ nullptr };
+                void* user_data_;
+            };
+            FORCE_INLINE void MarkFree() { prev_free_ = nullptr; }
+            FORCE_INLINE void MarkTaken() { prev_free_ = this; }
+            FORCE_INLINE bool IsFree() const { return prev_free_ != this; }
+            FORCE_INLINE BlockRange*& PrevFree() { return prev_free_; }
+            FORCE_INLINE BlockRange*& NextFree() { return next_free_; }
+            FORCE_INLINE bool IsMergeableWithPrev() const {
+                return IsFree() && (physic_prev_ != nullptr && physic_prev_->IsFree());
+            }
+            FORCE_INLINE bool IsMergeableWithNext() const {
+                return IsFree() && (physic_next_ != nullptr && physic_next_->IsFree());
+            }
+            BlockRange() = default;
+            OVERLOAD_OPERATOR_NEW(BlockRange);
         };
-        FORCE_INLINE void MarkFree() { prev_free_ = nullptr; }
-        FORCE_INLINE void MarkTaken() { prev_free_ = this; }
-        FORCE_INLINE bool IsFree() const { return prev_free_ != this; }
-        FORCE_INLINE BlockRange*& PrevFree() { return prev_free_; }
-        FORCE_INLINE BlockRange*& NextFree() { return next_free_; }
-        FORCE_INLINE bool IsMergeableWithPrev() const {
-            return IsFree() && (physic_prev_ != nullptr && physic_prev_->IsFree());
-        }
-        FORCE_INLINE bool IsMergeableWithNext() const {
-            return IsFree() && (physic_next_ != nullptr && physic_next_->IsFree());
-        }
-        OVERLOAD_OPERATOR_NEW(BlockRange);
-    };
 
-    namespace
-    {
+        struct BlockRangeIntrusiveLinkedListTraits
+        {
+            using ItemType = BlockRange;
+            static const ItemType* GetPrev(const ItemType* curr) {
+                return curr->prev_free_;
+            }
+            static const ItemType* GetNext(const ItemType* curr) {
+                return curr->next_free_;
+            }
+            static ItemType*& AccessPrev(ItemType* curr) {
+                return curr->PrevFree();
+            }
+            static ItemType*& AccessNext(ItemType* curr) {
+                return curr->NextFree();
+            }
+        };
+
         struct AllocationRequest
         {
-            RHIAllocHandle alloc_handle_{ nullptr };
+            RHIAllocHandle alloc_handle_{ 0u };
             RHISizeType size_{ 0u };
             void* custom_data_;
             uint64_t alogrithm_data_;
@@ -68,6 +84,7 @@ namespace Shard::RHI
             RHIAllocHandle GetFirstAlloction() const;
             RHIAllocHandle GetNextAllocation(RHIAllocHandle curr) const;
             bool IsEmpty()const;
+            void GetAllocationInfo(RHIAllocHandle curr, RHIAllocationCreateInfo& info) const;
             RHISizeType GetAllocationOffset(RHIAllocHandle handle) const { return ((BlockRange*)handle)->offset_; }
             void*& GetAllocationPrivateData(RHIAllocHandle handle) { auto* block = ((BlockRange*)handle); assert(!block->IsFree()); return block->user_data_; }
             void AddStatistics(RHIMemroyStatistics& stats) const;
@@ -84,7 +101,7 @@ namespace Shard::RHI
             void RemoveFreeBlock(BlockRange* block);
             void InsertFreeBlock(BlockRange* block);
             void MergeBlock(BlockRange* block, BlockRange* prev);
-            BlockRange* FindFreeBlock(uint32_t& list_index, RHISizeType sz) const;
+            BlockRange* FindFreeBlock(uint32_t& list_index, RHISizeType sz);
             bool CheckBlock(BlockRange& block, uint32_t list_index, RHISizeType alloc_size, RHISizeType alignment, AllocationRequest* request) const;
             bool CheckCorruption() const;
         private:
@@ -93,7 +110,8 @@ namespace Shard::RHI
 
             //data storage
             BlockRange* null_block_{ nullptr };
-            BlockRange* free_list_head_[MAX_FREE_LIST_NUM]{ nullptr };
+            using BlockRangeFreeList = Utils::IntrusiveLinkedList<BlockRangeIntrusiveLinkedListTraits>;
+            BlockRangeFreeList free_list_[MAX_FREE_LIST_NUM];
 
             //
             uint32_t list_count_{ 0u };
@@ -107,40 +125,7 @@ namespace Shard::RHI
         static FORCE_INLINE BlockMetaHeaderTLSF* GetBlockMeta(RHIManagedMemoryBlock& block) {
             return reinterpret_cast<BlockMetaHeaderTLSF*>(block.header_);
         }
-        /*memory statistic ops*/
-        static inline void AddDetailedStatisticsUnusedRange(RHIMemoryDetailStatistics& stats, RHISizeType sz)
-        {
-            stats.unused_range_count_++;
-            stats.unused_range_min_size_ = std::min(stats.unused_range_min_size_, sz);
-            stats.unused_range_max_size_ = std::max(stats.allocation_max_size_, sz);
-        }
 
-        static inline void AddDetailedStatisticsAllocation(RHIMemoryDetailStatistics& stats, RHISizeType sz)
-        {
-            stats.stat_.allocation_count_++;
-            stats.stat_.allocation_bytes_ += sz;
-            stats.allocation_min_size_ = std::min(stats.allocation_min_size_, sz);
-            stats.allocation_max_size_ = std::max(stats.allocation_max_size_, sz);
-        }
-        static inline void AddBudgetAllocation(RHIMemoryBudget& budget, RHISizeType sz)
-        {
-            budget.stat_.allocation_bytes_ += sz;
-            ++budget.stat_.allocation_count_;
-        }
-        static inline void AddBugetBlock(RHIMemoryBudget& budget, RHISizeType sz) {
-            budget.stat_.block_bytes_ += sz;
-            ++budget.stat_.block_count_;
-        }
-        static inline void RemoveBudgetAllocation(RHIMemoryBudget& budget, RHISizeType sz)
-        {
-            budget.stat_.allocation_bytes_ -= sz;
-            --budget.stat_.allocation_count_;
-        }
-        static inline void RemoveBudgetBlock(RHIMemoryBudget& budget, RHISizeType sz)
-        {
-            budget.stat_.block_bytes_ -= sz;
-            --budget.stat_.block_count_; 
-        }
         static constexpr uint32_t GetDebugMargin() { return RESIDENCY_MEMORY_DEBUG_MARGIN; }
 
         BlockMetaHeaderTLSF::BlockMetaHeaderTLSF(RHISizeType size)
@@ -256,7 +241,7 @@ namespace Shard::RHI
 
             //do full search
             while (++next_list_index < list_count_) {
-                next_list_block = free_list_head_[next_list_index];
+                next_list_block = free_list_[next_list_index];
                 if (iterate_next_list()) {
                     return true;
                 }
@@ -411,6 +396,12 @@ namespace Shard::RHI
             return false;
         }
 
+        void BlockMetaHeaderTLSF::GetAllocationInfo(RHIAllocHandle curr, RHIAllocationCreateInfo& info) const
+        {
+            auto curr_block = reinterpret_cast<BlockRange*>(curr);
+            //info.user_data_ = curr_block->user_data_;
+        }
+
         void BlockMetaHeaderTLSF::AddStatistics(RHIMemroyStatistics& stats) const
         {
             stats.block_count_++;
@@ -533,7 +524,7 @@ namespace Shard::RHI
             }
         }
 
-        BlockRange* BlockMetaHeaderTLSF::FindFreeBlock(uint32_t& list_index, RHISizeType sz) const
+        BlockRange* BlockMetaHeaderTLSF::FindFreeBlock(uint32_t& list_index, RHISizeType sz) 
         {
             auto fli = SizeToFirstLevel(sz);
             auto inner_free_map = sl_[fli] & (~0U << SizeToSecondLevel(sz, fli));
@@ -548,7 +539,7 @@ namespace Shard::RHI
                 assert(inner_free_map != 0u);
             }
             list_index = GetListIndex(fli, Utils::BitScanLSB(inner_free_map));
-            return free_list_head_[list_index];
+            return free_list_[list_index].pop_front();
         }
 
         bool BlockMetaHeaderTLSF::CheckBlock(BlockRange& block, uint32_t list_index, RHISizeType alloc_size, RHISizeType alignment, AllocationRequest* request) const
@@ -745,7 +736,7 @@ namespace Shard::RHI
         {
             MagicSpinLock lock(lock_, (std::uintptr_t)this);
             if ((block.map_count_ + block.map_hysteresis_.GetExtraMapping()) == 0u) {
-                manager_->MapRawMemory(block.rhi_mem_);
+                manager_->MapRawMemory(block.rhi_mem_, 0u, 0u, 0u, block.mapped_);
                 block.map_count_ = 0u;
             }
             assert(IsMapped(block) && "block is not mapped");
@@ -938,8 +929,8 @@ namespace Shard::RHI
         IncrementalSortBlockByFreeSize();
 
         //update budget
-        AddBudgetAllocation(manager_->GetMemoryBudget(this->pool_index_), request.size_); //todo
-        ++manager_->mem_budget_.num_ops_; //todo
+        //AddBudgetAllocation(manager_->GetMemoryBudget(this->pool_index_), request.size_); //todo
+        //++manager_->mem_budget_.num_ops_; //todo
         return true;
     }
 
@@ -950,86 +941,61 @@ namespace Shard::RHI
         }
     }
 
-    void RHIDedicatedMemoryBlockList::Alloc(RHISizeType size, RHIDedicatedMemoryBlock*& memory)
+    void RHIDedicatedMemoryBlockList::Alloc(RHISizeType size, RHIAllocation*& memory)
     {
         MagicSpinLock lock(lock_, (uintptr_t)this);
-        auto iter = std::find_if(free_blocks_.begin(), free_blocks_.end(), [size](const auto node) { return node->size_ > size; });
+        auto iter = std::find_if(free_blocks_.begin(), free_blocks_.end(), [size](auto iter) { return iter.dedicated_mem_.size_ > size; });
         if (iter != free_blocks_.end()) {
-            memory = *iter;
+            memory = &(*iter);
             free_blocks_.erase(iter);
             return;
         }
         
         //initial one new allocation
-        memory = new RHIDedicatedMemoryBlock;
-        memory->size_ = size;
-        memory->rhi_mem_ = manager_->MallocRawMemory(pool_index_, size, 1);//todo statistics
+        memory = new RHIAllocation;
+        memory->is_dedicated_ = 1;
+        memory->dedicated_mem_ = {};
+        memory->dedicated_mem_.size_ = size;
+        memory->dedicated_mem_.rhi_mem_ = manager_->MallocRawMemory(pool_index_, size, 1);
+        memory->pool_index_ = pool_index_;
     }
 
-    void RHIDedicatedMemoryBlockList::DeAlloc(RHIDedicatedMemoryBlock* memory)
+    void RHIDedicatedMemoryBlockList::DeAlloc(RHIAllocation* memory)
     {
         MagicSpinLock lock(lock_, (uintptr_t)this);
         //todo sort?
-        free_blocks_.emplace_front(memory);
-    }
-
-    void* RHIDedicatedMemoryBlockList::MapBlock(RHIDedicatedMemoryBlock& block)
-    {
-        if (manager_->IsMapInResourceLevel()) {
-            return nullptr;
-        }
-        {
-            MagicSpinLock lock(lock_, (uintptr_t)this);
-            if (!IsMapped(block)) {
-                manager_->MapRawMemory(block.rhi_mem_, 0, block.size_, 0, &block.mapped_);
-            }
-        }
-        return block.mapped_;
-    }
-
-    void RHIDedicatedMemoryBlockList::UnMapBlock(RHIDedicatedMemoryBlock& block)
-    {
-        if (manager_->IsMapInResourceLevel()) {
-            return;
-        }
-        {
-            MagicSpinLock lock(lock_, (uintptr_t)this);
-            if (IsMapped(block)) {
-                manager_->UnMapRawMemory(block.rhi_mem_);
-                block.mapped_ = nullptr;
-            }
-        }
+        free_blocks_.push_front(memory);
     }
 
     void RHIDedicatedMemoryBlockList::SortBySize()
     {
-        std::sort(free_blocks_.begin(), free_blocks_.end(), [](const auto& lhs, const auto& rhs) { return lhs->size_ > rhs->size_; });
+        std::sort(free_blocks_.begin(), free_blocks_.end(), [](auto lhs, auto rhs) { return GetSize(*lhs) > GetSize(*rhs); });
     }
 
     RHIDedicatedMemoryBlockList::~RHIDedicatedMemoryBlockList()
     {
-        for (auto block : free_blocks_) {
-            delete block;
+        for (auto iter = free_blocks_.begin(); iter != free_blocks_.end(); ++iter) {
+            delete &(*iter); //??
         }
     }
 
     void RHIDedicatedMemoryBlockList::AddStatistics(RHIMemroyStatistics& stats) const
     {
-        for(const auto block : free_blocks_)
+        for(auto iter = free_blocks_.cbegin(); iter != free_blocks_.cend(); ++iter)
         {
-            stats.allocation_bytes_ += block->size_;
+            stats.allocation_bytes_ += GetSize(*iter);
             ++stats.allocation_count_;
         }
     }
 
     void RHIDedicatedMemoryBlockList::AddDetailedStatistics(RHIMemoryDetailStatistics& stats) const
     {
-        for(const auto block : free_blocks_)
+        for (auto iter = free_blocks_.cbegin(); iter != free_blocks_.cend(); ++iter)
         {
-            stats.stat_.allocation_bytes_ += block->size_;
+            stats.stat_.allocation_bytes_ += GetSize(*iter);
             ++stats.stat_.allocation_count_;
-            stats.allocation_max_size_ = std::max(stats.allocation_max_size_, block->size_);
-            stats.allocation_min_size_ = std::min(stats.allocation_min_size_, block->size_);
+            stats.allocation_max_size_ = std::max(stats.allocation_max_size_, GetSize(*iter));
+            stats.allocation_min_size_ = std::min(stats.allocation_min_size_, GetSize(*iter));
         }
     }
 
@@ -1064,7 +1030,7 @@ namespace Shard::RHI
 
     RHIAllocation* RHIMemoryResidencyManager::AllocMemoryBatch(const RHIAllocationCreateInfo& mem_info, uint32_t count)
     {
-
+        assert(0);//not implement
     }
 
     RHIAllocation* RHIMemoryResidencyManager::AllocDedicatedMemory(const RHIAllocationCreateInfo& mem_info)
@@ -1075,8 +1041,8 @@ namespace Shard::RHI
         RHIAllocation* allocation = nullptr;
         dedicated_vec_[pool_index]->Alloc(mem_info.size_, allocation);
         if (allocation != nullptr) {
-            if (mem_info.flags_ & ERHIMemoryFlagBits::ePersistentMapped) {
-                MapRawMemory(allocation->dedicated_mem_.rhi_mem_, 0u, 0u, 0u, allocation->mapped_);
+            if (!IsMapInResourceLevel() && (mem_info.flags_ & ERHIMemoryFlagBits::ePersistentMapped)) {
+                Map(nullptr, allocation);
             }
             else
             {
@@ -1093,8 +1059,8 @@ namespace Shard::RHI
         RHIAllocation* allocation = nullptr;
         block_vec->Alloc(mem_info.size_, allocation);
         if (allocation != nullptr) {
-            if (mem_info.flags_ & ERHIMemoryFlagBits::ePersistentMapped) {
-                allocation->mapped_ = reinterpret_cast<void*>((std::uintptr_t)(block_vec->MapBlock(*(allocation->managed_mem_.mem_.parent_))) + allocation->managed_mem_.offset_);
+            if (!IsMapInResourceLevel() && (mem_info.flags_ & ERHIMemoryFlagBits::ePersistentMapped)) {
+                Map(nullptr, allocation);
             }
             else
             {
@@ -1104,6 +1070,19 @@ namespace Shard::RHI
         return allocation;
     }
 
+    void RHIMemoryResidencyManager::DeAllocMemory(RHIAllocation* allocation)
+    {
+        assert(allocation != nullptr);
+        const auto pool_index = allocation->pool_index_;
+        if (IsDedicated(*allocation)) {
+            dedicated_vec_[pool_index]->DeAlloc(allocation);
+        }
+        else
+        {
+            managed_vec_[pool_index]->DeAlloc(allocation);
+        }
+    }
+
     void RHIMemoryResidencyManager::SetBlockVectorSortIncremental(bool value)
     {
         for (auto& vec : managed_vec_) {
@@ -1111,22 +1090,76 @@ namespace Shard::RHI
         }
     }
 
+    void RHIMemoryResidencyManager::TurnOnPoolBudgetLimit(uint8_t pool_index, RHISizeType limit_size)
+    {
+        budget_limit_mask_ &= (1u << pool_index);
+        pool_budget_limit_[pool_index] = std::min(limit_size, mem_budget_.pool_budget_[pool_index].budget_); //budget dynamic refresh every frame
+    }
+
+    void RHIMemoryResidencyManager::TurnOffPoolBudgetLimit(uint8_t pool_index)
+    {
+        budget_limit_mask_ &= ~(1u << pool_index);
+    }
+
+#if RESIDENCY_MEMORY_DEBUG_MARGIN
     void RHIMemoryResidencyManager::WriteMagicValueToAllocation(RHIAllocation& allocation, RHISizeType offset)
     {
         const auto margin = GetDebugMargin();
         if (!margin) {
             return;
         }
-        if (auto* cpu_data = (uint8_t*)Map(allocation)) {
+        if (auto* cpu_data = (uint8_t*)Map(nullptr, &allocation)) {
             memset(cpu_data + offset, margin, margin);
-            UnMap(allocation);
+            UnMap(nullptr, &allocation);
         }
     }
+
+    bool RHIMemoryResidencyManager::VerifyAllocationMagicValue(RHIAllocation& allocation, RHISizeType offset) 
+    {
+        const auto margin = GetDebugMargin();
+        bool result{ true };
+        if (margin) {
+            if (auto* cpu_data = (uint8_t*)Map(nullptr, &allocation)) {
+                cpu_data += offset;
+                for (auto n = 0; n < margin; ++n) {
+                    if (*cpu_data++ != margin) {
+                        result = false;
+                        break;
+                    }
+                }
+                UnMap(nullptr, &allocation);
+            }
+        }
+        return false;
+    }
+    void RHIMemoryResidencyManager::GetAllocationInfo(RHIAllocation& allocation, RHIAllocationCreateInfo& info)
+    {
+        if (allocation.is_dedicated_) {
+            info.size_ = allocation.dedicated_mem_.size_;
+            info.size_ |= RHIAllocationCreateInfo::DEDICATE_FLAGS_BIT;
+            info.alignment_ = 0u;
+        }
+        else
+        {
+            info.size_ = allocation.managed_mem_.mem_.size_;
+            GetBlockMeta(*GetBlock(allocation.managed_mem_))->GetAllocationInfo(allocation.managed_mem_.mem_, info);
+            info.alignment_ = 0u;
+        }
+    }
+#endif
+
+#ifdef RESIDENCY_PRINT_ALLOC_INFO
+    void RHIMemoryResidencyManager::OutputMemoryAllocationInfos() const
+    {
+        //todo 
+    }
+#endif
 
     void RHIMemoryResidencyManager::Tick(float time)
     {
         curr_time_stamp_ = time;
         curr_frame_index_++; //todo 
+        UpdateMemoryBudget();
     }
 
     void RHIMemoryResidencyManager::MakeResident(RHI::RHIResource::Ptr res_ptr)
@@ -1148,12 +1181,89 @@ namespace Shard::RHI
         return mem_budget_.pool_budget_[pool_index];
     }
 
+    RHIMemoryTotalBudget& RHIMemoryResidencyManager::GetTotalMemoryBudget()
+    {
+        return mem_budget_;
+    }
+
     RHIMemoryDetailStatistics& RHIMemoryResidencyManager::GetMemoryStatistics(uint8_t pool_index)
     {
         return pool_index == (uint8_t)-1 ? mem_statistics_.total_ : mem_statistics_.heap_details_[pool_index];
     }
+
+    RHIMemoryTotalStatistics& RHIMemoryResidencyManager::GetTotalMemoryStatistics()
+    {
+        return mem_statistics_;
+    }
+
+    void RHIMemoryResidencyManager::CalcMemoryStatistics(uint8_t pool_index)
+    {
+        auto& pool_stats = mem_statistics_.heap_details_[pool_index];
+        managed_vec_[pool_index]->AddDetailedStatistics(pool_stats);
+        dedicated_vec_[pool_index]->AddDetailedStatistics(pool_stats);
+    }
+
+    void RHIMemoryResidencyManager::CalcTotalMemoryStatistics()
+    {
+        for (auto n = 0; n < GetMemoryPoolCount(); ++n) {
+            CalcMemoryStatistics(n);
+            mem_statistics_.total_ += mem_statistics_.heap_details_[n];
+        }
+    }
+
+    bool RHIMemoryResidencyManager::AccquireMemoryBudgetAllocation(uint8_t pool_index, RHISizeType size)
+    {
+        mem_budget_.pool_budget_[pool_index].allocation_bytes_.fetch_add(size, std::memory_order::release);
+        mem_budget_.pool_budget_[pool_index].allocation_count_.fetch_add(1u);
+        mem_budget_.num_ops_.fetch_add(1u);
+        return true;
+    }
+
+    bool RHIMemoryResidencyManager::AccquireMemoryBudgetBlock(uint8_t pool_index, RHISizeType size)
+    {
+        if (budget_limit_mask_ & (1u << pool_index)) {
+
+            do
+            {
+                auto old_alloc_size = mem_budget_.pool_budget_[pool_index].block_bytes_.load();
+                auto new_alloc_size = old_alloc_size + size;
+                if (new_alloc_size > mem_budget_.pool_budget_[pool_index].budget_) {
+                    return false;
+                }
+
+                if (mem_budget_.pool_budget_[pool_index].block_bytes_.compare_exchange_weak(old_alloc_size, new_alloc_size, std::memory_order::release)) {
+                    break;
+                }
+                _mm_pause();
+            } while (true);
+
+        }
+        else
+        {
+            mem_budget_.pool_budget_[pool_index].block_bytes_.fetch_add(size, std::memory_order::release);
+        }
+        mem_budget_.pool_budget_[pool_index].block_count_.fetch_add(1u);
+        mem_budget_.alloc_count_.fetch_add(1u);
+        mem_budget_.num_ops_.fetch_add(1u);
+        return true;
+    }
+
+    void RHIMemoryResidencyManager::ReleaseMemoryBudgetAllocation(uint8_t pool_index, RHISizeType size)
+    {
+        mem_budget_.pool_budget_[pool_index].allocation_bytes_.fetch_sub(size, std::memory_order::acquire);
+        mem_budget_.pool_budget_[pool_index].allocation_count_.fetch_sub(1u);
+        mem_budget_.alloc_count_.fetch_sub(1u);
+        mem_budget_.num_ops_.fetch_add(1u);
+    }
+
+    void RHIMemoryResidencyManager::ReleaseMemoryBudgetBlock(uint8_t pool_index, RHISizeType size)
+    {
+        mem_budget_.pool_budget_[pool_index].block_bytes_.fetch_sub(size, std::memory_order::acquire);
+        mem_budget_.pool_budget_[pool_index].block_count_.fetch_sub(1u);
+        mem_budget_.num_ops_.fetch_add(1u);
+    }
   
-#if 1 //def USE_MEMORY_DEFRAG
+#ifdef RESIDENCY_MEMORY_DEFRAG
     /*defag need inner struct*/
     namespace
     {
@@ -1585,7 +1695,7 @@ namespace Shard::RHI
         for (auto* block : residency_manager_->managed_vec_)
         {
             assert(block != nullptr);
-            block->SetSortIncremetal(false);
+            block->SetSortIncremental(false);
             block->SortBlocksByFreeSize();
         }
        
@@ -1596,7 +1706,7 @@ namespace Shard::RHI
         //todo set block vec to increment sort ??
         if (residency_manager_) {
             for (auto* block : residency_manager_->managed_vec_) {
-                block->SetSortIncremetal(true);
+                block->SetSortIncremental(true);
             }
         }
     }
@@ -1609,7 +1719,7 @@ namespace Shard::RHI
             auto to_end = false;
             auto move_offset = moves_.size();
             if (vec->GetTotalBlockCount() > 1u) {
-                to_end = defrag_func_(*vec, defrag_state_.get(), n, true); //todo
+                to_end = defrag_func_(*this, *vec, n, true); //todo
             }
             else if (vec->GetTotalBlockCount() == 1u) {
                 to_end = ReAllocWithInBlock(*this, *vec, vec->GetBlock(0));

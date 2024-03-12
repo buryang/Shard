@@ -68,6 +68,7 @@ namespace Shard
                 uint16_t    end_{ 0u };
             }life_time_;
             RHIAllocation* bind_mem_{ nullptr };
+            void* user_data_{ nullptr };
         };
 
 
@@ -95,6 +96,7 @@ namespace Shard
                 };
                 return desc;
             }
+            EType   type_;
             Renderer::TextureLayout    layout_;
             Renderer::EAccessFlags access_{ Renderer::EAccessFlags::eNone };
             Renderer::EPipeLine    pipeline_{ Renderer::EPipeLine::eGraphics };

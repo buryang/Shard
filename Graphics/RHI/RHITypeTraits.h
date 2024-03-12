@@ -6,6 +6,7 @@
 #include "Graphics/RHI/RHIShaderLibrary.h"
 #include "Graphics/RHI/RHIGlobalEntity.h"
 #include "Graphics/RHI/RHIMemoryResidency.h"
+#include "Graphics/RHI/RHIResourcePool.h"
 
 namespace Shard::RHI {
     template <uint32_t backend>
@@ -26,7 +27,9 @@ namespace Shard::RHI {
         using RHITexture = RHITexture;
         using RHIBuffer = RHIBuffer;
         using RHISampler = RHISampler;
+#if defined(DEVELOP_BUBUG_TOOLS) && defined(ENABLE_IMGUI)
         using RHIImGuiLayerWrapper = RHIImGuiLayerWrapper;
+#endif
         using RHIMemoryResidencyManager = RHIMemoryResidencyManager;
     };
 
