@@ -55,8 +55,10 @@ namespace Shard
             }
             //binding external resource to executor
             RtRenderGraphExecutor& RegistExternalResource(const RtField& field, RtRenderResource::Ptr resource);
+            //assign ready flag for executor,u can do render now
+            void Ready() { is_baked_ = true; }
             //whether executor ready for draw
-            bool IsReady()const;
+            bool IsReady()const { return is_baked_; }
         private:
             /*todo: collection information of all memory, and do allocation*/
             void AliasResourceMemoryAlloc();
@@ -75,7 +77,7 @@ namespace Shard
             friend class RtRenderGraphBuilder;
             friend class RtFieldResourcePlanner;
             using PassData = std::pair<PassHandle, RtRendererPass>;
-            bool    is_compiled_{ false };
+            bool    is_baked_{ false };
             Vector<PassData>    passes_;
             Utils::Allocator*    allocator_{nullptr};
             Map<PassHandle, SmallVector<CallBack>>    pre_watch_dogs_;

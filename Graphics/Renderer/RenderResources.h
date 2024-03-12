@@ -1,10 +1,10 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/Handle.h"
-#include "RHI/RHIResources.h"
 #include "Core/PixelInfo.h"
-#include "Renderer/RtRenderResourceDefinitions.h"
-#include "Renderer/RtRenderPass.h"
+#include "RHI/RHIResources.h"
+#include "Renderer/RenderResourceDefinitions.h"
+#include "Renderer/RenderPass.h"
 #include <type_traits>
 
 namespace Shard
@@ -12,7 +12,7 @@ namespace Shard
     namespace Renderer
     {
         //resource access/usage flags
-        enum class EAccessFlags : uint64_t
+        enum class EAccessFlags : uint32_t
         {
             eNone = 0,
             eIndirectArgs = 1 << 0,
@@ -35,18 +35,25 @@ namespace Shard
             eNonUAV = ~eUAV,
         };
 
-        /*buffer use textureTiling width to represent size*/
-        struct TextureTiling {
+        enum class ETextureDimType
+        {
+            eAbsolute,
+            eSwapchainRelative,
+            eInputRelative;
+        };
+
+        /*buffer use TextureDim width to represent size*/
+        struct TextureDim {
             uint32_t    width_{ 0 };
             uint32_t    height_{ 0 };
             uint32_t    depth_{ 0 };
             uint32_t    mip_slices_{ 1 };
             uint32_t    array_slices_{ 1 };
             uint32_t    plane_slices_{ 1 };
-            FORCE_INLINE bool operator==(const TextureTiling& rhs)const {
+            FORCE_INLINE bool operator==(const TextureDim& rhs)const {
                 return !std::memcmp(this, &rhs, sizeof(*this));
             }
-            FORCE_INLINE bool operator!=(const TextureTiling& rhs)const {
+            FORCE_INLINE bool operator!=(const TextureDim& rhs)const {
                 return !(*this == rhs);
             }
         };
@@ -61,7 +68,6 @@ namespace Shard
                 return !(*this == rhs);
             }
         };
-
         struct TextureSubRange {
             uint32_t    base_mip_{ 0 };
             uint32_t    mips_{ 1 };
@@ -69,9 +75,9 @@ namespace Shard
             uint32_t    layers_{ 1 };
             uint32_t    base_plane_{ 0 };
             uint32_t    planes_{ 1 };
-            explicit TextureSubRange(const TextureTiling& layout): mips_(layout.mip_slices_),layers_(layout.array_slices_),
+            explicit TextureSubRange(const TextureDim& layout): mips_(layout.mip_slices_),layers_(layout.array_slices_),
                                                                    planes_(layout.plane_slices_){}
-            bool IsWholeRange(const TextureTiling& layout)const{
+            bool IsWholeRange(const TextureDim& layout)const{
                 return base_mip_ == 0 && base_layer_ == 0
                     && base_plane_ == 0 && mips_ == layout.mip_slices_
                     && layers_ == layout.array_slices_ && planes_ == layout.plane_slices_;
@@ -110,7 +116,6 @@ namespace Shard
                 }
             }
         };
-
         struct BufferSubRange {
             uint32_t    offset_{ 0 };
             uint32_t    size_{ 0 };
@@ -122,9 +127,8 @@ namespace Shard
                 return !(*this != rhs);
             }
         };
-
-        template<typename T>
-        requires std::is_integral_v<T>
+        
+        template<Utils::Integer T>
         struct HashName
         {
             T   name_;
@@ -143,7 +147,6 @@ namespace Shard
         class RtField
         {
         public:
-            using Name = HashName<uint32_t>;
             enum class EType : uint8_t
             {
                 eBuffer,
@@ -163,8 +166,9 @@ namespace Shard
 
             struct TextureSubField
             {
-                EAccessFlags    access_;
+                EAccessFlags    access_;   
             };
+            using Name = HashName<uint32_t>;
 
             static bool IsSubFieldMergeAllowed(const TextureSubField& lhs, const TextureSubField& rhs) {
                 if (lhs.access_ == rhs.access_) {
@@ -199,7 +203,7 @@ namespace Shard
             }
 
             RtField() = default;
-            FORCE_INLINE bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(layout_); }
+            FORCE_INLINE bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(dims_); }
             FORCE_INLINE bool IsConnectAble(const RtField& other)const;
             FORCE_INLINE bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
             FORCE_INLINE bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
@@ -223,8 +227,9 @@ namespace Shard
             RtField& ForceTransiant();
             EType GetType()const;
             const String& GetName()const;
+            const Name& GetHashName()const;
             const String& GetParentName()const;
-            const TextureTiling& GetLayout()const;
+            const TextureDim& GetDimension()const;
             const TextureSubField& GetSubField()const;
             const TextureSubRange& GetSubRange()const;
             EPixFormat GetPixFormat()const;
@@ -241,41 +246,43 @@ namespace Shard
             }
             friend bool operator!=(const RtField& lhs, const RtField& rhs) { return !(lhs == rhs); }
         private:
-            friend class RtRendererPass;
-            Name    name_;
+            friend class RendererPass;
+            String  name_;
+            Name    hash_name_;
             //name for producer
             Name    parent_name_;
-            EType    type_;
-            EUsage    usage_{ EUsage::eUnkown };
-            EPixFormat    pix_fmt_{ EPixFormat::eUnkown };
+            EType   type_;
+            EUsage  usage_{ EUsage::eUnkown };
+            EPixFormat  pix_fmt_{ EPixFormat::eUnkown };
             mutable uint32_t    ref_count_{ 1 };
             //which stage of pass use this rtfield
-            EPipelineStageFlags    stage_{ EPipelineStageFlags::eUnkown };
+            EPipelineStageFlags stage_{ EPipelineStageFlags::eUnkown };
             //user force it tobe transiant
-            bool    is_dedicated_{ false };
-            bool    is_transiant_{ false };
-            bool    is_cross_queue_{ false };
-            uint32_t    sample_count_{ 1 };
-            TextureTiling    layout_;
+            uint32_t    is_dedicated_:1;
+            uint32_t    is_transiant_:1;
+            uint32_t    is_cross_queue_:1;
+            uint32_t    sample_count_{ 1u };
+            ETextureDimType dim_prop_{ ETextureDimType::eAbsolute };
+            TextureDim  dims_;
             union {
                 /*texture range current field used*/
-                TextureSubRange    texture_sub_range_;
-                BufferSubRange buffer_sub_range_;
+                TextureSubRange texture_sub_range_;
+                BufferSubRange  buffer_sub_range_;
             };
-            TextureSubField    sub_resources_;
+            TextureSubField sub_resources_;
         };
 
         /*parent resource class for texture and buffer*/
-        class RtRenderResource
+        class RenderResource
         {
         public:
-            using Ptr = RtRenderResource*;
-            using ThisType = RtRenderResource;
+            using Ptr = RenderResource*;
+            using ThisType = RenderResource;
 
-            RtRenderResource() = default;
-            RtRenderResource(const RtField& field) { Init(field); }
+            RenderResource() = default;
+            RenderResource(const RtField& field) { Init(field); }
             virtual void Init(const RtField& field);
-            virtual ~RtRenderResource() {}
+            virtual ~RenderResource() {}
             bool IsExternal()const {
                 return is_external_;
             }
@@ -306,12 +313,12 @@ namespace Shard
         /*warper for rhi resource*/
         template <class RHIHandle>
         //requires std::is_same_v<std::decltype(std::declval<RHIHandle>().Release()), void>//FIXME
-        class TRtRenderResource : public RtRenderResource
+        class TRenderResource : public RenderResource
         {
         public:
-            using HandleType = RHIHandle;
-            HandleType Handle() const { return handle_; }
-            ThisType& SetRHI(RHIHandle handle) {
+            using HandlePtr = RHIHandle*;
+            HandlePtr GetHandle() const { return handle_; }
+            ThisType& SetRHI(HandlePtr handle) {
                 assert(IsExternal());
                 handle_ = handle;
                 return *this;
@@ -324,20 +331,21 @@ namespace Shard
                 handle_.Release();
             }
         private:
-            RHIHandle    handle_{ nullptr };
+            HandlePtr    handle_{ nullptr };
         };
 
-        using RtRenderTexture = TRtRenderResource<RHI::RHITexture>;
-        using RtRenderBuffer = TRtRenderResource<RHI::RHIBuffer>;
-        template<class Allocator=Utils::Allocator>
-        using TextureRepo = Utils::ResourceManager<Allocator, RtRenderTexture>;
-        template<class Allocator=Utils::Allocator>
-        using BufferRepo = Utils::ResourceManager<Allocator, RtRenderBuffer>;
+        using RenderTexture = TRenderResource<RHI::RHITexture>;
+        using RenderBuffer = TRenderResource<RHI::RHIBuffer>;
+
+        using TextureRepo = Utils::ResourceManager<RenderTexture, Utils::ScalablePoolAllocator>;
+        using BufferRepo = Utils::ResourceManager<RenderBuffer, Utils::ScalablePoolAllocator>;
+
         static constexpr uint32_t MAX_RENDER_TARGET_ATTACHMENTS = 8;
-        struct ALIGN_AS(128) RtRenderFrameBuffer
+
+        struct ALIGN_AS(128) RenderFrameBuffer
         {
-            RtRenderTexture    depth_stencil_;
-            SmallVector<RtRenderTexture, MAX_RENDER_TARGET_ATTACHMENTS>    color_attachments_;
+            RenderTexture    depth_stencil_;
+            RenderTexture    color_attachments_[MAX_RENDER_TARGET_ATTACHMENTS];
         };
 
     }

@@ -57,7 +57,7 @@ namespace Shard
 
         void RtRenderGraphBuilder::Compile(const BuildConfig& build_param)
         {
-            if (!graph_.IsCompileNeeded()) {
+            if (!IsReadyToBake()) {
                 return; //todo check whether params are the same
             }
 
@@ -80,7 +80,7 @@ namespace Shard
 
             //1.step culling no use pass
             if (param.culling_passes_) {
-                CullingNoUsePasses();
+                CullingUnusedPasses();
             }
 
             const bool is_async_compute_enable = !!param.aync_enable_;
@@ -98,23 +98,24 @@ namespace Shard
 
         }
 
-        void RtRenderGraphBuilder::Finalize()
+        RtRenderGraphExecutor::SharedPtr RtRenderGraphBuilder::Bake()
         {
             //4. do resource analysis
             //last step copy execute list as ascend ordered
             //std::sort(builder.command_list_.begin(), builder.command_list_.end());
-            graph_exe_ = std::make_shared<RtRenderGraphExecutor>();
+            auto graph_exe = std::make_shared<RtRenderGraphExecutor>();
             for (auto& pass_handle : command_list_) {
-                graph_exe_->InsertPass(pass_handle);
+                graph_exe->InsertPass(pass_handle);
             }
             
-            AnalysisResourceUsage();
-            graph_exe_->is_compiled_ = true;
+            AnalyseResourceUsage();
+            graph_exe->Ready();
+            return graph_exe;
         }
 
-        bool RtRenderGraphBuilder::IsReady()const
+        bool RtRenderGraphBuilder::IsReadyToBake()const
         {
-            return graph_exe_.get() != nullptr && graph_exe_->is_compiled_;
+            return !graph_.IsCompileNeeded();
         }
 
         void RtRenderGraphBuilder::CullingNoUsePasses()

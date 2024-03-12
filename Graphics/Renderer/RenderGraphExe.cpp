@@ -62,7 +62,7 @@ namespace Shard
         }
 
         template<typename State>
-        static void InitAllTextureSubStates(const TextureTiling& layout, const State& init_state, SmallVector<TextureSubFieldState>& states) {
+        static void InitAllTextureSubStates(const TextureDim& layout, const State& init_state, SmallVector<TextureSubFieldState>& states) {
             const auto states_count = TextureSubRange(layout).GetSubRangeIndexCount();
             states.resize(states_count);
             for (auto n = 0; n < states_count; ++n) {
@@ -187,7 +187,7 @@ namespace Shard
 
         bool RtRenderGraphExecutor::IsReady() const
         {
-            return is_compiled_;
+            return is_baked_;
         }
 
         void RtFieldResourcePlanner::DoResourcePlan(RtRenderGraphExecutor& executor)

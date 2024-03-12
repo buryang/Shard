@@ -32,24 +32,21 @@ namespace Shard
                 build_conf_ = conf;
             }
             void Compile();
-            void Finalize();
-            bool IsReady() const;
+            bool IsReadyToBake() const;
+            RtRenderGraphExecutor::SharedPtr Bake();
             FORCE_INLINE RtRendererGraph& GetRenderGraph() {
                 return graph_;
             }
-            FORCE_INLINE RtRenderGraphExecutor::SharedPtr GetRenderGraphExe() {
-                return graph_exe_;
-            }
         private:
             DISALLOW_COPY_AND_ASSIGN(RtRenderGraphBuilder);
-            void CullingNoUsePasses();
-            void AnalysisResourceUsage();
+            void CullUnusedPasses();
+            void CullUnusedResource();
+            void AnalyseResourceUsage();
             //build resource barrier
             void AddResourceTransition();
         private:
             static BuildConfig  build_conf_;
             RtRendererGraph    graph_;
-            RtRenderGraphExecutor::SharedPtr    graph_exe_;
         };
     }
 }

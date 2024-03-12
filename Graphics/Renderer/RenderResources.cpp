@@ -27,7 +27,12 @@ namespace Shard
             return name_;
         }
 
-        const String& RtField::GetParentName() const
+        const RtField::Name& RtField::GetHashName() const
+        {
+            return hash_name_;
+        }
+
+        const RtField::Name& RtField::GetParentName() const
         {
             return parent_name_;
         }
@@ -43,7 +48,7 @@ namespace Shard
             if (!IsOutput() || other.IsOutput()) {
                 return false;
             }
-            if (type_ != other.type_ || layout_ != other.layout_) {
+            if (type_ != other.type_ || (dims_ != other.dims_&& other.dim_prop_ != ETextureDimType::eInputRelative)) {
                 return false;
             }
             return true;
@@ -63,13 +68,16 @@ namespace Shard
         RtField& RtField::Name(const String& name)
         {
             name_ = name;
+            hash_name_ = RtField::Name::FromString(name);
             /*default parent be self*/
-            parent_name_ = name;
+            parent_name_ = hash_name_;
+            return *this;
         }
 
-        RtField& RtField::ParentName(const String& name)
+        RtField& RtField::ParentName(const RtField::Name& name)
         {
             parent_name_ = name;
+            return *this;
         }
 
     }

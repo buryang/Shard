@@ -18,8 +18,7 @@ namespace Shard::Renderer {
         Type dimension_val_;
     };
 
-    template <typename IntType, IntType RangeBegin, IntType RangeSize>
-    requires std::is_integral_v<IntType>
+    template <Utils::Integer IntType, IntType RangeBegin, IntType RangeSize>
     struct PermutationInt {
         using Type = IntType;
         static constexpr const uint32_t PermutaionCount = RangeSize;
@@ -37,8 +36,7 @@ namespace Shard::Renderer {
         Type range_start_;
     };
 
-    template <typename IntType, IntType ...Values>
-    requires std::is_integral_v<IntType>
+    template <Utils::Integer IntType, IntType ...Values>
     struct PermutationSparseInt {
         void Set(Type val) {
 
@@ -48,8 +46,7 @@ namespace Shard::Renderer {
         }
     };
 
-    template <typename IntType, IntType DimensionVal, IntType ...Values>
-    requires std::is_integral_v<IntType>
+    template <Utils::Integer IntType, IntType DimensionVal, IntType ...Values>
     struct PermutionSparseInt {
         using Type = IntType;
         void Set(Type val) {
