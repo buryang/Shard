@@ -1,8 +1,15 @@
+/*****************************************************************//**
+ * \file   RenderGraphExe.cpp
+ * \brief  realize GPU memory aliasing algorithm from Pavlo Muratov
+ * url:https://levelup.gitconnected.com/gpu-memory-aliasing-45933681a15e
+ * \author buryang
+ * \date   March 2024
+ *********************************************************************/
 #include "eastl/sort.h"
 #include "Core/EngineGlobalParams.h"
 #include "Render/RenderGraphExe.h"
 #include "Render/RenderGraphPerfDebug.h"
-#include "RHI/RHI.h"
+#include "HAL/HALGlobalEntity.h"
 
 namespace Shard
 {
@@ -18,6 +25,9 @@ namespace Shard
 
         REGIST_PARAM_TYPE(UINT, RESOURCE_ALIAS_STRATEGY, EResourceAliasStrategy::eAliasNone);
 
+        /*when to allocator it*/
+        Utils::ScalablePoolAllocator<uint8_t>* g_render_allocator = nullptr;
+
         /*gfx queue and async compute queue*/
         static constexpr uint32_t MAX_QUEUE_COUNT = 2;
         struct TextureSubFieldState
@@ -25,34 +35,114 @@ namespace Shard
             EAccessFlags    state_;
             RenderPass::Handle  first_pass_[MAX_QUEUE_COUNT];
             RenderPass::Handle  last_pass_[MAX_QUEUE_COUNT];
-            TextureSubFieldState() noexcept{
-                for (auto n = 0; n < MAX_QUEUE_COUNT; ++n) {
-                    first_pass_[n] = last_pass_[n] = (RenderPass::PassHandle)-1;
+        };
+
+        struct MemorySlice
+        {
+            uint32_t    id_;
+            //uint32_t    flags_;
+            uint32_t    bucket_id_;
+            uint16_t    begin_time_{ 0u }; //dependency level begin
+            uint16_t    end_time_{ 0u }; //dependency level end
+            uint64_t    offset_{ 0u };
+            uint64_t    size_{ 0u };
+        };
+
+        static inline bool IsMemorySiceOverlap(const MemorySlice& lhs, const MemorySlice& rhs) {
+            return (rhs.begin_time_ > lhs.begin_time_ && rhs.begin_time_ < lhs.end_time_) ||
+                (rhs.begin_time_ < lhs.begin_time_ && rhs.end_time_ > lhs.end_time_) ||
+                (rhs.end_time_ > lhs.end_time_ && rhs.end_time_ < lhs.end_time_);
+        }
+
+        struct MemoryRegionPoint
+        {
+            uint64_t    offset_ : 63;
+            uint64_t    is_end_ : 1;
+        };
+
+        struct MemoryAliasBucket
+        {
+            uint64_t    size_;
+            uint32_t    bucket_id_;
+        };
+
+        class MemoryAliasCollector
+        {
+        public:
+            /*enqueue new slice as size descend order*/
+            void Enqueue(uint32_t slice_id, uint32_t flags, uint16_t begin_time, uint16_t end_time, uint64_t size) {
+                MemorySlice slice{ .id_ = slice_id, .begin_time_ = begin_time, .end_time_ = end_time, .size_ = size };
+                auto position = eastl::upper_bound(slices_.begin(), slices_.end(), slice, [&](auto curr_slice) { return curr_slice.size_ < slice.size_; });
+                slices_.insert(position, slice);
+            }
+            void DoAnalyse() {
+                for (auto slice_index = 0u; slice_index < slices_.size(); ++slice_index) {
+                    bool fit_result = false;
+                    auto& slice = slices_[slice_index];
+                    
+                    for (auto bucket_index = 0u; bucket_index < buckets_.size(); ++bucket_index) {
+                        if (fit_result = FitSliceInBucket(slice, buckets_[bucket_index], bucket_slices_[bucket_index])) {
+                            bucket_slices_[bucket_index].emplace_back(slice_index);
+                            break;
+                        }
+                    }
+                    if (!fit_result) {
+                        AllocNewBucketForSlice(slice, slice_index);
+                    }
                 }
             }
-            TextureSubFieldState(const EAccessFlags& state) noexcept:state_(state) {
-                for (auto n = 0; n < MAX_QUEUE_COUNT; ++n) {
-                    first_pass_[n] = last_pass_[n] = (RenderPass::PassHandle)-1;
-                }
+            const Vector<MemoryAliasBucket>& GetBuckets() { return buckets_; }
+            const MemoryAliasBucket& GetBucketForSlice(const uint32_t slice_id) {
+               //todo avoid search
+                auto iter = eastl::find_if(slices_.cbegin(), slices_.cend(), [slice_id](auto& sl) {return sl.id_ == slice_id; });
+                assert(iter != slices_.end());
+                return buckets_[iter->bucket_id_];
             }
-            bool IsValid() const {
-                //first pass and last pass at least one not equal -1
-                uint32_t null_count = 0;
-                for (const auto& handle : first_pass_) {
-                    null_count += handle == -1;
-                }
-                if (null_count == MAX_QUEUE_COUNT) {
-                    return false;
-                }
-                null_count = 0;
-                for (const auto& handle : last_pass_) {
-                    null_count += handle == -1;
-                }
-                return (null_count != MAX_QUEUE_COUNT);
+        private:
+            void AllocNewBucketForSlice(MemorySlice& slice, uint32_t slice_index) {
+                slice.bucket_id_ = buckets_.size();
+                slice.offset_ = 0u;
+                buckets_.emplace_back(MemoryAliasBucket{slice.bucket_id_, (uint32_t)buckets_.size()});
+                bucket_slices_.push_back({ slice_index });
             }
-            void Reset() {
-                *this = {};
+            bool FitSliceInBucket(MemorySlice& slice, MemoryAliasBucket& bucket, SmallVector<uint32_t>& bucket_slices)
+            {
+                uint64_t best_region_gap = std::numeric_limits<uint64_t>::max();
+                SmallVector<MemoryRegionPoint> region_points;
+                GatherNonAliasAbleRegionPoints(region_points, slice, bucket_slices, bucket.size_);
+                for (auto n = 0u; n < region_points.size() - 1u; ++n) {
+                    if (region_points[n].is_end_ && !region_points[n + 1].is_end_) {
+                        const auto region_gap = region_points[n + 1].offset_ - region_points[n].offset_;
+                        if (region_gap > slice.size_ && region_gap < best_region_gap) {
+                            slice.offset_ = region_points[n].offset_;
+                        }
+                    }
+                }
+                if (best_region_gap != std::numeric_limits<uint64_t>::max()) {
+                    slice.bucket_id_ = bucket.bucket_id_;
+                    //bucket_slices.emplace_back(slice.id_);
+                    return true;
+                }
+                return false;
             }
+            void GatherNonAliasAbleRegionPoints(SmallVector<MemoryRegionPoint>& region_points, const MemorySlice& curr_slice, const SmallVector<uint32_t>& slices, uint64_t bucket_size)
+            {
+                region_points.emplace_back(MemoryRegionPoint{ 0u, 1u }); //offset 0 as a fake end point
+                region_points.emplace_back(MemoryRegionPoint{ bucket_size, 0u }); //offset bucket_size as a fake begin point
+                for (const auto slice_id : slices) {
+                    const auto& slice = slices_[slice_id];
+                    if (IsMemorySiceOverlap(slice, curr_slice)) { //collect all time conflict regions
+                        region_points.emplace_back(MemoryRegionPoint(slice.offset_, 0u));
+                        region_points.emplace_back(MemoryRegionPoint(slice.offset_ + slice.size_, 1u));
+                    }
+                }
+                //sort region points ascend order
+                eastl::sort(region_points.begin(), region_points.end(), [](const auto& lhs, const auto& rhs) { return lhs.offset_ < rhs.offset_; });
+            }
+        private:
+            Vector<MemoryAliasBucket>   buckets_;
+            Vector<MemorySlice> slices_;
+            Vector<SmallVector<uint32_t>>  bucket_slices_;
         };
 
         template<typename State>
@@ -70,120 +160,133 @@ namespace Shard
             }
         }
 
-
-        RenderGraphExecutor::SharedPtr RenderGraphExecutor::Create(Utils::Allocator* alloc)
+        void RenderGraphExecutor::Execute(HALUnionContext& context)
         {
-            SharedPtr executor(new RenderGraphExecutor(alloc));
-            return executor;
-        }
-
-        void RenderGraphExecutor::Bake(const RenderGraph& render_graph)
-        {
-            //copy ordered passes and resource map
-            std::copy(render_graph.ordered_passes_.begin(), render_graph.ordered_passes_.end(), ordered_passes_.end());
-            std::copy()
-
-            AnalyseAliasResourceMemoryAlloc();
-            AllocateRHIResources();
-        }
-
-        void RenderGraphExecutor::Execute(RHIUnionContext& context)
-        {
-            for (auto& [handle, pass] : passes_)
+            for (auto& pass : ordered_passes_)
             {
-                auto curr_context = pass.IsAysnc() ? context.async_rhi_ : context.rhi_;
-                for (auto& call_back : pre_watch_dogs_[pass]) {
-                    call_back(*this, pass);
-                }
+                auto curr_context = pass->IsAsync() ? context.async_rhi_ : context.rhi_;
                 ExecutePass(curr_context, pass);
-                for (auto& call_back : post_watch_dogs_[pass]) {
-                    call_back(*this, pass);
-                }
             }
 
+            //clear all transient resource
+            RenderPass::PassRepoInstance().Clear(); //clear all pass resource
+            for (auto texture : texture_repos_) {
+                if (!texture->IsOutput() && !texture->IsExternal()) {
+                    RenderTexture::TextureRepoInstance().Free(texture);
+                }
+            }
+            for (auto buffer : buffer_repos_) {
+                if (!buffer->IsOutput() && !buffer->IsExternal()) {
+                    RenderBuffer::BufferRepoInstance().Free(buffer);
+                }
+            }
         }
 
-        void RenderGraphExecutor::InsertPass(PassHandle pass_handle, RenderPass& pass)
-        {
-            PassData pass_data{ pass_handle, pass };
-            passes_.emplace_back(pass_data);
-            pass.PreExecute();
-        }
-
-        const RenderPass& RenderGraphExecutor::GetRenderPass(PassHandle handle) const
-        {
-            auto pass_iter = eastl::find_if(passes_.begin(), passes_.end(), [&](auto data) {
-                return data.first == handle; });
-            assert(pass_iter != passes_.end());
-            return pass_iter->second;
-        }
-
-        RenderTexture::Ptr RenderGraphExecutor::GetRenderTexture(TextureHandle handle)
-        {
-            return texture_repo_.Get(handle);
-        }
-
-        RenderBuffer::Ptr RenderGraphExecutor::GetRenderBuffer(BufferHandle handle)
-        {
-            return buffer_repo_.Get(handle);
-        }
-
-        RenderGraphExecutor::TextureHandle RenderGraphExecutor::GetOrCreateTexture(const Field& field)
+        RenderTexture::Handle RenderGraphExecutor::GetOrCreateTexture(const Field& field)
         {
             const String& key = field.GetParentName();
             if (texture_map_.find(key) == texture_map_.end()) {
                 //transform field to desc
-                TextureHandle texture_handle = texture_repo_.Alloc(field);
+                auto texture_handle = RenderTexture::TextureRepoInstance().Alloc<>(field);
                 texture_map_.insert(eastl::make_pair(key, texture_handle));
             }
             return texture_map_[key];
         }
 
-        RenderGraphExecutor::BufferHandle RenderGraphExecutor::GetOrCreateBuffer(const Field& field)
+        RenderBuffer::Handle RenderGraphExecutor::GetOrCreateBuffer(const Field& field)
         {
             const String& key = field.GetParentName();
             if (buffer_map_.find(key) == buffer_map_.end()) {
                 //transform field to desc
-                BufferHandle buffer_handle = buffer_repo_.Alloc(field);
+                auto buffer_handle = RenderBuffer::BufferRepoInstance().Alloc(field);
                 buffer_map_.insert(eastl::make_pair(key, buffer_handle));
             }
             return buffer_map_[key];
         }
 
-        RenderGraphExecutor& RenderGraphExecutor::RegistExternalResource(const Field& field, RenderResource::Ptr external_resource)
+        RenderGraphExecutor& RenderGraphExecutor::RegistExternalResource(const Field& field, RenderResource* external_resource)
         {
             //alloc a same configure resource as resource
             const auto& field_name = field.GetName();
             if (field.GetType() == Field::EType::eBuffer) {
                 auto* external_buffer = dynamic_cast<RenderBuffer*>(external_resource);
-                auto buffer_handle = buffer_repo_.Alloc(*external_buffer);//shallow copy, use rhi as external resource
+                auto buffer_handle = buffer_repos_.Alloc(*external_buffer);//shallow copy, use rhi as external resource
                 buffer_map_.insert(eastl::make_pair(field_name, buffer_handle));
             }
             else
             {
                 auto* external_texture = dynamic_cast<RenderTexture*>(external_resource);
-                auto texture_handle = texture_repo_.Alloc(*external_texture);
+                auto texture_handle = texture_repos_.Alloc(*external_texture);
                 texture_map_.insert(eastl::make_pair(field_name, texture_handle));
             }
             return *this;
         }
 
-        void RenderGraphExecutor::InsertCallBack(PassHandle time, CallBack&& call, bool is_post)
-        {
-            auto& watch_dogs = is_post ? post_watch_dogs_ : pre_watch_dogs_;
-            if (watch_dogs.find(time) == watch_dogs.end()) {
-                watch_dogs[time] = { call };
-            }
-            else
-            {
-                watch_dogs[time].emplace_back(call);
+        template<typename Container, typename Function>
+        static void EnumerateContainer(Container& entities, Function&& func) {
+            for (auto entity : entities) {
+                func(entity);
             }
         }
 
-        void RenderGraphExecutor::ExecutePass(RHI::RHICommandContext* context, RenderPass& pass)
+        void RenderGraphExecutor::AnalyseRenderResourceResidency()
         {
-            RENDER_EVENT("render_pass:%s", pass.GetName());
-            pass.Execute(context);
+            //traverse all transient resource 
+            MemoryAliasCollector collector;
+            EnumerateContainer(texture_repos_, [&collector](auto texture) {
+                if (texture->IsTransient()) {
+                    collector.Enqueue();
+                }
+            });
+            
+            EnumerateContainer(buffer_repos_, [&collector](auto buffer) {
+                if (buffer->IsTransient()) {
+                    collector.Enqueue();
+                }
+            });
+            {
+                RENDER_EVENT("transient resource alias analyse");
+                collector.DoAnalyse();
+            }
+
+            //allocate memory
+            auto* residency_manager = HAL::HALGlobalEntity::Instance()->GetPrCreateMemoryResidencyManager();
+            assert(residency_manager != nullptr);
+            for (const auto& bucket_info : collector.GetBuckets()) {
+                HAL::HALAllocationCreateInfo create_info{ .size_ = bucket_info.size_ };
+                alias_allocations_.push_back(residency_manager->AllocMemory(create_info));
+            }
+
+            //make transient resource residency
+            EnumerateContainer(texture_repos_, [&, this](auto texture) {
+            });
+            EnumerateContainer(buffer_repos_, [&, this](auto buffer) {
+            });
+        }
+
+        void RenderGraphExecutor::AnalyseRenderResourceSync()
+        {
+            for (auto pass : ordered_passes_) {
+                {
+                    SmallVector<Field> outputs;
+                    pass->GetScheduleContext().EnumerateOutputFields(outputs);
+                    EnumerateContainer(outputs, [&, this](auto& field) {
+                        pass->GetPrologureBarrier().AddBarrier();
+                    });
+                }
+                {
+                    SmallVector<Field> inputs;
+                    pass->GetScheduleContext().EnumerateInputFields(inputs);
+                    EnumerateContainer(inputs, [&, this](auto& field) {
+                    });
+                }
+            }
+        }
+
+        void RenderGraphExecutor::ExecutePass(HAL::HALCommandContext* context, RenderPass::Handle pass)
+        {
+            RENDER_EVENT("render_pass:{} @ queue[{}]", pass->GetName(). pass->GetPipeline());
+            pass->Execute(context);
         }
 
         RenderGraphExecutor& RenderGraphExecutor::QueueExtractedTexture(Field& field, RenderTexture::Ptr& extracted_texture)
@@ -191,7 +294,7 @@ namespace Shard
             assert(field.IsOutput() && "extracted field should be output");
             auto texture_handle = GetOrCreateTexture(field);
             auto& texture = 0;
-            extracted_texture->SetRHI();
+            extracted_texture->SetHAL();
             return *this;
         }
 
@@ -260,8 +363,8 @@ namespace Shard
             executor.InsertCallBack(prologue_pass, [&](RenderGraphExecutor& executor) {
                 auto& pass = executor.GetRenderPass(prologue_pass);
                 auto texture = executor.GetRenderTexture(texture_handle);
-                //begin texture RHI
-                texture->SetRHI();
+                //begin texture HAL
+                texture->SetHAL();
                 }, false);
 
             for (; iter != combined_nodes.end(); ++iter) {
@@ -336,12 +439,12 @@ namespace Shard
                             AddTransition(executor, prev_merge_state, merge_state);
                         }
                     }
-                    auto epilogure_pass = combined_nodes.back().pass_;
-                    executor.InsertCallBack(epilogure_pass, [&](RenderGraphExecutor& executor) {
-                        auto& pass = executor.GetRenderPass(epilogure_pass);
+                    auto epilogue_pass = combined_nodes.back().pass_;
+                    executor.InsertCallBack(epilogue_pass, [&](RenderGraphExecutor& executor) {
+                        auto& pass = executor.GetRenderPass(epilogue_pass);
                         auto texture = executor.GetRenderTexture(texture_handle);
-                        //end texture RHI
-                        texture->EndRHI();
+                        //end texture HAL
+                        texture->EndHAL();
                     }, true);
                 }
 
@@ -400,18 +503,6 @@ namespace Shard
                     }
                 }
             }
-        }
-        void FieldResourcePlanner::AppendProducer(Field & field, PassHandle pass)
-        {
-            FieldNode producer{ field, pass };
-            producers_.emplace_back(producer);
-        }
-        void FieldResourcePlanner::ApeendConsumer(Field & field, PassHandle pass)
-        {
-            FieldNode consumer{ field, pass };
-            consumers_.emplace_back(consumer);
-        }
-        RenderGraphExecutor::RenderGraphExecutor(Utils::Allocator* alloc):allocator_(alloc), texture_repo_(*alloc), buffer_repo_(*alloc) {
         }
 
     }

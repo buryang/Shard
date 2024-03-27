@@ -1,55 +1,44 @@
 #pragma once
 
+#include "Core/EngineGlobalParams.h"
 #include "Render/RenderPass.h"
 #include "Render/RenderGraph.h"
 #include "Render/RenderGraphExe.h"
-#include "RHI/RHIGlobalEntity.h"
+#include "HAL/HALGlobalEntity.h"
+
+#define RESORT_ORDER_PASS
 
 namespace Shard
 {
     namespace Render
     {
+        REGIST_PARAM_TYPE(BOOL, RENDER_ASYNC_COMPUTE, false);
+        REGIST_PARAM_TYPE(BOOL, RENDER_CULLING_PASS, false);
+        REGIST_PARAM_TYPE(BOOL, RENDER_RESOURCE_ALIASING, false);
+        REGIST_PARAM_TYPE(BOOL, RENDER_BARRIER_SPLIT, false);
+
         class RenderGraph;
         class MINIT_API RenderGraphBuilder
         { 
         public:
-            struct BuildConfig
-            {
-                union
-                {
-                    struct
-                    {
-                        uint32_t    aync_enable_ : 1;
-                        uint32_t    culling_passes_ : 1;
-                        uint32_t    res_aliasing_enable_ : 1;
-                        uint32_t    hw_raytrace_enable_ : 1;
-                        uint32_t    barrier_split_ : 1;
-                    };
-                    uint32_t    cfg_bits_{ 0u };
-                };
-            };
-            static void SetBuildConf(const BuildConfig& conf) {
-                build_conf_ = conf;
-            }
-            void Compile();
-            bool IsReadyToBake() const;
-            RenderGraphExecutor::SharedPtr Bake();
-            FORCE_INLINE RenderGraph& GetRenderGraph() {
-                return graph_;
-            }
+            static RenderGraphExecutor::SharedPtr Compile(RenderGraph& graph);
         private:
-            DISALLOW_COPY_AND_ASSIGN(RenderGraphBuilder);
-            void CullUnusedPasses();
+            void CullUnusedPasses(RenderResourceCache* cache);
             void GenerateOrderredPasses();
+            void ReSortOrderredPasses();
             void MergeOrderedPasses();
-            void AddOrderredHelperPasses();
-            void AnalyseResourceUsage();
-            //build resource barrier
-            void AddResourceTransition();
-            void AllocateRHIResources(RenderGraphExecutor* exector);
+            void InsertOrderedAutoResolvePasses();
+            void AnalyseResourceUsage(RenderResourceCache* cache);
+            void AnalyseResourceHALMemoryUsage(RenderResourceCache* cache);
         private:
-            static BuildConfig  build_conf_;
-            RenderGraph    graph_;
+            //build resource barrier
+            void AnalyseResourceTrasientResidency(RenderResourceCache* cache);
+            void AnalyseResourceTransition(RenderResourceCache* cache);
+            explicit RenderGraphBuilder(RenderGraph& graph) :graph_(graph) {}
+            DISALLOW_COPY_AND_ASSIGN(RenderGraphBuilder);
+        private:
+            RenderGraph&    graph_;
+            Vector<RenderPass::Handle>  ordered_passes_;
         };
     }
 }

@@ -15,57 +15,64 @@ namespace Shard
         class MINIT_API RenderGraph final : public Utils::DirectedAcyclicGraph
         {
         public:
+            struct RenderOutputData
+            {
+                RenderPass::Handle  pass_;
+                Field* field_{ nullptr };
+            };
+            struct RenderEdgeData
+            {
+                //two pass connected field count
+                uint32_t    ref_count_;
+            };
+            struct RenderNodeData
+            {
+                RenderPass::Handle  pass_;
+            };
+            friend class RenderGraphBuilder;
+            using BaseClass = Utils::DirectedAcyclicGraph;
+        public:
             RenderGraph() = default;
             void AddPass(RenderPass::Handle pass);
-            template<typename LAMBDA, typename ParametersStruct>
-            void AddPass(LAMBDA&& lambda, EPipeline pipe, RenderPass::EFlags flags, const String& pass_name, ParametersStruct& parameters)
+            template <typename SetupLambda, typename ExecuteLambda, bool never_culled=false>
+            void AddPass(const String& pass_name, EPipeline pipe, ExecuteLambda&& execute_lambda, SetupLambda&& setup_lambda=[](RenderPass::ScheduleContext&) {})
             {
                 auto& pass_repo = RenderPass::PassRepoInstance();
-                auto lambda_pass = pass_repo->Alloc<LambdaRenderPass<LAMBDA>>(pass_name, pipe, flags, lambda);
-                for (auto f : parameters.) {
-                    //add pass parameters here
-                    lambda_pass->GetScheduleContext().AddField(f);
-                }
-                AddPass(lambda_pass, pass_name);
+                auto lambda_pass = pass_repo->Alloc<LambdaRenderPass<SetupLambda, ExecuteLambda>>(pass_name, pipe, never_culled, execute_lambda, setup_lambda);
+                AddPass(lambda_pass);
             }
             void RemovePass(const RenderPass::Handle pass);
-            void InsertPass(RenderPass::Handle prev_pass, RenderPass::Handle pass);
             //src field included in producer, dst field included in consumer
-            void ConnectPass(RenderPass::Handle producer, RenderPass::Handle consumer, Field& src, Field& dst);
-            void DisConnectField(Field& src, Field& dst);
-            FORCE_INLINE uint32_t PassNum()const { return pass_to_index_.size(); }
-            FORCE_INLINE uint32_t GetPassIndex(const RenderPass::Handle pass)const;
-            FORCE_INLINE uint32_t GetEdgeIndex(const String& edge_name)const;
+            bool ConnectPass(RenderPass::Handle producer, RenderPass::Handle consumer);
+            void DisConnectPass(RenderPass::Handle producer, RenderPass::Handle consumer);
+            bool ConnectField(RenderPass::Handle producer, Field& src, RenderPass::Handle consumer, Field& dst);
+            void DisConnectField(RenderPass::Handle producer, Field& src, RenderPass::Handle consumer, Field& dst);
+            //todo mark input
+            void MarkOutput(RenderPass::Handle pass, Field& field);
+            void UnMarkOutput(RenderPass::Handle pass, Field& field);
+            bool ValidateGraph();
+            void Sort();
+            FORCE_INLINE uint32_t PassNum()const { return GetNodeCount(); }
             FORCE_INLINE uint32_t OutputNum()const { return outputs_.size(); }
-            //check whether graph is sorted
-            FORCE_INLINE bool IsSorted()const { return is_sorted_; }
-            FORCE_INLINE bool IsCompileNeeded()const { return is_recompile_needed_; }
-            FORCE_INLINE bool IsBuildWithConf(const uint32_t build_conf) const { return build_flags_ == build_conf; }
-            FORCE_INLINE void SetBuildConf(const uint32_t build_conf) { build_flags_ = build_conf; }
-            template <typename Function>
-            void EnumerateOutputs() {
-                for (auto output : outputs_) {
-                    Function(output);
+            FORCE_INLINE RenderOutputData& GetOutput(uint32_t index) { return *std::next(outputs_.begin(), index); }
+            FORCE_INLINE uint32_t GetPassIndex(const RenderPass::Handle pass)const {
+                auto iter = pass_to_index_.find(pass);
+                if (iter != pass_to_index_.end()) {
+                    return iter->second;
                 }
+                return -1;
             }
+            FORCE_INLINE RenderPass::Handle GetPass(uint32_t index)const { return node_data_[index].pass_; }
             void Serialize(Utils::IOArchive& ar);
         protected:
-            uint32_t CalcPassDependencyLevel(RenderPass::Handle pass); 
-            bool IsPassMergeable(RenderPass::Handle prev, RenderPass::Handle next);
+            bool IsPassMergeAble(RenderPass::Handle prev, RenderPass::Handle next)const;
         private:
             DISALLOW_COPY_AND_ASSIGN(RenderGraph);
         private:
-            friend class RenderGraphBuilder;
-            uint32_t    is_recompile_needed_ : 1{0u};
-            uint32_t    is_sorted_ : 1{0u};
-            uint32_t    build_flags_ : 24{0u};
             Map<RenderPass::Handle, uint32_t>   pass_to_index_;
-            Map<Field::Name, uint32_t>  resource_to_index_;
-            SmallVector<Field, MAX_OUTPUT_NUM>  outputs_;
-            Vector<uint8_t> pass_depend_level_;
-
-            //ordered pass as executing order
-            Vector<RenderPass::Handle> ordered_pass_;
+            Map<uint32_t, RenderEdgeData> edge_data_;
+            Map<uint32_t, RenderNodeData> node_data_;
+            Set<RenderOutputData>  outputs_;
         };
     }
 }
