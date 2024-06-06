@@ -3,16 +3,20 @@
 namespace Shard::System::Resource
 {
 
-	ResourceID::ResourceID(const String& path) :path_(path)
+	ResourceID::ResourceID(const String& path) :path_(path), ext_fourcc_(0u)
 	{
-		folly::hash::SpookyHashV2::Hash32(hash_.GetBytes(), hash_.GetHashSize(), 0u); //ugly 
 		if (const auto pos = path.find_last_of('.'); pos != String::npos && path.size()-pos <= 4) { //fourcc extension
-			ext_type_ = path.substr(pos+1);
+            const auto* fourcc = path.substr(pos + 1).data();
+            const auto fourcc_count = path.substr(pos + 1).size();
+            for (auto n = 0u, shift = 24u; n < fourcc_count; ++n, shift -= 8u) {
+                ext_fourcc_ |= (((uint32_t)fourcc[n]) << shift);
+            }
 		}
 		else
 		{
 			LOG(ERROR) << "resource path with wrong format extension";
 		}
+        folly::hash::SpookyHashV2::Hash32(hash_.GetBytes(), hash_.GetHashSize(), ext_fourcc_); //ugly 
 	}
 
 	void ResourceManagerSystem::Update(float dt)

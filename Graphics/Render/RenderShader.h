@@ -3,8 +3,8 @@
 #include "Utils/Hash.h"
 #include "Utils/FileArchive.h"
 #include "Utils/ReflectionImageObject.h"
-#include "RHI/RHIGlobalEntity.h"
-#include "RHI/RHIShader.h"
+#include "HAL/HALGlobalEntity.h"
+#include "HAL/HALShader.h"
 #include "Render/RenderShaderUtils.inl"
 #include "Render/RenderShaderParameters.h"
 #include "Render/RenderShader.h"
@@ -74,13 +74,13 @@ namespace Shard::Render
 
     struct ShaderPlatform
     {
-        RHI::ERHIBackEnd    back_end_;
+        HAL::EHALBackEnd    back_end_;
         EShaderModel    shader_model_;
         static const String& ToString(const ShaderPlatform& platform);
     };
 
     //default platform use vulkan sm5
-    static constexpr ShaderPlatform g_default_platform{ RHI::ERHIBackEnd::eVulkan, EShaderModel::eSM_5_1 };
+    static constexpr ShaderPlatform g_default_platform{ HAL::EHALBackEnd::eVulkan, EShaderModel::eSM_5_1 };
 
     struct RenderShaderCode {
         using HashType = Utils::Blake3Hash64;
@@ -93,7 +93,7 @@ namespace Shard::Render
             archive << hash_;
             archive << time_tag_;
             archive << code_binary_.size();
-            const auto& check_sum = Utils::CalcBlake3HashForBytes<Utils::Blake3Hash256::MAX_HASH_SIZE>(code_binary_.data(), code_binary_.size());
+            const auto& check_sum = Utils::InternBlake3HashForBytes<Utils::Blake3Hash256::MAX_HASH_SIZE>(code_binary_.data(), code_binary_.size());
             archive << check_sum;
             archive.Serialize(reinterpret_cast<void*>(code_binary_.data()), code_binary_.size());
         }
@@ -108,7 +108,7 @@ namespace Shard::Render
             Utils::Blake3Hash256 check_sum;
             archive << check_sum;
             archive.Serialize(reinterpret_cast<void*>(code_binary_.data()), bin_size);
-            const auto& native_sum = Utils::CalcBlake3HashForBytes<Utils::Blake3Hash256::MAX_HASH_SIZE>(code_binary_.data(), code_binary_.size());
+            const auto& native_sum = Utils::InternBlake3HashForBytes<Utils::Blake3Hash256::MAX_HASH_SIZE>(code_binary_.data(), code_binary_.size());
             if (check_sum != native_sum) {
                 LOG(ERROR) << "unserialize shader binary failed";
             }
@@ -205,7 +205,7 @@ namespace Shard::Render
         virtual ~RenderShader() {}
         const HashType& GetShaderHash()const;
         const uint32_t GetResourceIndex()const;
-        const RenderShaderType::Ptr GetShaderType()const;
+        const RenderShaderType* GetShaderType()const;
         virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
         virtual RenderShaderParametersMeta* GetShaderParametersMeta() = 0;
     protected:
@@ -238,15 +238,15 @@ namespace Shard::Render
             return PipelineStateObjectDesc::ComputeHash(desc_);
         }
         /*
-        FORCE_INLINE RenderShader::Ptr operator[](EShaderFrequency freq) {
+        FORCE_INLINE RenderShader* operator[](EShaderFrequency freq) {
             return shaders_[Utils::EnumToInteger(freq)];
         }
         */
     private:
         PipelineStateObjectDesc    desc_;
-        RHI::RHIPipelineStateObject::Ptr    rhi_entity_{ nullptr };
+        HAL::HALPipelineStateObject*    rhi_entity_{ nullptr };
         //fixme not need this?
-        //RenderShader::Ptr shaders_[Utils::EnumToInteger(EShaderFrequency::eNum)];
+        //RenderShader* shaders_[Utils::EnumToInteger(EShaderFrequency::eNum)];
         //to do whehter define here
         mutable std::atomic_uint32_t    use_counter_{ 0u };
         mutable std::atomic_uint32_t    last_use_time_{ 0u };

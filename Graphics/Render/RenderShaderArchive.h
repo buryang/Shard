@@ -3,8 +3,8 @@
 #include "Utils/FileArchive.h"
 #include "Core/PixelInfo.h"
 #include "Scene/Primitive.h"
-#include "RHI/RHIGlobalEntity.h"
-#include "RHI/RHIShaderLibrary.h"
+#include "HAL/HALGlobalEntity.h"
+#include "HAL/HALShaderLibrary.h"
 #include "Render/RenderShader.h"
 #include <shared_mutex>
 
@@ -18,10 +18,10 @@ namespace Shard::Render {
             } compute_desc_;
             struct GraphicsPipelineDesc {
                 HashVal stage_shaders[Utils::EnumToInteger(EShaderFrequency::eGFXNum)];
-                RHI::RHIVertexInputStateInitializer    vertex_input_state_;
-                RHI::RHIBlendStateInitializer    blend_state_;
-                RHI::RHIDepthStencilStateInitializer    depth_stencil_state_;
-                RHI::RHIRasterizationStateInitializer    rasterization_state_;
+                HAL::HALVertexInputStateInitializer    vertex_input_state_;
+                HAL::HALBlendStateInitializer    blend_state_;
+                HAL::HALDepthStencilStateInitializer    depth_stencil_state_;
+                HAL::HALRasterizationStateInitializer    rasterization_state_;
                 //assembly state only has a topology flags
                 EInputTopoType    primitive_topology_{ EInputTopoType::eUnkown };
             } gfx_desc_;

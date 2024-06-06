@@ -1,4 +1,4 @@
-#ifndef _COMMON_UTILS_INC_
+﻿#ifndef _COMMON_UTILS_INC_
 #define _COMMON_UTILS_INC_
 
 #define M_PI 3.14159265359
@@ -10,12 +10,21 @@
 #define MEDIUMP_FLT_MAX 65504.0
 #define SaturateMediump(x) min(x, MEDIUMP_FLT_MAX)
 
-#ifdef SHADER_API_VULKAN
+#ifdef __spirv__ //for DXC compile to spir-v
 #define VK_PUSH_CONSTANT [[vk::push_constant]]
 #define VK_BINDING(BIND, SET) [[vk::binding(BIND, SET)]]
+#define VK_LOCATION(INDEX) [[vk::location(INDEX)]]
+#define VK_CONSTANT(INDEX) [[vk::constant_id(INDEX)]]
+#define VK_COUNTER(INDEX) [[vk::counter_binding(INDEX)]]
+//https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
+#define VK_INPUT_AATTACHMENT(ATTACH) [[vk::input_attachment_index(ATTACH)]]
 #else 
 #define VK_PUSH_CONSTANT
 #define VK_BINDING(BIND, SET)
+#define VK_LOCATION(INDEX)
+#define VK_CONSTANT(INDEX)
+#define VK_COUNTER(INDEX)
+#define VK_INPUT_AATTACHMENT(ATTACH)
 #endif
 
 //from https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
@@ -82,6 +91,38 @@ float IGN(float2 p, int frame)
 //you can get free blue noise from here:http://momentsingraphics.de/BlueNoise.html
 //sample blue noise should use nearest filter  
 
+//http://www.jcgt.org/published/0009/03/02/
+//(N → N): pcg3d, pcg4d is recommend by above paper
+//also:https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
+uint3 pcg3d(uint3 v)
+{
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v ˆ = v >> 16u;
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    return v;
+}
+
+uint4 pcg4d(uint4 v)
+{
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+    v ˆ = v >> 16u;
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+    return v;
+}
+//https://nullprogram.com/blog/2018/07/31/
+//https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
 
 float Pow3(float x)
 {
@@ -219,4 +260,5 @@ uint Morton3D(float3 xyz)
 }
 
 //https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/
+//https://rene.ruhr/gfx/adoption/ sample disk from square
 #endif //_COMMON_UTILS_INC_

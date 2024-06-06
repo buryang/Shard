@@ -3,9 +3,9 @@
 #include "Utils/SimpleEntitySystem.h"
 #include "Utils/SimpleEntitySystemPrimitive.h"
 #include "Scene/Primitive.h"
-#include "Graphics/RHI/RHIResources.h"
+#include "Graphics/HAL/HALResources.h"
 
-namespace Shard::System::PhyX
+namespace Shard::System::PhysX
 {
     //think about this for
     struct ECSWeatherComponent
@@ -24,9 +24,9 @@ namespace Shard::System::PhyX
 
     struct ECSParticleComponent
     {
-        RHI::RHIBuffer::Ptr    particle_buffer_{ nullptr };
-        RHI::RHIBuffer::Ptr    alive_particle_{ nullptr };
-        RHI::RHIBuffer::Ptr    dead_particle_{ nullptr };
+        HAL::HALBuffer*    particle_buffer_{ nullptr };
+        HAL::HALBuffer*    alive_particle_{ nullptr };
+        HAL::HALBuffer*    dead_particle_{ nullptr };
     };
 
     struct ECSForceFieldComponent
@@ -34,7 +34,7 @@ namespace Shard::System::PhyX
         //float    gravity_{ 9.8f };
     };
 
-    struct ECSRigidBodyPhyXComponent
+    struct ECSRigidBodyPhysXComponent
     {
         vec3    velocity_;
         vec3    angular_velocity_;
@@ -65,7 +65,7 @@ namespace Shard::System::PhyX
         }collision_proxy_;
     }; 
 
-    struct ECSSoftBodyPhyXComponent
+    struct ECSSoftBodyPhysXComponent
     {
         float    mass_;
         AABB    aabb_;
@@ -74,7 +74,7 @@ namespace Shard::System::PhyX
         //SmallVector<float>    bones_weights_;//todo
     };
 
-    class MINIT_API PhyXDynamicUpdateSystem : public Utils::ECSSystem
+    class MINIT_API PhysXDynamicUpdateSystem : public Utils::ECSSystem
     {
     public:
         void Init() override;
@@ -85,7 +85,7 @@ namespace Shard::System::PhyX
     };
 
     //particle system, maybe one for different indentity as wicked engine ?
-    class MINIT_API PhyXEmitParticleSystem : public  Utils::ECSSystem
+    class MINIT_API PhysXEmitParticleSystem : public  Utils::ECSSystem
     {
     public:
         void Init() override;
@@ -94,7 +94,7 @@ namespace Shard::System::PhyX
         void Update(Utils::ECSSystemUpdateContext& ctx) override;
     };
 
-    class MINIT_API PhyXHairParticleSystem : public Utils::ECSSystem
+    class MINIT_API PhysXHairParticleSystem : public Utils::ECSSystem
     {
     public:
         void Init() override;

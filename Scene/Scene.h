@@ -47,7 +47,7 @@ namespace Shard
         private:
             //load post proc functions
         private:
-            friend class RuntimeHDRPRenderer;
+            friend class RuntimeHDRPRender;
             CameraList        cameras_;
             Camera* curr_camera_{ nullptr };
             MeshList        meshes_;
@@ -95,9 +95,9 @@ namespace Shard
 
         enum class ESystemPriorLevel
         {
-            ePrePhyX,
-            ePhyX,
-            ePostPhyX,
+            ePrePhysX,
+            ePhysX,
+            ePostPhysX,
             eRender,
         };
 
@@ -106,14 +106,22 @@ namespace Shard
         struct WorldSceneUpdateContext final: Utils::ECSSystemUpdateContext
         {
             WorldSceneUpdateContext();
-            WorldScene::Ptr GetScence();
+            WorldScene* GetScence();
         };
 
-        //ecs scene interface
+        /**
+        *\brief ecs scene interface, mix oop and ecs
+        * https://www.sebaslab.com/oop-abstraction-layer-in-a-ecs-centric-application/
+        */
         class MINIT_API WorldScene : public Utils::ECSAdmin<int> //todo
         {
         public:
-            using Ptr = WorldScene*;
+            enum class EWorldType
+            {
+                eStage,
+                eActive, //the main world
+                eFaded,
+            };
             class EntityProxy: public std::enable_shared_from_this<EntityProxy>
             {
             public:
@@ -172,6 +180,31 @@ namespace Shard
             EntityProxy::SharedPtr CreateEntity();
             void Serialize(const String& world_file);
             void UnSerialize(const String& world_file) const;
+            FORCE_INLINE EWorldType GetWorldType() const { return type_; }
+            void SetWorldType(EWorldType type) { type_ = type; }
+        private:
+            EWorldType  type_;
+        };
+
+        /**
+         * \brief world manager include all world
+         */
+        class MINIT_API WorldSceneManager
+        {
+        public:
+            void Init();
+            void UnInit();
+            WorldScene* CreateWorld(WorldScene::EWorldType world_type);
+            WorldScene* GetWorld(WorldScene::EWorldType world_type=WorldScene::EWorldType::eActive);
+            void DestroyWorld(WorldScene* world = nullptr);
+            template<typename Function>
+            void Enumerate(Function&& func) {
+                for (auto* world : worlds_) {
+                    func(world);
+                }
+            }
+        private:
+            SmallVector<WorldScene*>    worlds_;
         };
     }
 }

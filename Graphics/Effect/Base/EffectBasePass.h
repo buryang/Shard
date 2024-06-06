@@ -1,13 +1,13 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "Graphics/Renderer/RtRenderShader.h"
-#include "Graphics/Renderer/RtRenderGraphBuilder.h"
+#include "Graphics/Render/RenderShader.h"
+#include "Graphics/Render/RenderGraphBuilder.h"
 
 namespace Shard::Effect
 {
     class MINIT_API EffectDrawBase
     {
     public:
-        static void Draw(Renderer::RtRenderGraphBuilder& builder);
+        static void Draw(Render::RenderGraphBuilder& builder);
     };
 }

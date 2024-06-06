@@ -1,6 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "RHI/RHICommandIR.h"
+#include "HAL/HALCommandIR.h"
 #include <type_traits>
 
 namespace Shard::Render {
@@ -252,17 +252,17 @@ INTERNAL_INIT_SHADER_PARAMETER_LAYOUT()
 private: ShaderParameterTypeTraits<T>::AlignType Member;                \
 INTERNAL_INIT_SHADER_PARAMETER_LAYOUT()
 
-template<class RHICmdList, class ShaderRHI, class ShaderClass>
-void SetShaderParameters(RHICmdList& cmd_list, typename ShaderClass::Ptr shader, typename ShaderRHI::Ptr shader_rhi, const typename ShaderClass::ShaderParameter* parameters) {
+template<class HALCmdList, class ShaderHAL, class ShaderClass>
+void SetShaderParameters(HALCmdList& cmd_list, typename ShaderClass* shader, typename ShaderHAL* shader_rhi, const typename ShaderClass::ShaderParameter* parameters) {
     using EBindEntityType = RenderShaderParamBinding::BindEntity::EType;
-    using EResourceEntityType = RHISetReourcePacket::EResourceType;
+    using EResourceEntityType = HALSetReourcePacket::EResourceType;
     const auto* params_stream = reinterpret_cast<const uint8_t*>(parameters);
     const auto bindings = shader->bindings_;
     
     for(const auto& entity : bindings.entities_)
     {
         const auto entity_type = entity.type_;
-        RHISetResourcePacket res_cmd;
+        HALSetResourcePacket res_cmd;
         res_cmd.base_index_ = 0u; //todo
         if (entity_type == EBindEntityType::eScalarOrVec) {
             res_cmd.resource_type_ = EResourceEntityType::eTrivalData;
@@ -273,15 +273,15 @@ void SetShaderParameters(RHICmdList& cmd_list, typename ShaderClass::Ptr shader,
             const auto* resource_ptr = params_stream + entity.byte_offset_;
             if (entity_type == EBindEntityType::eTexture) {
                 res_cmd.resource_type_ = EResourceEntityType::eTexture;
-                res_cmd.texture_ = reinterpret_cast<RHITexture::Ptr>(resource_ptr);
+                res_cmd.texture_ = reinterpret_cast<HALTexture*>(resource_ptr);
             }
             else if (entity_type == EBindEntityType::eBuffer) {
                 res_cmd.resource_type_ = EResourceEntityType::eBuffer;
-                res_cmd.buffer_ = reinterpret_cast<RHIBuffer::Ptr>(resource_ptr);
+                res_cmd.buffer_ = reinterpret_cast<HALBuffer*>(resource_ptr);
             }
             else if (entity_type == EBindEntityType::eSampler) {
                 res_cmd.resource_type_ = EResourceEntityType::eSampler;
-                res_cmd.sampler_ = reinterpret_cast<RHISampler::Ptr>(resource_ptr);
+                res_cmd.sampler_ = reinterpret_cast<HALSampler*>(resource_ptr);
             }
         }
         cmd_list.Enqueue(res_cmd);

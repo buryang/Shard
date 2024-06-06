@@ -185,7 +185,7 @@ namespace Shard::Render
             static RtGlobalCompileWorkManager instance;
             return instance;
         }
-        uint32_t Submit(RenderShaderCompileWorker::Ptr work);
+        uint32_t Submit(RenderShaderCompileWorker* work);
         uint32_t Wait(uint32_t work_id)const;
         void FetchOutput(uint32_t work_id, ShaderCompileJobOutput& output);
         void FinalizeAllJobs();
@@ -196,7 +196,7 @@ namespace Shard::Render
     private:
         struct CompileEntity
         {
-            RenderShaderCompileWorker::Ptr entity_{ nullptr };
+            RenderShaderCompileWorker* entity_{ nullptr };
             std::binary_semaphore    done_semaphore_;
         };
         Map<uint32_t, CompileEntity>    pending_works_;
@@ -219,14 +219,14 @@ namespace Shard::Render
         size_t GetShaderCount()const {
             return shaders_.size();
         }
-        FORCE_INLINE void AddShader(RenderShader::Ptr shader) {
+        FORCE_INLINE void AddShader(RenderShader* shader) {
             shaders_.emplace_back(shader);
         }
-        FORCE_INLINE RenderShader::Ptr GetShader(const ShaderHandle& handle) {
+        FORCE_INLINE RenderShader* GetShader(const ShaderHandle& handle) {
             return shaders_[uint32_t(handle)];
         }
     private:
-        LAYOUT_VECTOR_FIELD(,Render::RenderShader::Ptr, shaders_);
+        LAYOUT_VECTOR_FIELD(,Render::RenderShader*, shaders_);
         END_DECLARE_TYPE_LAYOUT_DEF(RenderShaderContent);
     };
 
@@ -237,29 +237,29 @@ namespace Shard::Render
         using Ptr = RenderShaderCompiledFileMap*;
         using SharedPtr = std::shared_ptr<RenderShaderCompiledFileMap>;
         using HashType = Utils::Blake3Hash64;
-        RHI::RHIShader::Ptr GetRHIShader(const uint32_t index);
-        RHI::RHIShader::Ptr    GetRHIShader(const ShaderKey& key);
-        uint32_t GetRHIShaderIndex(const ShaderKey& key);
+        HAL::HALShader* GetHALShader(const uint32_t index);
+        HAL::HALShader*    GetHALShader(const ShaderKey& key);
+        uint32_t GetHALShaderIndex(const ShaderKey& key);
         //check file hash changed
         bool IsReCompileNeeded()const;
         const HashType& GetHash()const;
         const HashType& GetFileNameHash()const;
         const String& GetFileName()const;
-        RenderShaderArchive::Ptr GetShaderArchive();
+        RenderShaderArchive* GetShaderArchive();
         void Serialize(FileArchive& ar);
         void UnSerialize(FileArchive& ar);
         ~RenderShaderCompiledFileMap();
     private:
         //how to deal with compile work
-        void CreateRHIShader(const ShaderKey& key);
+        void CreateHALShader(const ShaderKey& key);
     private:
         String    file_name_;
         HashType    file_name_hash_;
         HashType    hash_;
         mutable HashType    precalc_hash_; //to save pre calc hash for next use
         RenderShaderContent    shader_content_;
-        RenderShaderArchive::Ptr    shader_archive_;
-        RHI::RHIShaderLibraryInterface::SharedPtr    shader_library_;
+        RenderShaderArchive*    shader_archive_;
+        HAL::HALShaderLibraryInterface::SharedPtr    shader_library_;
         //handle allocator logic
         Map<ShaderKey, ShaderHandle>    shader_handle_lut_;
         ShaderHandleManager    shader_hande_generator_;
@@ -273,8 +273,8 @@ namespace Shard::Render
             static RenderShaderCompiledRepo repo;
             return repo;
         }
-        RenderShaderCompiledFileMap::Ptr FindOrCreateSection(const RenderShaderType::HashType hash_name);
-        RenderShaderCompiledFileMap::Ptr FindSection(const RenderShaderType::HashType hash_name);
+        RenderShaderCompiledFileMap* FindOrCreateSection(const RenderShaderType::HashType hash_name);
+        RenderShaderCompiledFileMap* FindSection(const RenderShaderType::HashType hash_name);
         ~RenderShaderCompiledRepo();
         void Serialize(FileArchive& ar)const;
         void UnSerialize(FileArchive& ar);
@@ -292,7 +292,7 @@ namespace Shard::Render
         //void BeginCompileShader();
         //void WaitCompileShaderDone();
     private:
-        Map<RenderShaderCompiledFileMap::HashType, RenderShaderCompiledFileMap::Ptr>    shader_sections_;
+        Map<RenderShaderCompiledFileMap::HashType, RenderShaderCompiledFileMap*>    shader_sections_;
     };
 
     class MINIT_API RtPipelineCompiledRepo

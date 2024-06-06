@@ -1,50 +1,50 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/hash.h"
-#include "Graphics/RHI/RHIResources.h"
-#include "Graphics/Renderer/RtRenderShader.h"
-#include "Graphics/Renderer/RtRenderGraphBuilder.h"
+#include "Graphics/HAL/HALResources.h"
+#include "Graphics/Render/RenderShader.h"
+#include "Graphics/Render/RenderGraphBuilder.h"
 #include <mutex>
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
 
 namespace Shard::Effect
 {
-    using namespace Renderer;
+    using namespace Render;
 
-    class MINIT_API RtFreeTypeFontVS : public Renderer::RtRenderShader
+    class MINIT_API FreeTypeFontVS : public Render::RenderShader
     {
     public:
         bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
-        RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
+        RenderShaderParametersMeta* GetShaderParametersMeta()override;
     };
 
-    class MINIT_API RtFreeTypeFontPS : public Renderer::RtRenderShader
+    class MINIT_API FreeTypeFontPS : public Render::RenderShader
     {
     public:
         bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
-        RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
+        RenderShaderParametersMeta* GetShaderParametersMeta()override;
         
     };
 
-    class MINIT_API RtGlyphOutlinesFontVS : public Renderer::RtRenderShader
+    class MINIT_API GlyphOutlinesFontVS : public Render::RenderShader
     {
     public:
         bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
-        RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
+        RenderShaderParametersMeta* GetShaderParametersMeta()override;
     };
 
-    class MINIT_API RtGlyphOutlinesFontPS : public Renderer::RtRenderShader
+    class MINIT_API GlyphOutlinesFontPS : public Render::RenderShader
     {
     public:
         bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) override;
-        RtRenderShaderParametersMeta* GetShaderParametersMeta()override;
+        RenderShaderParametersMeta* GetShaderParametersMeta()override;
     };
 
     REGIST_SHADER_IMPL(FreeTypeFontVS,"Fonts/VSFontsShader.hlsl", "main", EShaderFrequency::eVertex, RtFreeTypeFontVS);
     REGIST_SHADER_IMPL(FreeTypeFontPS, "Fonts/PSFontsSHader.hlsl", "main", EShaderFrequency::eFrag, RtFreeTypeFontPS);
-    REGIST_SHADER_IMPL(GlyphOutlinesFontVS, "Fonts/VSFontsShader.hlsl", "main", EShaderFrequency::eVertex, RtGlyphOutlinesFontVS);
-    REGIST_SHADER_IMPL(GlyphOutlinesFontPS, "Fonts/PSFontsSHader.hlsl", "main", EShaderFrequency::eFrag, RtGlyphOutlinesFontPS);
+    REGIST_SHADER_IMPL(GlyphOutlinesFontVS, "Fonts/VSFontsShader.hlsl", "main", EShaderFrequency::eVertex, GlyphOutlinesFontVS);
+    REGIST_SHADER_IMPL(GlyphOutlinesFontPS, "Fonts/PSFontsSHader.hlsl", "main", EShaderFrequency::eFrag, GlyphOutlinesFontPS);
 
     enum class EAlignmentOp
     {
@@ -142,12 +142,12 @@ namespace Shard::Effect
     public:
         static void Init();
         static void Unit();
-        static void Draw(Renderer::RtRendererGraph& graph, const String& text, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
-        static void Draw(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
+        static void Draw(Render::RenderGraph& graph, const String& text, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
+        static void Draw(Render::RenderGraph& graph, const WString& wtext, const TextDrawParams& draw_params = TextDrawParams::GetDefaultTextDrawParams());
     private:
         static uint32_t AddFontStyle(const String& name, const Span<uint8_t>& bin);
-        static void DrawExecuteFreeType(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
-        static void DrawExecuteGlyphOutlines(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
+        static void DrawExecuteFreeType(Render::RenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
+        static void DrawExecuteGlyphOutlines(Render::RenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params);
         static void UpdateAtlas(float scale = 1.f); //todo
     private:
         static Vector<FontStyleInfo>    font_styleLUT_;
@@ -155,9 +155,9 @@ namespace Shard::Effect
         static Map<HashType, GlyphBitmap>    glyphs_neededLUT_;
 
         static std::mutex    atlas_mutex_;
-        static RHI::RHIBuffer::Ptr    vertex_buffer_;
-        static RHI::RHIBuffer::Ptr    index_buffer_;
-        static RHI::RHITexture::Ptr    atlas_{ nullptr };
-        static RHI::RHIPipelineStateObject::Ptr pso_{ nullptr };
+        static HAL::HALBuffer*    vertex_buffer_;
+        static HAL::HALBuffer*    index_buffer_;
+        static HAL::HALTexture*    atlas_{ nullptr };
+        static HAL::HALPipelineStateObject* pso_{ nullptr };
     };
 }

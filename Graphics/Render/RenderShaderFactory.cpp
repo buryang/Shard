@@ -1,7 +1,7 @@
 #include "Utils/FileArchive.h"
 #include "Utils/SimpleJobSystem.h"
 #include "Core/EngineGlobalParams.h"
-#include "RHI/RHIShaderLibrary.h"
+#include "HAL/HALShaderLibrary.h"
 #include "Render/RenderShaderFactory.h"
 #include <filesystem>
 #include <string>
@@ -44,9 +44,9 @@ namespace Shard::Render {
         return false;
     }
 
-    RenderShaderType::Ptr RenderShaderType::FindShaderTypeByName(const String& name)
+    RenderShaderType* RenderShaderType::FindShaderTypeByName(const String& name)
     {
-        const auto hash_name = Utils::CalcBlake3HashForBytes<RenderShaderType::HashType::GetHashSize()>(reinterpret_cast<const uint8_t*>(name.data()), name.size());
+        const auto hash_name = Utils::InternBlake3HashForBytes<RenderShaderType::HashType::GetHashSize()>(reinterpret_cast<const uint8_t*>(name.data()), name.size());
         const auto iter = eastl::find(Begin(), End(), hash_name);
         if (iter != End() && (*iter)->GetName() == name) {
             return *iter;
@@ -55,7 +55,7 @@ namespace Shard::Render {
     }
 
     //whether hash unique?
-    RenderShaderType::Ptr RenderShaderType::FindShaderTypeByHashName(const HashType& hash) 
+    RenderShaderType* RenderShaderType::FindShaderTypeByHashName(const HashType& hash) 
     {
         const auto iter = eastl::find(Begin(), End(), hash);
         if (iter != End()) 
@@ -65,9 +65,9 @@ namespace Shard::Render {
         return nullptr;
     }
 
-    Vector<RenderShaderType::Ptr> RenderShaderType::FindShaderTypeByFileName(const String& file_name)
+    Vector<RenderShaderType*> RenderShaderType::FindShaderTypeByFileName(const String& file_name)
     {
-        Vector<RenderShaderType::Ptr> shader_types;
+        Vector<RenderShaderType*> shader_types;
         for (auto iter = Begin();  iter != End(); ++iter) {
             if ((*iter)->GetFileName() == file_name) {
                 shader_types.push_back(*iter);
@@ -76,7 +76,7 @@ namespace Shard::Render {
         return shader_types;
     }
 
-    RenderShaderType::Ptr RenderShaderType::GetShaderType(const HashType& hash)
+    RenderShaderType* RenderShaderType::GetShaderType(const HashType& hash)
     {
         auto* shader_type = FindShaderTypeByHashName(hash);
         if (shader_type != nullptr) {
@@ -127,7 +127,7 @@ namespace Shard::Render {
             //check wether need compile file
             const auto* shader_type = *iter;
             const auto& section_file_name = shader_type->GetHashFileName();
-            RenderShaderCompiledFileMap::Ptr shader_section = nullptr;
+            RenderShaderCompiledFileMap* shader_section = nullptr;
             if (auto* section = FindSection(section_file_name); section != nullptr) {
                 continue;
             }
@@ -204,7 +204,7 @@ namespace Shard::Render {
         return curr_hash != hash_;
     }
 
-    RenderShaderCompiledFileMap::Ptr RenderShaderCompiledRepo::FindOrCreateSection(const RenderShaderType::HashType hash_name)
+    RenderShaderCompiledFileMap* RenderShaderCompiledRepo::FindOrCreateSection(const RenderShaderType::HashType hash_name)
     {
         const auto* shader_type = RenderShaderType::FindShaderTypeByHashName(hash_name);
         if (shader_type == nullptr) {
@@ -318,7 +318,7 @@ namespace Shard::Render {
         //todo other work
     }
 
-    uint32_t RtGlobalCompileWorkManager::Submit(RenderShaderCompileWorker::Ptr work)
+    uint32_t RtGlobalCompileWorkManager::Submit(RenderShaderCompileWorker* work)
     {
         std::unique_lock<std::mutex> lock(work_mutex_);
         work_cv_.wait(lock, [&]() { return pending_workers_.size() < GET_PARAM_TYPE_VAL(UINT, RENDER_COMPILE_WORKERS); });
@@ -526,13 +526,13 @@ namespace Shard::Render {
     {
         //todo
         const auto pso_desc_to_rhi = [this, &](const PipelineStateObjectDesc& desc){
-            RHI::RHIPipelineStateObjectInitializer initializer;
-            auto shader_library = RHIGlobalEntity::Instance()->GetOrCreateShaderLibrary();
+            HAL::HALPipelineStateObjectInitializer initializer;
+            auto shader_library = HALGlobalEntity::Instance()->GetOrCreateShaderLibrary();
             if (desc.type_ == PipelineStateObjectDesc::EPSOType::eGFX) {
                 for (auto n = 0; n < EShaderFrequency::eGFXNum; ++n) {
                     const auto shader_hash = desc.stages_[n];
                     if (!shader_hash.IsZero()) {
-                        auto rhi_shader = shader_library->GetRHIShader(shader_hash);
+                        auto rhi_shader = shader_library->GetHALShader(shader_hash);
                         switch (EShaderFrequency(n)) {
                         case EShaderFrequency::eVertex:
                             initializer.gfx_.vertex_shader_ = rhi_shader;
@@ -554,7 +554,7 @@ namespace Shard::Render {
                         }
                     }
                 }
-                initializer.type_ = RHIPipelineStateObjectInitializer::EType::eGFX;
+                initializer.type_ = HALPipelineStateObjectInitializer::EType::eGFX;
                 initializer.gfx_.vertex_input_state_ = desc.gfx_desc_.vertex_input_state_;
                 initializer.gfx_.blend_state_ = desc.gfx_desc_.blend_state_;
                 initializer.gfx_.depth_stencil_state_ = desc.gfx_desc_.depth_stencil_state_;
@@ -562,9 +562,9 @@ namespace Shard::Render {
                 initializer.gfx_.primitive_topology_ = descgfx_desc_..primitive_topology_;
             }
             else if (desc.type == PipelineStateObjectDesc::EPSOType::eCompute) {
-                initializer.type_ = RHIPipelineStateObjectInitializer::EType::eCompute;
+                initializer.type_ = HALPipelineStateObjectInitializer::EType::eCompute;
                 PCHECK(!desc.compute_.compute_shader_.IsZero()) << "set an invalid compute shader";
-                initializer.compute_.compute_shader_ = shader_library->GetRHIShader(desc.compute_.compute_shader_);
+                initializer.compute_.compute_shader_ = shader_library->GetHALShader(desc.compute_.compute_shader_);
             }
             else if (desc.type == PipelineStateObjectDesc::EPSOType::RayTrace) {
                 //todo
@@ -573,7 +573,7 @@ namespace Shard::Render {
         };
 
         const auto rhi_initializer = pso_desc_to_rhi(job.desc_);
-        auto pos_rhi = RHIGlobalEntity::Instance()->GetOrGetOrCreatePSOLibrary()->GetOrCreatEPipeline(rhi_initializer); //todo 
+        auto pos_rhi = HALGlobalEntity::Instance()->GetOrGetOrCreatePSOLibrary()->GetOrCreatEPipeline(rhi_initializer); //todo 
         PCHECK(pso_rhi != nullptr) << "compile pso failed";
     }
 }

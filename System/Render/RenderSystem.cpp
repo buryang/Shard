@@ -6,8 +6,10 @@
 
 
 
-namespace Shard::Renderer {
+namespace Shard::Render {
 
+    /*render core type the render system used*/
+    REGIST_PARAM_TYPE(UINT, RENDER_CORE_TYPE, 0u);
     REGIST_PARAM_TYPE(FLOAT, RENDER_TARGET_FPS, 30);
     REGIST_PARAM_TYPE(BOOL, RENDER_SKIP_FRAME, false);
     REGIST_PARAM_TYPE(BOOL, RENDER_FIXED_FPS, false);
@@ -18,21 +20,52 @@ namespace Shard::Renderer {
 #ifdef DEVELOP_DEBUG_TOOLS
         Effect::RtDebugViewRender::Init();
 #endif
+        const auto render_type = GET_PARAM_TYPE_VAL(UINT, RENDER_CORE_TYPE);
+        switch (render_type) {
+        case xx:
+            render_ = nullptr;
+            break;
+        case tt:
+            render_ = nullptr;
+            break;
+        default:
+            LOG(ERROR) << "render type is not supported by system";
+        }
     }
 
-    void RenderSystem::Unit()
+    void RenderSystem::UnInit()
     {
 #ifdef DEVELOP_DEBUG_TOOLS
         Effect::RtDebugViewRender::UnInit();
 #endif
     }
 
-    void RenderSystem::Tick(float dt)
+    void RenderSystem::Update(ECSSystemUpdateContext& ctx)
+    {
+        auto* render_group = reinterpret_cast<Scene::WorldScene*>(ctx.admin_)->Group<ECSStaticMeshComponent>();
+        assert(render_group != nullptr);
+        //todo
+
+    }
+
+    void RenderSystem::SetWindow(Utils::WindowHandle win)
     {
     }
 
     void RenderSystem::ReloadRender()
     {
+    }
+
+    void RenderSystem::OnWindowResize(uint32_t width, uint32_t height)
+    {
+    }
+
+    RenderSystem::~RenderSystem()
+    {
+        if (nullptr == render_) {
+            delete render_;
+            render_ = nullptr;
+        }
     }
 
 }

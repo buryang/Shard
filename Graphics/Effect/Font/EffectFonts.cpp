@@ -1,6 +1,6 @@
 #include "Core/EngineGlobalParams.h"
-#include "Graphics/RHI/RHIGlobalEntity.h"
-#include "Graphics/Renderer/RtRenderGraph.h"
+#include "Graphics/HAL/HALGlobalEntity.h"
+#include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Effect/Font/EffectFonts.h"
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb/stb_rect_pack.h"
@@ -55,7 +55,7 @@ namespace Shard::Effect
         return true;
     }
 
-    RtRenderShaderParametersMeta* RtFreeTypeFontVS::GetShaderParametersMeta()
+    RenderShaderParametersMeta* RtFreeTypeFontVS::GetShaderParametersMeta()
     {
         return nullptr;
     }
@@ -65,12 +65,12 @@ namespace Shard::Effect
         return true;
     }
 
-    RtRenderShaderParametersMeta* RtFreeTypeFontPS::GetShaderParametersMeta()
+    RenderShaderParametersMeta* RtFreeTypeFontPS::GetShaderParametersMeta()
     {
         return nullptr;
     }
 
-    bool RtGlyphOutlinesFontVS::IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation)
+    bool GlyphOutlinesFontVS::IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation)
     {
         return false;
     }
@@ -78,32 +78,32 @@ namespace Shard::Effect
 
     void EffectDrawText::Init()
     {
-        auto* rhi_entity = RHI::RHIGlobalEntity::Instance();
+        auto* rhi_entity = HAL::HALGlobalEntity::Instance();
         auto* shader_library = rhi_entity->GetOrCreateShaderLibrary();
-        RHI::RHIPipelineStateObjectInitializer pso_initializer;
+        HAL::HALPipelineStateObjectInitializer pso_initializer;
 
         if (IsDrawAlgoSupported(EDrawAlgo::eFreeType)) {
             //init freetype shader
-            pso_initializer.gfx_.vertex_shader_ = static_cast<RHI::RHIVertexShader::Ptr>(shader_library->GetRHIShader(vertex_shader.GetShaderHash()));
-            pso_initializer.gfx_.pixel_shader_ = static_cast<RHI::RHIPixelShader::Ptr>(shader_library->GetRHIShader(pixel_shader.GetShaderHash()));
+            pso_initializer.gfx_.vertex_shader_ = static_cast<HAL::HALVertexShader*>(shader_library->GetHALShader(vertex_shader.GetShaderHash()));
+            pso_initializer.gfx_.pixel_shader_ = static_cast<HAL::HALPixelShader*>(shader_library->GetHALShader(pixel_shader.GetShaderHash()));
         }
         else
         {
             //init glyoutlines shader
-            pso_initializer.gfx_.vertex_shader_ = static_cast<RHI::RHIVertexShader::Ptr>(shader_library->GetRHIShader(vertex_shader.GetShaderHash()));
-            pso_initializer.gfx_.pixel_shader_ = static_cast<RHI::RHIPixelShader::Ptr>(shader_library->GetRHIShader(pixel_shader.GetShaderHash()));
+            pso_initializer.gfx_.vertex_shader_ = static_cast<HAL::HALVertexShader*>(shader_library->GetHALShader(vertex_shader.GetShaderHash()));
+            pso_initializer.gfx_.pixel_shader_ = static_cast<HAL::HALPixelShader*>(shader_library->GetHALShader(pixel_shader.GetShaderHash()));
         }
-        pso_initializer.gfx_.blend_state_.attachments_[0].color_blend_op_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendOperation::eAdd;
-        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_blend_op_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendOperation::eAdd;
-        pso_initializer.gfx_.blend_state_.attachments_[0].color_src_factor_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendFactor::eSrcAlpha;
-        pso_initializer.gfx_.blend_state_.attachments_[0].color_dst_factor_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendFactor::eInvSrcAlpha;
-        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_src_factor_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendFactor::eZero;
-        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_dst_factor_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendFactor::eOne;
-        pso_initializer.gfx_.blend_state_.attachments_[0].color_write_mask_ = RHI::RHIBlendStateInitializer::BlendAttachment::EBlendColorMask::eRGBA;
-        pso_initializer.gfx_.rasterization_state_.front_face_ = RHI::RHIRasterizationStateInitializer::EFrontFace::eCClk;
+        pso_initializer.gfx_.blend_state_.attachments_[0].color_blend_op_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendOperation::eAdd;
+        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_blend_op_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendOperation::eAdd;
+        pso_initializer.gfx_.blend_state_.attachments_[0].color_src_factor_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendFactor::eSrcAlpha;
+        pso_initializer.gfx_.blend_state_.attachments_[0].color_dst_factor_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendFactor::eInvSrcAlpha;
+        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_src_factor_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendFactor::eZero;
+        pso_initializer.gfx_.blend_state_.attachments_[0].alpha_dst_factor_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendFactor::eOne;
+        pso_initializer.gfx_.blend_state_.attachments_[0].color_write_mask_ = HAL::HALBlendStateInitializer::BlendAttachment::EBlendColorMask::eRGBA;
+        pso_initializer.gfx_.rasterization_state_.front_face_ = HAL::HALRasterizationStateInitializer::EFrontFace::eCClk;
         pso_initializer.gfx_.primitive_topology_ = EInputTopoType::eTriangleStrip;
         //initialize pso
-        pso_ = rhi_entity->GetOrCreatePSOLibrary()->GetOrCreatePipeline(pso_initializer);
+        pso_ = rhi_entity->GetOrCreatePSOLibrary()->GetOrCreatEPipeline(pso_initializer);
         PCHECK(pso_ != nullptr) << "create text draw pso failed";
     }
 
@@ -132,7 +132,7 @@ namespace Shard::Effect
         return -1;
     }
 
-    void EffectDrawText::DrawExecuteFreeType(Renderer::RtRendererGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params) {
+    void EffectDrawText::DrawExecuteFreeType(Render::RenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params) {
         const auto whitespace_size = 0.25f * (draw_params.size_ + draw_params.paddingX_);
         const auto tab_size = whitespace_size * 4;
         const auto linebreak_size = float(draw_params.size_ + draw_params.paddingY_);
@@ -260,33 +260,33 @@ namespace Shard::Effect
         auto graph = builder.GetRenderGraph();
         graph.AddPass([&](void) {
             //draw quad instance
-            auto cmd_ctx = RHI::RHIGlobalEntity::Instance()->CreateCommandBuffer();
-            RHI::RHIBindPSOPacket pso_cmd{ pso_, RHI::RHIBindPSOPacket::EBindPoint::eGFX };
+            auto cmd_ctx = HAL::HALGlobalEntity::Instance()->CreateCommandBuffer();
+            HAL::HALBindPSOPacket pso_cmd{ pso_, HAL::HALBindPSOPacket::EBindPoint::eGFX };
             cmd_ctx->Enqueue(&pso_cmd);
-            RHI::RHIBeginRenderPassPacket begin_pass_cmd;
+            HAL::HALBeginRenderPassPacket begin_pass_cmd;
             cmd_ctx->Enqueue(&begin_pass_cmd);
             if (IsDrawAlgoSupported(EDrawAlgo::eFreeType)) {
                 //bind free type draw resource
-               //set texture and buffers / bindless resource RHI::RHI 
-                const auto vertex_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteBuffer(vertex_buffer_);
-                const auto atlas_handle = RHI::RHIGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteTexture(atlas_);
+               //set texture and buffers / bindless resource HAL::HAL 
+                const auto vertex_handle = HAL::HALGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteBuffer(vertex_buffer_);
+                const auto atlas_handle = HAL::HALGlobalEntity::Instance()->GetResourceBindlessHeap()->WriteTexture(atlas_);
                 FontConstBuffer font_cbbuffer{ .buffer_index_ = vertex_handle.index_, .texture_index_ = atlas_handle.index_, };//todo
-                RHI::RHIPushConstantPacket push_cmd{ 0u, 0u, reinterpret_cast<uint8_t*>(&font_cbbuffer), sizeof(font_cbbuffer) };
+                HAL::HALPushConstantPacket push_cmd{ 0u, 0u, reinterpret_cast<uint8_t*>(&font_cbbuffer), sizeof(font_cbbuffer) };
                 cmd_ctx->Enqueue(&push_cmd);
             }
             else
             {
                 //cmd_ctx->Enqueue();
             }
-            RHI::RHIDrawPacket draw_cmd{ draw_info.instance_count_ * 4, draw_info.instance_count_, 0, 0 };
+            HAL::HALDrawPacket draw_cmd{ draw_info.instance_count_ * 4, draw_info.instance_count_, 0, 0 };
             cmd_ctx->Enqueue(&draw_cmd);
-            RHI::RHIEndRenderPassPacket end_pass_cmd;
+            HAL::HALEndRenderPassPacket end_pass_cmd;
             cmd_ctx->Enqueue(&end_pass_cmd);
-            RHI::RHIGlobalEntity::Instance()->Execute({ cmd_ctx });
-        }, EPipeLine::eGraphics, RtRendererPass::EFlags::eGFX, DRAW_FONT_PASS);
+            HAL::HALGlobalEntity::Instance()->Execute({ cmd_ctx });
+        }, EPipeline::eGFX, RenderPass::EFlags::eGFX, DRAW_FONT_PASS);
     }
 
-    void EffectDrawText::DrawExecuteGlyphOutlines(Renderer::RtRendererGraph& graph, const WString& wtext, const TextDrawParams& draw_params) {
+    void EffectDrawText::DrawExecuteGlyphOutlines(Render::RenderGraph& graph, const WString& wtext, const TextDrawParams& draw_params) {
         const auto load_char_func = [&](const stbtt_fontinfo* fontinfo, wchar_t char_code) {
             const char* svg_data{ nullptr };
             const auto size = stbtt_GetGlyphSVG(fontinfo, char_code, &svg_data);
@@ -302,16 +302,16 @@ namespace Shard::Effect
         const auto parse_func = [&](const WString& wtext, const TextDrawParams& draw_params) {
         };
 
-        graph.AddPass([&](void) {}, EPipeLine::eGraphics, RtRendererPass::EFlags::eGFX, DRAW_FONT_PASS);
+        graph.AddPass([&](void) {}, EPipeline::eGFX, RenderPass::EFlags::eGFX, DRAW_FONT_PASS);
     }
 
-    void EffectDrawText::Draw(Renderer::RtRenderGraphBuilder& builder, const String& text, const TextDrawParams& draw_params)
+    void EffectDrawText::Draw(Render::RenderGraphBuilder& builder, const String& text, const TextDrawParams& draw_params)
     {
         const auto& wtext_temp = Utils::StringConvertHelper::StringToWString(text);
         Draw(builder, text, draw_params);
     }
 
-    void EffectDrawText::Draw(Renderer::RtRenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params)
+    void EffectDrawText::Draw(Render::RenderGraphBuilder& builder, const WString& wtext, const TextDrawParams& draw_params)
     {
         PCHECK(!wtext.empty());
         decltype(&DrawExecuteFreeType) draw_executor = IsDrawAlgoSupported(EDrawAlgo::eFreeType) ? DrawExecuteFreeType : DrawExecuteGlyphOutlines;
@@ -413,15 +413,15 @@ namespace Shard::Effect
                         }
                     }
                 }
-                RHI::RHITextureInitializer atlas_desc;
+                HAL::HALTextureInitializer atlas_desc;
                 atlas_desc.layout_.width_ = atlas_width;
                 atlas_desc.layout_.height_ = atlas_height;
                 atlas_desc.format_ = EPixFormat::eR8Unorm;
                 atlas_desc.is_dedicated_ = false;//
                 atlas_desc.is_transiant_ = true;
-                atlas_desc.access_ = Renderer::EAccessFlags::eReadOnly;
+                atlas_desc.access_ = EAccessFlags::eReadOnly;
 
-                atlas_ = RHI::RHIGlobalEntity::Instance()->CreateTexture(atlas_desc);
+                atlas_ = HAL::HALGlobalEntity::Instance()->CreateTexture(atlas_desc);
                 PCHECK(atlas_ != nullptr) << "update glyph atlas create texture failed";
                 //copy atlas from CPU to GPU error texture cannot alloc on host
                 auto* atlas_gpu = atlas_->MapBackMem();

@@ -58,6 +58,9 @@ namespace Shard
         {
         public:
             using VersionType = uint16_t;
+            EntityManager() = default;
+            EntityManager(const EntityManager& other);
+            EntityManager& operator=(const EntityManager& other);
             Entity Generate();
             void Release(Entity entity);
             VersionType Version(const Entity& entity)const;
@@ -339,6 +342,12 @@ namespace Shard
                 assert(index < component_data_.size());
                 return component_data_[index];
             }
+            auto& Elements() {
+                return component_data_;
+            }
+            const auto& Elements()const {
+                return component_data_;
+            }
             //delegate
             auto& OnConstruct() {
                 return on_construct_;
@@ -536,6 +545,13 @@ namespace Shard
             using Type = ECSComponentList<Other<Component>...>;
         };
 
+        template<typename ...Owned, typename ...Rejct> 
+        struct ECSEntityDescriptor
+        {
+            using OwnedList = ECSOwnedList<Owned...>;
+            using RejectList = ECSExcluedList<Reject...>;
+        };
+
         template<typename ...Component>
         class ECSComponentGroupIterator final
         {
@@ -651,6 +667,7 @@ namespace Shard
                     {
                         func(*(Begin() + n));
                     }
+                    co_return;
                 };
                 Utils::Dispatch(sub_group_work, 1, count);
             }
@@ -765,6 +782,7 @@ namespace Shard
                     for (const auto n = group * thread * work_per_thread; n < std::min(entities_.size(), (group * thread + 1) * work_per_thread); ++n) {
                         func(entities_[n]);
                     }
+                    co_return;
                 };
                 Utils::Dispatch(sub_group_work, 1, count);
             }
@@ -796,8 +814,8 @@ namespace Shard
                 return entities_.size();
             }
         private:
-            Vector<Entity>    entities_;
-            OwnedRepoType    owned_repos_;
+            Vector<Entity>  entities_;
+            OwnedRepoType   owned_repos_;
             RejectedRepoType    rejected_repos_;
         };
 
@@ -807,13 +825,26 @@ namespace Shard
             uint32_t    index_{ 0u };
         };
 
+        enum class EUpdatePhase : uint8_t
+        {
+            eFrameStart,
+            ePaused, //idle mode, u have to do render/resource streaming etc
+            eFrameEnd,
+            ePrePhysX,
+            eDuringPhysX,
+            ePostPhysX,
+            eNum,
+        };
+
         struct ECSSystemUpdateContext {
             enum {
                 MAX_SYSTEM_DEPEND = 4,
             };
             void*    admin_{ nullptr };
-            float    delta_time_{ 0.f };
-            Array<std::atomic<JobEntry*>, MAX_SYSTEM_DEPEND>    dependency_; //only one?
+            float    delta_time_{ 0.f };//in seconds
+            uint64_t    frame_index_{ 0u }; //frame index
+            EUpdatePhase phase_{ EUpdatePhase::eFrameStart };
+            //Array<std::atomic<JobEntry*>, MAX_SYSTEM_DEPEND>    dependency_; //only one?
         };
 
         template<typename ...Component>
@@ -834,78 +865,71 @@ namespace Shard
                 eRelease,
                 eNum,
             };
-            EType    type_{ EType::eUnkown };
-            Entity    entt_{ Entity::Null };
-            //other data
+            EType   type_{ EType::eUnkown };
+            String  debug_name_;
+            std::function<void(void)>  task_; //command work
         };
 
         /*collect component add/rm/update commands*/
+        //MPSC like unity consumer command only on main thread, producers on each job system
         template<typename Allocator>
         class ECSComponentCommandBuffer
         {
         public:
-            using CmdBufferAlloc = std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>;
-            using CmdBufferContainer = Vector<ECSComponentCommandIR, CmdBufferAlloc>;
+            using CmdBufferContainer = Vector<ECSComponentCommandIR, std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>>;
             using ConstIterator = CmdBufferContainer::const_iterator;
 
-            explicit ECSComponentCommandBuffer(Allocator& alloc):cmd_buffer_(alloc) {
+            explicit ECSComponentCommandBuffer(Allocator& alloc, size_type int_size=1u):cmd_buffer_(int_size, alloc) {
             }
             ConstIterator CBegin() const {
+                assert(std::this_thread::get_id() == xx && "current on engine main thread");  
                 return cmd_buffers_.cbegin();
             }
             ConstIterator CEnd() const {
+                assert(std::this_thread::get_id() == xx && "current on engine main thread");  
                 return cmd_buffers_.cend();
             }
             size_type Size() const {
+                assert(std::this_thread::get_id() == xx && "current on engine main thread");  
                 return cmd_buffers_.size();
             }
-            ECSComponentCommand& operator[](size_type index) {
-                return cmd_buffers_[index];
-            }
-            void Push(ECSComponentCommandIR&& cmd) {
-                Utils::SpinLock lock(rw_lock_);
+            void Push(ECSComponentCommandIR&& cmd) { 
+                Utils::SpinLock lock(write_lock_);
                 cmd_buffers_.emplace_back(cmd);
             }
-            void Sort() {
-                eastl::sort(cmd_buffers_.begin(), cmd_buffers_.end(), [](const auto& lhs, const auto& rhs) {return lhs.entt_ > rhs.entt_; });
-            }
-            ECSComponentCommandIR Poll() {
-                Utils::SpinLock lock(rw_lock_);
-                auto temp = cmd_buffers_.back();
-                cmd_buffers_.pop_back();
-                return temp;
+            Optional<ECSComponentCommandIR> Poll() {
+                assert(std::this_thread::get_id() == xx && "current on engine main thread");  
+                if (cmd_buffers_.empty()) {
+                    return {};
+                }
+                else
+                {
+                    auto temp = std::move(cmd_buffer_.front());
+                    cmd_buffer_.pop_front();
+                    return temp;
+                }
             }
         private:
-            std::atomic_bool    rw_lock_;
+            std::atomic_bool    write_lock_;
             CmdBufferContainer    cmd_buffers_;
         };
+
+        template<typename Allocator, typename Function>
+        static inline void EnqueueCommandBuffer(ECSComponentCommandBuffer<Allocator>& command_buffer, String& debug_name, ECSComponentCommandIR::EType type, Function&& function) {
+            ECSComponentCommandIR cmd_ir{ .type_ = type, .debug_name_ = std::move(debug_name), .task_ = std::move(function) };
+            command_buffer.Push(cmd_ir);
+        }
 
         class ECSSystem
         {
         public:
-            using Ptr = ECSSystem*;
-            using SharedPtr = eastl::shared_ptr<ECSSystem>;
             virtual void Init() = 0;
             virtual void UnInit() = 0;
-            virtual void PreUpdate() {}
-            virtual void FixedUpdate(){}
             virtual void Update(ECSSystemUpdateContext& ctx) = 0;
-            virtual void PostUpdate() {}
+            //default return true for all phase/all other system
+            virtual bool IsPhaseUpdateBefore(const ECSSystem& other, EUpdatePhase phase)const { return IsPhaseUpdateEnabled(phase); }
+            virtual bool IsPhaseUpdateEnabled(EUpdatePhase phase)const { return true; }
             virtual ~ECSSystem() = default;
-            static uint32_t    GeneratePriorOrder(uint32_t hint=-1) {
-                static Set<uint32_t> occupied_oreder{};
-                static uint32_t curr_order{ 0u };
-                auto tmp = hint;
-                if (tmp == -1 || occupied_oreder.count(tmp) != 0u) {
-                    tmp = curr_order++;
-                }
-                occupied_oreder.emplace(tmp);
-                return tmp;
-            }
-        protected:
-            void WaitAllDependency(ECSSystemUpdateContext& ctx);
-        public:
-            uint32_t    prior_order_{ 0u };
         private:
             std::atomic_uint32_t    tick_counter_{ 0u }; //atomic to sync
         };
@@ -916,13 +940,23 @@ namespace Shard
             void Init() override;
             void UnInit() override;
             void Update(ECSSystemUpdateContext& ctx) override;
-            virtual void AddSubSystem(ECSSystem::Ptr sub_system, uint32_t local_order);
-            virtual void RemoveSubSystem(ECSSystem::Ptr sub_system);
+            bool IsPhaseUpdateBefore(const ECSSystem& other, EUpdatePhase phase)const override;
+            bool IsPhaseUpdateEnabled(EUpdatePhase phase)const override;
+            template<typename Function>
+            void Enumerate(Function&& func) {
+                for (auto sys : sub_sys_) {
+                    func(sys);
+                }
+            }
+            void AddSubSystem(ECSSystem* sub_system);
+            //todo change the interface
+            void RemoveSubSystem(ECSSystem* sub_system);
             virtual ~ECSSystemGroup();
         private:
-            bool IsSubSystemIncluded(ECSSystem::Ptr sub_system);
+            bool IsSubSystemIncluded(ECSSystem* sub_system);
+            void Sort();
         private:
-            SmallVector<ECSSystem::Ptr>    sub_sys_;
+            SmallVector<ECSSystem*>    sub_sys_;
         };
 
 
@@ -992,6 +1026,25 @@ namespace Shard
                 GetComponentRepo<Component>()->SortAs(GetComponentRepo<ComponentReferred>());//todo
             }
 
+            //new command buffer
+            ECSComponentCommandBuffer<Allocator>& NewCommandBuffer() {
+                command_buffers_.emplace_back(ECSComponentCommandBuffer<Allocator>(, alloc_));
+                return command_buffers_.back();
+            }
+            //dispose command buffer
+            void Dispose(ECSComponentCommandBuffer<Allocator>& command_buffer) {
+                assert(std::this_thread::get_id() == xx && "current on engine main thread");
+                //all component change work done in sequence
+                for (auto command = command_buffer.Poll(); command.has_value(); ) {
+                    switch (command->type_) {
+                    case ECSComponentCommandIR::EType::eContruct:
+                        break;//todo
+                    }
+                    std::invoke(command->task_);
+                    command = command_buffer.Poll();
+                }
+            }
+
             template<typename ...Component, typename ...Reject>
             ECSComponentQuery<Component..., Reject...> Query() {
                 auto owned_repos = GetComponentRepo<Component...>();
@@ -1004,7 +1057,7 @@ namespace Shard
             }
 
             template<typename ...Component, typename ...Reject>
-            ECSComponentGroup<Component..., Reject...>* Group(bool try_create = false) {
+            ECSComponentGroup<Component..., Reject...>* Group(bool try_create = true) {
                 using TargetGroupType = ECSComponentGroup<Component..., Reject...>;
                 const auto target_key = std::type_index(typeid(TargetGroupType);
                 if (auto iter = groups_.find(target_key)) {
@@ -1191,19 +1244,24 @@ namespace Shard
                 entity_manager_.Release(e);
             }
             //copies an existing entity and creates a new entity from that copy
-            Entity Clone(Entity entity) {
+            Entity Clone(Entity prefab) {
                 auto new_entity = NewEntity();
                 for (auto [_, comp_repo] : components_data_) {
-                    if (comp_repo->IsCompoenentExisit(entity)) {
-                        AddComponent(new_entity, GetComponent(entity));
+                    if (comp_repo->IsCompoenentExisit(prefab)) {
+                        AddComponent(new_entity, GetComponent(prefab));
                     }
                 }
+            }
+            //move entity from other world to current world
+            template<class UAllocator>
+            Entity CloneExternal(Entity prefab, ECSAdmin<UAllocator>& external) {
+                //todo
             }
         private:
             Allocator alloc_;
             EntityManager entity_manager_;
             //todo fixme type info bugs ??? //https://skypjack.github.io/2020-03-14-ecs-baf-part-8/
-            Map<std::type_index, ComponentRepoBase::Ptr> components_data_;
+            Map<std::type_index, ComponentRepoBase*> components_data_;
             Map<std::type_index, void*>    singleton_data_;
             template <typename... Components>
             struct ComponenentCollector
@@ -1212,24 +1270,26 @@ namespace Shard
                 ComponentCollector(ThisType& world) {
                     Fill<0, Components...>(world);
                 }
-                ComponentRepoBase::Ptr components_data_[COMP_SIZE];
+                ComponentRepoBase* components_data_[COMP_SIZE];
                 template<uint32_t index>
-                ComponentRepoBase::Ptr Get() { return components_data_[index]; }
+                ComponentRepoBase* Get() { return components_data_[index]; }
                 template <uint32_t index>
-                void Fill(Map<std::type_index, ComponentRepoBase::Ptr>& components) {
+                void Fill(Map<std::type_index, ComponentRepoBase*>& components) {
                     return;
                 }
                 template <uint32_t index, typename T, typename... Ts>
-                void Fill(Map<std::type_index, ComponentRepoBase::Ptr>& components) {
+                void Fill(Map<std::type_index, ComponentRepoBase*>& components) {
                     components_data_[index] = components[std::type_index(typeid(T))];
                     Fill<index + 1, Ts...>(components);
                 }
             };
 
             //according to entt, type_index/type_info.hash_code both not unique
-            Map<std::type_index, ECSSystem::Ptr> systems_;
+            Map<std::type_index, ECSSystem*> systems_;
             //ecs group define 
-            Map<std::type_index, ECSComponentGroupBase::Ptr> groups_;
+            Map<std::type_index, ECSComponentGroupBase*> groups_;
+            //command buffers
+            SmallVector<ECSComponentCommandBuffer<Allocator>> command_buffers_;
         };
     }
 }

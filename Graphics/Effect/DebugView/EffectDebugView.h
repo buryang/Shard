@@ -3,9 +3,9 @@
 #if 1//def DEVELOP_DEBUG_TOOLS
 #include "Utils/CommonUtils.h"
 #include "System/DebugView/DebugViewSystem.h"
-#include "Graphics/Renderer/RtRenderGraphBuilder.h"
-#include "Graphics/RHI/RHIShaderLibrary.h"
-#include "Graphics/RHI/RHICommand.h"
+#include "Graphics/Render/RenderGraphBuilder.h"
+#include "Graphics/HAL/HALShaderLibrary.h"
+#include "Graphics/HAL/HALCommand.h"
 
 namespace Shard::Effect
 {
@@ -20,12 +20,12 @@ namespace Shard::Effect
         };
         static void Init();
         static void UnInit();
-        void Render(System::DebugView::DebugViewContext& ctx, RHI::RHICommandContext::Ptr cmd_buffer);
+        void Render(System::DebugView::DebugViewContext& ctx, HAL::HALCommandContext* cmd_buffer);
     private:
-        void DrawLines(const SmallVector<System::DebugView::LineViewCommand>& lines, RHI::RHICommandContext::Ptr cmd_buffer);
-        void DrawPoints(const SmallVector<System::DebugView::PointViewCommand>& points, RHI::RHICommandContext::Ptr cmd_buffer);
+        void DrawLines(const SmallVector<System::DebugView::LineViewCommand>& lines, HAL::HALCommandContext* cmd_buffer);
+        void DrawPoints(const SmallVector<System::DebugView::PointViewCommand>& points, HAL::HALCommandContext* cmd_buffer);
     private:
-        static Array<RHI::RHIPipelineStateObject::Ptr, MAX_DEBUG_PRIMIVE_TYPE>    debug_pso_;
+        static Array<HAL::HALPipelineStateObject*, MAX_DEBUG_PRIMIVE_TYPE>    debug_pso_;
     };
 
     class MINIT_API EffectDrawDebugView
@@ -33,7 +33,7 @@ namespace Shard::Effect
     public:
         static void Init();
         static void Unit();
-        static void Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
+        static void Draw(Render::RenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
     };
 }
 

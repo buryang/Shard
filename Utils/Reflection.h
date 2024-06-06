@@ -8,13 +8,13 @@
 //more information from https://shaharmike.com/cpp/vtable-part3/
 namespace Shard::Utils {
     enum ELayoutFlags {
-        eNone = 0x0,
-        eInitialized = 0x1,
-        e32Bit = 0x2,
+        eNone   = 0x0,
+        eInitialized    = 0x1,
+        e32Bit  = 0x2,
         eAlignBases = 0x4,//base class should to be padded to align size
         eRayTracing = 0x8,
         //todo other
-        eAllIn = 0xFFFFFFFF
+        eAllIn  = 0xFFFFFFFF
     };
 
     class PlatformTypeLayoutParameters
@@ -323,16 +323,16 @@ INTERNAL_TYPE_CONSTRUCTOR_WITH_INTERFACE(TYPE, 0, __VA_ARGS__);
 #define BEGIN_DECLARE_TYPE_LAYOUT_DEF(TYPE, ...)\
 public:\
     using ThisType = TYPE; \
-    static constexpr uint32_t g_index_base{__COUNTER__};\
+    enum { COUNTER_INDEX_BASE = __COUNTER__, };\
     TYPE_CONSTRUCTOR_CHOOSE(TYPE, __VA_ARGS__)(TYPE, __VA_ARGS__);\
-    static bool TypeLayoutDescAddField(const String& field_name, uint32_t index, uint32_t offset, uint32_t array_size, TypeLayoutDesc& field_type) \
+    static constexpr bool TypeLayoutDescAddField(const String& field_name, uint32_t index, uint32_t offset, uint32_t array_size, TypeLayoutDesc& field_type) \
     { \
         FieldLayoutDesc field_desc{ .index_ = index, .name_ = field_name, .offset_=offset, .type_ = field_type}; \
         g_static_desc.fields_.emplace_back(field_desc); \
         return true; \
     } \
     template<class BASE_TYPE> \
-    static bool TypeLayoutDescAddBaseClassField(uint32_t index) \
+    static constexpr bool TypeLayoutDescAddBaseClassField(uint32_t index) \
     { \
         ThisType temp; \
         const auto offset = (uint32_t)((uint64_t)static_cast<BASE_TYPE*>(&temp)-(uint64_t)(&temp)); \
@@ -348,7 +348,7 @@ public:\
 
 #define END_DECLARE_TYPE_LAYOUT_DEF(TYPE)\
 public:\
-    template<> static bool InternalLinkFunc<__COUNTER__ - g_index_base>(){\
+    template<> static bool InternalLinkFunc<__COUNTER__ - COUNTER_INDEX_BASE>(){\
         TypeLayoutDesc::InitializeTypeLayout(g_static_desc, PlatformTypeLayoutParameters::CurrentParameters()); \
         return true;\
     }
@@ -365,7 +365,7 @@ public:\
     }
 
 #define DECLARE_BASE_TYPE_LAYOUT_FUNC(BASE_TYPE)\
-    INTERNAL_DECLARE_BASE_TYPE_LAYOUT(BASE_TYPE, __COUNTER__ - g_index_base);
+    INTERNAL_DECLARE_BASE_TYPE_LAYOUT(BASE_TYPE, __COUNTER__ - COUNTER_INDEX_BASE);
 
 #define DECLARE_BASE_TYPE_LAYOUT_EXPLCIT(...)\
     FOR_EARCH(DECLARE_BASE_TYPE_LAYOUT_FUNC, __VA_ARGS__)    
@@ -379,24 +379,24 @@ public:\
 
 #define LAYOUT_FIELD(PREFIX, TYPE, NAME)\
     PREFIX TYPE NAME; \
-    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
+    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-COUNTER_INDEX_BASE, 1);
 
 #define LAYOUT_FIELD_DEFAULT(PREFIX, TYPE, NAME, VALUE)\
     PREFIX TYPE NAME{VALUE}; \
-    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
+    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-COUNTER_INDEX_BASE, 1);
 
 #define LAYOUT_VECTOR_FIELD(PREFIX, TYPE, NAME)\
     PREFIX Vector<TYPE>    NAME; \
-    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, 1);
+    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-COUNTER_INDEX_BASE, 1);
 
 #define LAYOUT_ARRAY_FIELD(PREFIX, TYPE, NAME, ARRAY_SIZE)\
     PREFIX TYPE NAME[ARRAY_SIZE]; \
-    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-g_index_base, ARRAY_SIZE);
+    INTERNAL_LAYOUT_FIELD(TYPE, NAME, std::offsetof(ThisType, NAME), __COUNTER__-COUNTER_INDEX_BASE, ARRAY_SIZE);
 
 /*for cannot get bit-filed offset from class*/
 #define LAYOUT_BIT_FIELD(PREFIX, TYPE, NAME, BIT_SIZE)\
     PREFIX TYPE NAME:BIT_SIZE; \
-    NTERNAL_LAYOUT_FIELD(TYPE, NAME, -1, __COUNTER__-g_index_base, 1);
+    NTERNAL_LAYOUT_FIELD(TYPE, NAME, -1, __COUNTER__-COUNTER_INDEX_BASE, 1);
 
 #if 0
 //macro usage example

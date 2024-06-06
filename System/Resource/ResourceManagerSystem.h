@@ -6,7 +6,10 @@
 
 namespace Shard::System::Resource
 {
-
+    //assets/media path as ID; Every resource in a game must have some
+    //kind of globally unique identifier(GUID).The most common choice of
+    //GUID is the resource¡¯s fi le system path(stored either as a string
+    //or a 32 - bit hash).This kind of GUID is intuitive,
 	class MINIT_API ResourceID
 	{
 	public:
@@ -15,19 +18,21 @@ namespace Shard::System::Resource
 		HashType Hash() const {
 			return hash_;
 		}
-		const String& Extension() const {
-			return ext_type_;
+		uint32_t Extension() const {
+			return ext_fourcc_;
 		}
+        const String& Path() const {
+            return path_;
+        }
 	private:
-		String	path_;
+		const String    path_;
 		HashType	hash_;
-		String	ext_type_; //fourcc extension type
+        uint32_t	ext_fourcc_{ 0u }; //fourcc extension type
 	};
 
 	struct ResourceRecord
 	{
-		using Ptr = ResourceRecord*;
-		using Blob = Vector<uint8_t>;
+		using Blob = Vector<uint8_t, Utils::ScalablePoolAllocator<uint8_t>>; 
 		Blob	resource_blob_;
 	};
 
@@ -35,7 +40,6 @@ namespace Shard::System::Resource
 	class MINIT_API ResourceProviderBase
 	{
 	public:
-		using Ptr = ResourceProviderBase*;
 		virtual ~ResourceProviderBase() = default;
 		virtual void ResponseRequest(ResourceID resource_id) {}
 		virtual void AsyncResponseRequest(ResourceID resource_id) {}
@@ -54,8 +58,8 @@ namespace Shard::System::Resource
 		void Update(float dt);
 		void UnInit();
 		bool IsBusy() const;
-		void SubmitLoadRequest(ResourceID resource_id, ResourceRecord::Ptr record);
-		void SubmitUnLoadRequest(ResourceID resoource_id, ResourceRecord::Ptr record);
+		void SubmitLoadRequest(ResourceID resource_id, ResourceRecord* record);
+		void SubmitUnLoadRequest(ResourceID resoource_id, ResourceRecord* record);
 		void WaitAll();
 		~ResourceManagerSystem();
 	private:
@@ -63,17 +67,24 @@ namespace Shard::System::Resource
 		std::atomic<Utils::JobEntry*> async_load_worker_{ nullptr };
 		struct ResourceRequest
 		{
-			enum class EType {
+			enum class EType : uint8_t{
 				eLoad,
 				eUnload,
 			};
+            enum class EPriority : uint8_t {
+                eLow,
+                eMedium,
+                eHigh,
+                eUltra,
+            };
 			EType	type_{ EType::eLoad };
-			ResourceRecord::Ptr	record_{ nullptr };
+            EPriority   piroity_{ EPriority::eMedium };
+			ResourceRecord*	record_{ nullptr };
 			ResourceID	resource_id_;
 		};
 		Vector<ResourceRequest> pending_requests_;
 		Vector<ResourceRequest> active_requests_;
-		ResourceProviderBase::Ptr	resource_provider_{ nullptr };
+		ResourceProviderBase*	resource_provider_{ nullptr };
 	};
 
 

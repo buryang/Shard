@@ -7,6 +7,7 @@
 #include <atomic>
 #include <optional>
 
+
 namespace Shard
 {
     namespace Utils
@@ -38,6 +39,34 @@ namespace Shard
             virtual constexpr bool IsCoro()const { return false; }
             virtual JobDeAllocator GetDeAllocator() const = 0;
         };
+
+        /**
+         * \relates todo realize job counter like "the job system in cuberpunk 2077"
+         */
+        /*
+        struct CounterEntry
+        {
+            std::atomic<uint32_t>   value_{ 0u };
+            mutable std::atomic<uint32_t>   ref_count_{ 1u };
+            Utils::IntrusiveLinkedList<Utils::DefaultIntrusiveListTraits<JobEntry>> waiting_jobs_; //jobs waiting on this counter
+
+            //overload new and delete
+            template<typename ...ARGS>
+            void* operator new(std::size_t size, ARGS&&... args) {
+                auto* allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_JOBSYSTEM_ID>();
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto* ptr = allocator->allocate(alloc_offset + sizeof(std::uintptr_t));
+                *reinterpret_cast<std::uintptr_t*>(ptr + alloc_offset) = (std::uintptr_t)allocator; //record the allocator of this thread
+                return ptr;
+            }
+            void operator delete(void* ptr, std::size_t size) {
+                const auto alloc_offset = AlignUp(size, alignof(std::uintptr_t));
+                auto raw_ptr = std::uintptr_t(ptr) + alloc_offset;
+                auto* allocator = (ScalablePoolAllocator<uint8_t>*)(*reinterpret_cast<std::uintptr_t*>(raw_ptr)); //will release in another thread...
+                allocator->deallocate((uint8_t*)raw_ptr, alloc_offset + sizeof(std::uintptr_t));
+            }
+        };
+        */
 
         class TJobEntry final: public JobEntry
         {

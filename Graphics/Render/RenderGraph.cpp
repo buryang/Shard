@@ -7,15 +7,22 @@ namespace Shard
     {
         void RenderGraph::AddPass(RenderPass::Handle pass)
         {
-            if (pass_to_index_.find(pass) != pass_to_index_.end()) {
-                const auto node_index = AddNode();
-                pass_to_index_[pass] = node_index;
-                node_data_[node_index] = { pass };
-                pass->Init(); //setup pass
+            //check pass schedule context is valid
+            if (pass->GetScheduleContext().IsValid()) {
+                if (pass_to_index_.find(pass) != pass_to_index_.end()) {
+                    const auto node_index = AddNode();
+                    pass_to_index_[pass] = node_index;
+                    node_data_[node_index] = { pass };
+                    pass->Init(); //setup pass
+                }
+                else
+                {
+                    LOG(FATAL) << fmt::format("render graph failed to add pass<{}>", pass->GetName());
+                }
             }
             else
             {
-                LOG(FATAL) << fmt::format("render graph failed to add pass<{}>", pass->GetName());
+                LOG(FATAL) << fmt::format("render pass:[{}] schedule context is not valid", pass->GetName());
             }
         }
         void RenderGraph::RemovePass(const RenderPass::Handle pass)
@@ -67,7 +74,7 @@ namespace Shard
             {
                 edge_data_[edge_index].ref_count_++;
             }
-            dst.ParentNameAs(src.GetHashName());
+            dst.ParentName(src.GetHashName());
         }
 
         void RenderGraph::DisConnectField(RenderPass::Handle producer, Field& src, RenderPass::Handle consumer, Field& dst)
@@ -79,7 +86,7 @@ namespace Shard
                 edge_data_.erase(edge_index);
                 RemoveEdge(edge_index);
             }
-            dst.ParentNameAs(dst.GetHashName());
+            dst.ParentName(dst.GetHashName());
         }
 
         void RenderGraph::MarkOutput(RenderPass::Handle pass, Field& field) {
@@ -106,6 +113,7 @@ namespace Shard
                         pass->SetDependencyLevel(node_level + 1u);
                     }
                 }
+                max_dependency_level_ = std::max(max_dependency_level_, node_level);
             }
         }
         
@@ -125,45 +133,42 @@ namespace Shard
 #endif
         }
 
-        //fixme if realize dependency level, shoul only check two pass in the same level
-        //and the same queue
+        /*unreal engine merge passes which are both raster pass and have the same render target.
+        * while granite said:'They share some color/depth/input attachments, not more than one 
+        * unique depth/stencil attachment exists'
+        */
         bool RenderGraph::IsPassMergeAble(RenderPass::Handle prev, RenderPass::Handle next)const
         {
-            // first check whether pass in the same queue
+            // check they are both graphics passes. to do refactor
             if (prev->GetPipeline() == EPipeline::eAsyncCompute || next->GetPipeline() == EPipeline::eAsyncCompute) {
                 return false;
             }
-#if 0
-            {
-                SmallVector<Field> prev_inputs, prev_outputs, next_inputs, next_outputs;
 
-                prev->GetScheduleContext().EnumerateInputFields(prev_inputs);
+            //add to it by me
+            //if (prev->GetDependencyLevel() != next->GetDependencyLevel()) {
+            //    return false;
+            //}
+
+            {
+                SmallVector<Field> prev_outputs, next_outputs;
+
+                //they share some color/depth/input attachments
                 prev->GetScheduleContext().EnumerateOutputFields(prev_outputs);
-                next->GetScheduleContext().EnumerateInputFields(next_inputs);
                 next->GetScheduleContext().EnumerateOutputFields(next_outputs);
 
-                //check pass resource dependency
-                for (const auto& fd : next_inputs) {
-                    if (auto iter = eastl::find(prev_outputs.cbegin(), prev_outputs.cend(),
-                        [&](auto& curr_field) { return resource_to_index_[curr_field.GetName()] == resource_to_index_[fd.GetName()]; }); iter != prev_outputs.cend()) {
-                        return false;
-                    }
-                }
-
                 //check whether both passes write to the same field
-                for (const auto& fd : next_outputs) {
-                    if (auto iter = eastl::find(prev_outputs.cbegin(), prev_outputs.cend(),
-                        [&](auto& curr_field) { return resource_to_index[curr_field.GetName()] == resource_to_index_[fd.GetName()]; }); iter != prev_outputs.cend()) {
+                if (prev_outputs.size() != next_outputs.size()) {
+                    return false;
+                }
+                for (auto n = 0; n < prev_outputs.size(); ++n) {
+                    //every attachment must be the same
+                    if(resource_to_index_[prev_outputs[n].GetHashName()] != resource_to_index_[next_outputs[n].GetHashName()]){
                         return false;
                     }
                 }
             }
 
-#else
-            if (prev->GetDependencyLevel() != next->GetDependencyLevel()) {
-                return false;
-            }
-#endif
+            //todo their dependencies can be implemented with BY_REGION_BIT
             return true;
         }
 

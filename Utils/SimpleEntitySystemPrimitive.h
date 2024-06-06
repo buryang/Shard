@@ -14,6 +14,13 @@ namespace Shard
             FORCE_INLINE void Disable() { enable_ = false; }
         };
 
+        //empty tag component
+        template<typename Tag>
+        struct ECSTagComponent
+        {
+
+        };
+
         template<typename T>
         struct ECSEnableTemplateComponent : ECSEnableComponent
         {
@@ -113,6 +120,18 @@ namespace Shard
 
         };
 
+        /** oop object reference warper,
+         * https://github.com/sebas77/Svelto.MiniExamples/blob/master/Example6-Unity%20Hy-
+         * brid-OOP%20Abstraction/Assets/Code/WithOOPLayer/OOPLayer/Engines/SyncTransformEngine.cs
+         * warp all object function in oop sync system; with an handlemanager to store all object
+         * and like the unity hybridcompoent
+         */
+        template<typename Handle>
+        struct ECSyncObjectRefComponent
+        {
+            Handle  handle_;
+        };
+
         namespace Spatial {
             struct ECSSpatialTransformComponent
             {
@@ -152,6 +171,11 @@ namespace Shard
                 eStatic,
                 eDynamic,
             };
+        };
+
+        struct ECSMeshLODGroupComponent
+        {
+            uint32_t    lod_{ 0u };
         };
 
         struct ECSGlobalEnvironmentMapComponent

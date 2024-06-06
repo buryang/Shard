@@ -1253,5 +1253,6 @@ float3 BRDF_GetDiffuse(BRDFState brdf)
 }
 
 //todo sheen LTC approx https://github.com/tizian/ltc-sheen
+//todo https://auzaiffe.wordpress.com/2024/04/15/vndf-importance-sampling-an-isotropic-distribution/
 
 #endif //_BSDF_INC_

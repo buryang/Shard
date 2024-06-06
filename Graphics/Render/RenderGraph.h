@@ -52,8 +52,10 @@ namespace Shard
             void UnMarkOutput(RenderPass::Handle pass, Field& field);
             bool ValidateGraph();
             void Sort();
+            FORCE_INLINE bool IsSorted()const { return max_dependency_level_ != -1; }
             FORCE_INLINE uint32_t PassNum()const { return GetNodeCount(); }
             FORCE_INLINE uint32_t OutputNum()const { return outputs_.size(); }
+            FORCE_INLINE uint32_t MaxDependencyLevel()const { return max_dependency_level_; }
             FORCE_INLINE RenderOutputData& GetOutput(uint32_t index) { return *std::next(outputs_.begin(), index); }
             FORCE_INLINE uint32_t GetPassIndex(const RenderPass::Handle pass)const {
                 auto iter = pass_to_index_.find(pass);
@@ -72,7 +74,8 @@ namespace Shard
             Map<RenderPass::Handle, uint32_t>   pass_to_index_;
             Map<uint32_t, RenderEdgeData> edge_data_;
             Map<uint32_t, RenderNodeData> node_data_;
-            Set<RenderOutputData>  outputs_;
+            Set<RenderOutputData>   outputs_;
+            uint32_t    max_dependency_level_{ -1 };
         };
     }
 }

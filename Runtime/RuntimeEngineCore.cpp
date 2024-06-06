@@ -17,7 +17,7 @@ namespace Shard
 
         //regist system configure
         REGIST_PARAM_TYPE(BOOL, SYSTEM_AFFINITY_AUTO, true);
-        REGIST_PARAM_TYPE(UINT, SYSTEM_PHYX_AFFINITY, 0xFFFFFFFF);
+        REGIST_PARAM_TYPE(UINT, SYSTEM_PhysX_AFFINITY, 0xFFFFFFFF);
         REGIST_PARAM_TYPE(UINT, SYSTEM_APP_AFFINITY, 0xFFFFFFFF);
         REGIST_PARAM_TYPE(UINT, SYSTEM_RENDER_AFFINITY, 0xFFFFFFFF);
         REGIST_PARAM_TYPE(UINT, SYSTEM_AUX_AFFINITY, 0xFFFFFFFF); //each auxility sub-task
@@ -33,12 +33,12 @@ namespace Shard
             const auto cpu_core = std::thread::hardware_concurrency();
             if (cpu_core == 2u) {
                 //todo core index begin from 0?
-                SET_PARAM_TYPE_VAL(UINT, SYSTEM_PHYX_AFFINITY, 1u);
+                SET_PARAM_TYPE_VAL(UINT, SYSTEM_PhysX_AFFINITY, 1u);
                 SET_PARAM_TYPE_VAL(UINT, SYSTEM_APP_AFFINITY, 1u);
                 SET_PARAM_TYPE_VAL(UINT, SYSTEM_RENDER_AFFINITY, 2u);
             }
             else if (cpu_core >= 4) {
-                SET_PARAM_TYPE_VAL(UINT, SYSTEM_PHYX_AFFINITY, 1u);
+                SET_PARAM_TYPE_VAL(UINT, SYSTEM_PhysX_AFFINITY, 1u);
                 SET_PARAM_TYPE_VAL(UINT, SYSTEM_APP_AFFINITY, 2u);
                 SET_PARAM_TYPE_VAL(UINT, SYSTEM_RENDER_AFFINITY, 3u);
             }
@@ -89,14 +89,20 @@ namespace Shard
                 Update(delta_time_);
             }
             LateUpdate();//todo as unity says camera system need late update
-            //update timer
+            //update timer and governing the frame rate
             if (GET_PARAM_TYPE_VAL(BOOL, ENGINE_FIXED_FPS)) {
                 if (delta_time < fixed_dt) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(uint32_t((fixed_dt - delta_time) * 1000)));
                     delta_time = fixed_dt;
                 }
                 else if (delta_time > fixed_dt && GET_PARAM_TYPE_VAL(BOOL, ENGINE_FRAME_SKIP)) {
-                    //todo
+                    //we must ¡°take our lumps¡± and wait for one more whole frame time to elapse
+                    auto gap_time = fixed_dt;
+                    while (gap_time < delta_time) {
+                        gap_time += fixed_dt;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(uint32_t((gap_time - delta_time) * 1000)));
+                    //todo delta time and frame index
                 }
             }
             delta_time_ = delta_time;
@@ -106,7 +112,7 @@ namespace Shard
             LOG(INFO) << fmt::format("current %d frame execute time : %f, and average execute time: %f", curr_frame_, delta_time, average_delta_time_);
             curr_frame_++;
         }
-        SI::InputSystem::Ptr Engine::GetInputSystem()
+        SI::InputSystem* Engine::GetInputSystem()
         {
             return input_system_;
         }
@@ -143,17 +149,23 @@ namespace Shard
             //frame start
             input_system_->Tick(dt);
 
-            //todo phyX system
-            //Utils::Schedule([&, this](void) {}, );
-            //todo render
-            prev_render_ = Utils::Schedule([&, this](void) {}, nullptr, GET_PARAM_TYPE_VAL(UINT, SYSTEM_RENDER_AFFINITY), false);
+            world_manager_.Enumerate([dt](auto* world) {
+                world->Update(dt); //todo
+            });
+
+            if (world_ == nullptr) {
+                world_ = world_manager_.GetWorld();
+            }
+            //todo render active world
+            //unreal redraw viewports
+
 
             //frame end
             input_system_->ClearFrameState();
         }
 
 #elif defined(EDITOR_RUNTIME)
-        //to do
+    #error "shard only support game runtime"
 #endif
     }
 }

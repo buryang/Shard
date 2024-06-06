@@ -1,7 +1,7 @@
 #pragma once
 #include "Utils/CommonUtils.h"
-#include "Graphics/RHI/RHIResources.h"
-#include "Graphics/Renderer/RtRenderShader.h"
+#include "Graphics/HAL/HALResources.h"
+#include "Graphics/Render/RenderShader.h"
 
 #if 1//def defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
 namespace Shard::Effect
@@ -11,7 +11,7 @@ namespace Shard::Effect
     public:
         static void Init();
         static void Unit();
-        static void Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
+        static void Draw(Render::RenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview);
     };
 }
 #endif

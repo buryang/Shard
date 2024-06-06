@@ -98,7 +98,7 @@ namespace Shard::System::DebugView
     {
 #ifdef ENABLE_IMGUI
         if (GET_PARAM_TYPE_VAL(BOOL, DEBUG_VIEW_ENABLE_IMGUI)) {
-            RHI::RHIGlobalEntity::Instance()->GetImGuiLayerWrapper()->Init();
+            HAL::HALGlobalEntity::Instance()->GetImGuiLayerWrapper()->Init();
         }
 #endif
     }
@@ -107,7 +107,7 @@ namespace Shard::System::DebugView
     {
 #if 1//def ENABLE_IMGUI
         if (GET_PARAM_TYPE_VAL(BOOL, DEBUG_VIEW_ENABLE_IMGUI)) {
-            RHI::RHIGlobalEntity::Instance()->GetImGuiLayerWrapper()->UnInit();
+            HAL::HALGlobalEntity::Instance()->GetImGuiLayerWrapper()->UnInit();
         }
 #endif
         debug_context_.Reset();
@@ -116,7 +116,7 @@ namespace Shard::System::DebugView
     void DebugViewSystem::PreUpdate()
     {
 #if 1//def ENABLE_IMGUI
-        RHI::RHIGlobalEntity::Instance()->GetImGuiLayerWrapper()->NewFrameGameThread();
+        HAL::HALGlobalEntity::Instance()->GetImGuiLayerWrapper()->NewFrameGameThread();
 #endif
     }
 

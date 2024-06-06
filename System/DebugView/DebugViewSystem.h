@@ -58,7 +58,7 @@ namespace Shard::System::DebugView
         void Update(ECSSystemUpdateContext& ctx) override;
         void MergeThreadContext(DebugViewContext&& thread_context);
 #ifdef ENABLE_IMGUI
-        FORCE_INLINE RHI::RHIImGUILayer::Ptr GetImGUIWrapper() {
+        FORCE_INLINE HAL::HALImGUILayer* GetImGUIWrapper() {
             return imgui_rhi_;
         }
 #endif
@@ -70,7 +70,7 @@ namespace Shard::System::DebugView
     private:
         DebugViewContext debug_context_;
 #ifdef ENABLE_IMGUI
-        RHI::RHIImGUILayer::Ptr    imgui_rhi_{ nullptr };
+        HAL::HALImGUILayer*    imgui_rhi_{ nullptr };
 #endif
     };
 }

@@ -13,7 +13,7 @@ namespace Shard {
         if (auto iter = map.find(key); iter != map.end()) {
             return iter->second;
         }
-        LOG(ERROR) << __FUNCTION__ << ":not supported global params(" << key << ")" << std::endl;
+        PLOG(ERROR) << "GetMapVal:not supported global params(" << key << ")";
     }
     
     bool GlobalEngineConfig::SetBOOLVal(const String& key, BOOL val)
@@ -44,6 +44,16 @@ namespace Shard {
     GlobalEngineConfig::UINT GlobalEngineConfig::GetUINTVal(const String& key)
     {
         return GetMapVal(GlobalEngineConfig::uint_params_, key);
+    }
+
+    bool GlobalEngineConfig::SetUINT64Val(const String& key, UINT64 val)
+    {
+        return SetMapVal(GlobalEngineConfig::uint64_params_, key, val);;
+    }
+
+    UINT64 GlobalEngineConfig::GetUINT64Val(const String& key)
+    {
+        return GetMapVal(GlobalEngineConfig::uint64_params_, key);
     }
 
     bool GlobalEngineConfig::SetFLOATVal(const String& key, FLOAT val)

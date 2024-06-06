@@ -102,7 +102,7 @@ namespace Shard::Utils {
 
     uint32_t ImageObject::Flatten(ImageFreezeObject& object, bool to_merge_sections)const
     {
-        SmallVector<ImageObjectSection::Ptr> unique_sections;
+        SmallVector<ImageObjectSection*> unique_sections;
         Map<uint32_t, uint32_t> section_remap;
         
         eastl::for_each(sections_.begin(), sections_.end(), [&](auto& sec) { sec.ComputeHash() });

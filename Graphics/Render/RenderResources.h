@@ -1,110 +1,20 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "Utils/Handle.h"
-#include "Core/PixelInfo.h"
-#include "RHI/RHIResources.h"
-#include "RHI/RHIGlobalEntity.h"
-#include "Render/RenderDefinitions.h"
+#include "Core/GFXDefinitions.h"
+#include "HAL/HALResources.h"
 #include <type_traits>
 
 namespace Shard
 {
     namespace Render
     {
-        /*buffer use TextureDim width to represent size*/
-        struct TextureDim {
-            uint32_t    width_{ 0 };
-            uint32_t    height_{ 0 };
-            uint32_t    depth_{ 0 };
-            uint32_t    mip_slices_{ 1 };
-            uint32_t    array_slices_{ 1 };
-            uint32_t    plane_slices_{ 1 };
-            FORCE_INLINE bool operator==(const TextureDim& rhs)const {
-                return !std::memcmp(this, &rhs, sizeof(*this));
-            }
-            FORCE_INLINE bool operator!=(const TextureDim& rhs)const {
-                return !(*this == rhs);
-            }
-        };
-
-        struct TextureSubRange {
-            uint32_t    mip_{ 0 };
-            uint32_t    layer_{ 0 };
-            uint32_t    plane_{ 0 };
-            bool operator==(const TextureSubRange& rhs)const {
-                return mip_ == rhs.mip_ && layer_ == rhs.layer_ && plane_ == rhs.plane_;
-            }
-            bool operator!=(const TextureSubRange& rhs)const {
-                return !(*this == rhs);
-            }
-        };
-        struct TextureSubRangeRegion {
-            uint32_t    base_mip_{ 0 };
-            uint32_t    mips_{ 1 };
-            uint32_t    base_layer_{ 0 };
-            uint32_t    layers_{ 1 };
-            uint32_t    base_plane_{ 0 };
-            uint32_t    planes_{ 1 };
-            explicit TextureSubRangeRegion(const TextureDim& layout): mips_(layout.mip_slices_),layers_(layout.array_slices_),
-                                                                   planes_(layout.plane_slices_){}
-            bool IsWholeRange(const TextureDim& layout)const{
-                return base_mip_ == 0 && base_layer_ == 0
-                    && base_plane_ == 0 && mips_ == layout.mip_slices_
-                    && layers_ == layout.array_slices_ && planes_ == layout.plane_slices_;
-            }
-            uint32_t GetSubRangeIndexCount()const {
-                return mips_ * layers_ * planes_;
-            }
-            bool IsSubRangeIndexIncluded(const TextureSubRange& index)const {
-                if (index.mip_ < base_mip_ || index.mip_ > base_mip_ + mips_) {
-                    return false;
-                }
-                if (index.layer_ < base_layer_ || index.layer_ > base_layer_ + layers_) {
-                    return false;
-                }
-                if (index.plane_ < base_plane_ || index.plane_ > base_plane_ + planes_) {
-                    return false;
-                }
-                return true;
-            }
-            uint32_t GetSubRangeIndexLocation(const TextureSubRange& index)const {
-                if (!IsSubRangeIndexIncluded(index)) {
-                    return -1;
-                }
-                return index.mip_ - base_mip_ + (index.layer_ - base_layer_) * mips_ +
-                    (index.plane_ - base_plane_) * mips_ * planes_;
-            }
-            template<typename LAMBDA>
-            requires std::is_invocable_v<LAMBDA, const TextureSubRange&>
-            void For(LAMBDA&& lambda)const {
-                for (auto pl = base_plane_; pl < base_plane_ + planes_; ++pl) {
-                    for (auto lay = base_layer_; lay < base_layer_ + layers_; ++lay) {
-                        for (auto mip = base_mip_; mip < base_mip_ + mips_; ++mip) {
-                            lambda({mip, lay, pl});
-                        }
-                    }
-                }
-            }
-        };
-
-        struct BufferSubRangeRegion {
-            uint32_t    offset_{ 0 };
-            uint32_t    size_{ 0 };
-            bool operator==(const BufferSubRange& rhs)const {
-                return offset_ == rhs.offset_ &&
-                    size_ == rhs.size_;
-            }
-            bool operator!=(const BufferSubRange& rhs)const {
-                return !(*this != rhs);
-            }
-        };
-        
         template<Utils::Integer T>
         struct HashName
         {
             T   name_;
             static HashName FromString(const String& name) {
-                HashName hash_name{ static_cast<T>(CalcBlake3HashForBytes(name.data(), name.size())) }; //slow?
+                HashName hash_name{ static_cast<T>(InternBlake3HashForBytes(name.data(), name.size())) }; //slow?
                 return hash_name;
             }
             bool operator==(const HashName& rhs) const noexcept {
@@ -127,95 +37,64 @@ namespace Shard
 
             enum class EUsage :uint8_t
             {
-                eUnkown    = 0x0,
-                eInput    = 0x1,
+                eUnkown = 0x0,
+                eInput  = 0x1,
                 eOutput = 0x2,
-                eExtracted    = eOutput | 0x10,
-                eExternal = 0x100, //external resource
-                eCulled    = 0x200, //field deleted
+                eExternal   = 0x100, //external resource
+                eCulled = 0x200, //field deleted
             };
 
-            struct TextureSubField
+            enum class EAuxFlags : uint8_t
             {
-                EAccessFlags    access_;  
-                /*for vulkan has so many layout type, and d3d12 RESOURCE_STATE not has layout,
-                * so u can just leave layout_ as Unkown, and engine give it a value
-                */
-                ELayoutFlags    layout_{ ELayoutFlags::eUnkown };
+                eAppendBuffer = 1 << 0,
+                eUseCounter = 1 << 1,
+                eStructuredBuffer = 1 << 2,
+                eTypedBuffer    = 1 << 3,
+                //todo 
             };
+            DECLARE_ENUM_BIT_OPS(EAuxFlags);
+
             using Name = HashName<uint32_t>;
-
-            static bool IsSubFieldMergeAllowed(const TextureSubField& prev, const TextureSubField& next) {
-                if (prev.access_ == next.access_ && prev.layout_ == next.layout_ ) {
-                    return true;
-                }
-                auto union_access = Utils::LogicOrFlags(prev.access_, next.access_);
-                if (Utils::HasAnyFlags(prev.access_, EAccessFlags::eReadOnly)
-                    && Utils::HasAnyFlags(next.access_, EAccessFlags::eWriteAble)) {
-                    return false;
-                }
-                if (Utils::HasAnyFlags(prev.access_, EAccessFlags::eWriteOnly)
-                    && Utils::HasAnyFlags(next.access_, EAccessFlags::eReadAble)) {
-                    return false;
-                }
-                //FIXME
-                if (Utils::HasAnyFlags(union_access, EAccessFlags::eUAV) &&
-                    Utils::HasAnyFlags(union_access, EAccessFlags::eNonUAV)) {
-                    return false;
-                }
-                return true;
-            }
-
-            //fixme check pipeline outside function
-            static bool IsSubFieldTransitionNeeded(const TextureSubField& prev, const TextureSubField& next) {
-                if (prev.access_ != next.access_||IsSubFieldMergeAllowed(prev, next)) {
-                    return true;
-                }
-                if (Utils::HasAnyFlags(next.access_, EAccessFlags::eUAV)) {
-                    return true;
-                }
-                return false;
-            }
-
-            Field() = default;
+            static Field CreateDSVField(const String& name);
+            static Field CreateSRVField(const String& name);
+            static Field CreateRTVField(const String& name);
+            static Field CreateUAVField(const String& name);
+            Field() { texture_sub_range_ = {}; }
             FORCE_INLINE bool IsWholeResource()const { return type_ == EType::eBuffer || texture_sub_range_.IsWholeRange(dims_); }
             FORCE_INLINE bool IsConnectAble(const Field& other)const;
-            FORCE_INLINE bool IsExternal()const { return sub_resources_.access_ == EAccessFlags::eExternal; }
+            FORCE_INLINE bool IsExternal()const { return sub_state_.access_ == EAccessFlags::eExternal; }
             FORCE_INLINE bool IsOutput()const { return Utils::HasAnyFlags(usage_, EUsage::eOutput); }
             FORCE_INLINE bool IsInput()const { return !IsOutput(); }
-            FORCE_INLINE bool IsExtract()const { return usage_ == EUsage::eExtracted; }
-            FORCE_INLINE bool IsReferenced()const { return ref_count_ > 1; }
-            FORCE_INLINE bool IsCrossQueue()const { return is_cross_queue_; }
-            FORCE_INLINE bool IsDedicated()const {}
-            FORCE_INLINE bool IsTransiant()const{}
+            FORCE_INLINE bool IsInputConnected() const { return IsInput() && GetHashName() != GetParentName(); }
             Field& NameAs(const String& name);
-            Field& ParentNameAs(const String& name);
+            Field& Description(const String& description);
+            Field& ParentName(const Name& name);
             Field& Width(const uint32_t width);
             Field& Height(const uint32_t height);
             Field& Depth(const uint32_t depth);
             Field& MipSlices(const uint32_t mip_slices);
             Field& ArraySlices(const uint32_t array_slices);
             Field& PlaneSlices(const uint32_t plane_slices);
+            Field& SampleCount(const uint32_t sample_count);
             Field& StageFlags(EPipelineStageFlags stage);
-            //use with asyc compute and gfx queue
-            Field& CrossQueue(bool value);
-            Field& ForceTransiant();
+            Field& Type(EType type);
+            Field& State(TextureState state);
+            Field& Usage(EUsage usage);
+            Field& AuxFlags(EAuxFlags flags);
             EType GetType()const;
             const String& GetName()const;
             const Name& GetHashName()const;
-            const String& GetParentName()const;
+            const Name& GetParentName()const;
+            const String& GetDescription()const;
             const TextureDim& GetDimension()const;
-            const TextureSubField& GetSubField()const;
-            const TextureSubRange& GetSubRange()const;
+            const uint32_t GetSampleCount()const;
+            const TextureState& GetSubFieldState()const;
+            const TextureSubRangeRegion& GetTextureSubRange()const;
+            const BufferSubRangeRegion& GetBufferSubRange()const;
+            const uint32_t GetSampleCount()const;
             EPixFormat GetPixFormat()const;
-            uint32_t InCrRef(uint32_t count=1) { 
-                ref_count_ += count;
-                return ref_count_;
-            }
-            uint32_t DecrRef(uint32_t count=1) {
-                ref_count_ -= count;
-                return ref_count_;
-            }
+            EPipelineStageFlags GetPipelineStage()const;
+            EAuxFlags GetAuxFlags()const;
             friend bool operator==(const Field& lhs, const Field& rhs) {
                 return std::memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
             }
@@ -223,20 +102,19 @@ namespace Shard
         private:
             friend class RenderPass;
             String  name_;
+            String  description_;
             Name    hash_name_;
             //name for producer
             Name    parent_name_;
             EType   type_;
             EUsage  usage_{ EUsage::eUnkown };
+            EAuxFlags   aux_flags_{ EAuxFlags::eNone };
             EPixFormat  pix_fmt_{ EPixFormat::eUnkown };
-            mutable uint32_t    ref_count_{ 1 };
             //which stage of pipeline use this Field
             EPipelineStageFlags stage_{ EPipelineStageFlags::eAll };
-            //user force it tobe transiant
-            uint32_t    is_dedicated_:1;
-            uint32_t    is_transiant_:1;
-            uint32_t    is_cross_queue_:1;
-            uint32_t    sample_count_{ 1u };
+            //user force it to be transiant
+            uint32_t    is_force_dedicated_:1;
+            uint32_t    sample_count_:6;
             ETextureDimType dim_prop_{ ETextureDimType::eAbsolute };
             TextureDim  dims_;
             union {
@@ -244,9 +122,33 @@ namespace Shard
                 TextureSubRangeRegion texture_sub_range_;
                 BufferSubRangeRegion  buffer_sub_range_;
             };
-            TextureSubField sub_resources_;
+            TextureState    sub_state_;
         };
 
+        static HAL::HALTextureInitializer CreateTextureInitializerForField(const Field& field) {
+            HAL::HALTextureInitializer initializer{
+                .dims_ = field.GetDimension(),
+                .access_ = field.GetSubFieldState().access_,
+                .layout_ = field.GetSubFieldState().layout_,
+                .format_ = field.GetPixFormat(),
+            };
+            return initializer;
+        }
+        
+        static HAL::HALBufferInitializer CreateBufferInitializerForField(const Field& field) {
+            assert(field.GetType() == Render::Field::EType::eBuffer);
+            HAL::HALBufferInitializer initializer{ .size_ = field.GetDimension().width_, .access_ = field.GetSubFieldState().access_ };
+            const auto& aux_flags = field.GetAuxFlags();
+            if (Utils::HasAnyFlags(aux_flags, Field::EAuxFlags::eTypedBuffer|Field::EAuxFlags::eTypedBuffer)) {
+                initializer.type_ = HAL::HALBufferInitializer::EType::eRawBuffer;
+            }
+            else {
+                initializer.type_ = HAL::HALBufferInitializer::EType::eStructedBuffer;
+            }
+            return initializer;
+        }
+
+        class RenderPass;
         /*parent resource class for texture and buffer*/
         class RenderResource
         {
@@ -254,8 +156,7 @@ namespace Shard
             using ThisType = RenderResource;
 
             RenderResource() = default;
-            RenderResource(const Field& field) { Init(field); }
-            virtual void Init(const Field& field);
+            explicit RenderResource(const Field& field);
             virtual ~RenderResource() {}
             bool IsExternal()const {
                 return is_external_;
@@ -266,19 +167,16 @@ namespace Shard
             bool IsOutput()const {
                 return is_output_;
             }
-            void Regist(uint32_t pass) {
-                life_time_.first = std::min(life_time_.first, pass);
-                life_time_.second = std::max(life_time_.second, pass);
+            bool IsManagedByUser()const {
+                return IsExternal() || IsOutput();
             }
-            bool IsValid(uint32_t pass) const {
-                return pass >= life_time_.first && pass <= life_time_.second;
+            void Read(RenderPass::Handle pass) {
+                consumer_passes_.insert(pass);
+                AddRef();
             }
-            void IncrRef(uint32_t ref) const{
-                ref_count_.fetch_add(ref);
-            }
-            void DecrRef(uint32_t ref) const{
-                ref_count_.fetch_sub(ref);
-                assert(ref_count_ >= 0);
+            void Write(RenderPass::Handle pass) {
+                producer_passes_.insert(pass);
+                AddRef();
             }
             auto& GetAccessFlags() {
                 return access_flags_;
@@ -286,18 +184,43 @@ namespace Shard
             auto& GetLayoutFlags() {
                 return layout_flags_;
             }
+           
+            [[deprecated]]
+            const auto& GetProducer() const {
+                return producer_passes_;
+            }
+            [[deprecated]]
+            const auto& GetConsumer() const {
+                return consumer_passes_;
+            }
+            void AddRef() {
+                ++ref_count_;
+            }
+            void DecrRef() {
+                --ref_count_;
+                if (ref_count_ == 0u) {
+                    EndHAL();
+                }
+                assert(ref_count_ >= 0 && "decrease times more than add times");
+            }
+            bool CalcLifeTime(uint32_t& start, uint32_t& end);
+            /*get memory requirement*/
+            virtual uint64_t GetOccupySize()const = 0;
             /*set rhi backend for this resource*/
-            virtual void SetRHI() = 0;
+            virtual void SetHAL() = 0;
+            /*get rhi backend handle*/
+            virtual void* GetHAL() = 0; //todo
             /*release rhi to the backend*/
-            virtual void EndRHI() = 0;
+            virtual void EndHAL() = 0;
         private:
             uint32_t    is_external_:1{ 0u };
             uint32_t    is_transient_:1{ 1u };
             uint32_t    is_output_ : 1{ 0u };
+            uint16_t    ref_count_{ 0u };
             EAccessFlags    access_flags_{ EAccessFlags::eNone };
             ELayoutFlags    layout_flags_{ ELayoutFlags::eUnkown };
-            mutable std::atomic_uint    ref_count_{ 0u };
-            std::pair<uint32_t, uint32_t>   life_time_{ 0u, 0u };
+            Set<RenderPass::Handle>   producer_passes_;
+            Set<RenderPass::Handle>   consumer_passes_;
         };
 
         class RenderBuffer : public RenderResource
@@ -306,14 +229,16 @@ namespace Shard
             using BufferRepo = Utils::ResourceManager<RenderBuffer, Utils::ScalablePoolAllocator>;
             using Handle = BufferRepo::Handle;
             static BufferRepo& BufferRepoInstance();
+            RenderBuffer(const Field& field);
+            ~RenderBuffer();
+            //RenderBuffer*& GetCounter() { return counter_resource_; }
         public:
-            void SetRHI()override;
-            void EndRHI()override;
+            void SetHAL()override;
+            void EndHAL()override;
         private:
-            RHI::RHIBuffer* rhi_buffer_{ nullptr };
+            HAL::HALBuffer* rhi_buffer_{ nullptr };
+            //RenderBuffer*   counter_resource_{ nullptr }; //for uav counter
         };
-
-        using TextureSubRangeState = TextureSubFieldState;
 
         class RenderTexture : public RenderResource
         {
@@ -322,23 +247,60 @@ namespace Shard
             using Handle = TextureRepo::Handle;
             /*texture and buffer repo singleton instance*/
             static TextureRepo& TextureRepoInstance();
+            RenderTexture(const Field& field);
+            ~RenderTexture();
         public:
-            void SetRHI()override;
-            void EndRHI()override;
+            void SetHAL()override;
+            void EndHAL()override;
+            bool IsWholeTexture()const;
             void MergeField(const Field& curr_field);
+            SmallVector<TextureState>& GetState();
         private:
-            SmallVector<TextureSubRangeState>   curr_state_;
-            
-            RHI::RHITexture*    rhi_texture_{ nullptr };
+            uint32_t    sample_count_{ 1u }; //max sample count 64
+            TextureDim  dims_;
+            SmallVector<TextureState>   curr_state_;
+            HAL::HALTexture*    rhi_texture_{ nullptr };
         };
 
-        static constexpr uint32_t MAX_RENDER_TARGET_ATTACHMENTS = 8;
-
-        struct ALIGN_AS(128) RenderFrameBuffer
+        //framegraph blackboard for every frame
+        class RenderResourceCache
         {
-            RenderTexture    depth_stencil_;
-            RenderTexture    color_attachments_[MAX_RENDER_TARGET_ATTACHMENTS];
+        public:
+            RenderTexture::Handle GetOrCreateTexture(const Field& field);
+            RenderBuffer::Handle GetOrCreateBuffer(const Field& field);
+            Optional<RenderTexture::Handle> TryGetTexture(const Field::Name& field);
+            Optional<RenderBuffer::Handle> TryGetBuffer(const Field::Name& field);
+            //queue extracted output resource 
+            bool QueueExtractedTexture(const Field::Name& field, RenderTexture::Handle& texture);
+            bool QueueExtractedBuffer(const Field::Name& field, RenderBuffer::Handle& buffer);
+            bool RegistExternalBuffer(const Field::Name& external_field, RenderBuffer::Handle buffer);
+            bool RegistExternalTexture(const Field::Name& external_field, RenderTexture::Handle texture);
+            void Clear(bool non_extract);
+            template<typename Function>
+            void EnumerateTexture(Function&& func) {
+                for (auto texture : texture_repos_) {
+                    func(texture);
+                }
+            }
+            template<typename Function>
+            void EnumerateBuffer(Function&& func) {
+                for (auto buffer : buffer_repos_) {
+                    func(buffer);
+                }
+            }
+        private:
+            struct CacheNode {
+                uint32_t index_ : 30 { 0u };
+                uint32_t is_external_ : 1;
+                uint32_t is_extacted_ : 1;
+            };
+            CacheNode& NewTextureCacheNode(const Field::Name& field, RenderTexture::Handle texture);
+            CacheNode& NewBufferCacheNode(const Field::Name& field, RenderBuffer::Handle buffer);
+        private:
+            Map<const Field::Name, CacheNode>  texture_map_;
+            Map<const Field::Name, CacheNode>  buffer_map_;
+            Vector<RenderBuffer::Handle>    buffer_repos_;
+            Vector<RenderTexture::Handle>   texture_repos_;
         };
-
     }
 }

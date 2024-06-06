@@ -1,6 +1,6 @@
-#include "Graphics/RHI/RHIGlobalEntity.h"
-#include "Graphics/RHI/RHICommandIR.h"
-#include "Graphics/RHI/RHIGlobalEntity.h"
+#include "Graphics/HAL/HALGlobalEntity.h"
+#include "Graphics/HAL/HALCommandIR.h"
+#include "Graphics/HAL/HALGlobalEntity.h"
 #include "Graphics/Effect/DebugView/EffectDebugView.h"
 #define _USE_MATH_DEFINES 
 #include <math.h>
@@ -21,21 +21,21 @@ namespace Shard::Effect
 
     void DebugViewRender::Init()
     {
-        auto pso_lib = RHI::RHIGlobalEntity::Instance()->GetOrCreatePSOLibrary();
+        auto pso_lib = HAL::HALGlobalEntity::Instance()->GetOrCreatePSOLibrary();
         assert(pso_lib != nullptr);
-        RHI::RHIPipelineStateObjectInitializer line_pso;
+        HAL::HALPipelineStateObjectInitializer line_pso;
         {
             line_pso.gfx_.primitive_topology_ = EInputTopoType::eLineStrip;
             line_pso.gfx_.vertex_shader_ = nullptr;
             line_pso.gfx_.geometry_shader_ = nullptr;
             line_pso.gfx_.pixel_shader_ = nullptr; //todo
         }
-        debug_pso_[LINE_TYPE] = pso_lib->GetOrCreatePipeline(line_pso);
-        RHI::RHIPipelineStateObjectInitializer point_pso;
+        debug_pso_[LINE_TYPE] = pso_lib->GetOrCreatEPipeline(line_pso);
+        HAL::HALPipelineStateObjectInitializer point_pso;
         {
             point_pso.gfx_.primitive_topology_ = EInputTopoType::ePointList;
         }
-        debug_pso_[POINT_TYPE] = pso_lib->GetOrCreatePipeline(point_pso);
+        debug_pso_[POINT_TYPE] = pso_lib->GetOrCreatEPipeline(point_pso);
     }
 
     void DebugViewRender::UnInit()
@@ -46,9 +46,9 @@ namespace Shard::Effect
         //nothing ??
     }
 
-    void DebugViewRender::Render(DebugViewContext& ctx, RHI::RHICommandContext::Ptr cmd_buffer)
+    void DebugViewRender::Render(DebugViewContext& ctx, HAL::HALCommandContext* cmd_buffer)
     {
-        RHI::RHIBeginRenderPassPacket begin_pass_end;
+        HAL::HALBeginRenderPassPacket begin_pass_end;
         begin_pass_end.render_target_ = xxx;
         begin_pass_end.roi_ = xxx;
         cmd_buffer->Enqueue(&begin_pass_end);
@@ -63,38 +63,38 @@ namespace Shard::Effect
             DrawPoints(ctx.point_batcher_, cmd_buffer);
         }
 
-        RHI::RHIEndRenderPassPacket end_pass_end;
+        HAL::HALEndRenderPassPacket end_pass_end;
         cmd_buffer->Enqueue(&end_pass_end);
 
         ctx.Reset();
     }
 
-    void DebugViewRender::DrawLines(const SmallVector<LineViewCommand>& lines, RHI::RHICommandContext::Ptr cmd_buffer)
+    void DebugViewRender::DrawLines(const SmallVector<LineViewCommand>& lines, HAL::HALCommandContext* cmd_buffer)
     {
         //bind pso
-        RHI::RHIBindPSOPacket bind_cmd;
+        HAL::HALBindPSOPacket bind_cmd;
         bind_cmd.pso_ = debug_pso_[LINE_TYPE];
-        bind_cmd.bind_point_ = RHI::RHIBindPSOPacket::eGFX;
+        bind_cmd.bind_point_ = HAL::HALBindPSOPacket::eGFX;
         cmd_buffer->Enqueue(&bind_cmd);
         //get gpu buffer
         
         //draw
-        RHI::RHIDrawIndexedIndirectPacket draw_cmd;
+        HAL::HALDrawIndexedIndirectPacket draw_cmd;
         cmd_buffer->Enqueue(&draw_cmd);
     }
 
-    void DebugViewRender::DrawPoints(const SmallVector<PointViewCommand>& points, RHI::RHICommandContext::Ptr cmd_buffer)
+    void DebugViewRender::DrawPoints(const SmallVector<PointViewCommand>& points, HAL::HALCommandContext* cmd_buffer)
     {
         //bind pso
-        RHI::RHIBindPSOPacket bind_cmd;
+        HAL::HALBindPSOPacket bind_cmd;
         bind_cmd.pso_ = debug_pso_[POINT_TYPE];
-        bind_cmd.bind_point_ = RHI::RHIBindPSOPacket::eGFX;
+        bind_cmd.bind_point_ = HAL::HALBindPSOPacket::eGFX;
         cmd_buffer->Enqueue(&bind_cmd);
 
         //get gpu buffer
 
         //draw
-        RHI::RHIDrawIndexedIndirectPacket draw_cmd;
+        HAL::HALDrawIndexedIndirectPacket draw_cmd;
         cmd_buffer->Enqueue(&draw_cmd);
     }
 
@@ -108,7 +108,7 @@ namespace Shard::Effect
         DebugViewRender::UnInit();
     }
 
-    void EffectDrawDebugView::Draw(Renderer::RtRenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview)
+    void EffectDrawDebugView::Draw(Render::RenderGraphBuilder& builder, System::DebugView::DebugViewSystem& debugview)
     {
         DebugViewRender render;
         auto debug_ctx = debugview.GetDebugViewContext();

@@ -344,7 +344,7 @@ namespace Shard
             eMASK    = 0x01,
             eBLEND    = 0x02,
         };
-        using TexturePtr = Texture::Ptr;
+        using TexturePtr = Texture*;
         AlphaMode alpha_mode_ = AlphaMode::eOPAQUE;
         bool double_sided_ = false;
         float alpha_cutoff_ = 1.0f;
@@ -363,7 +363,7 @@ namespace Shard
 
     struct EnvironmentMap
     {
-        Texture::Ptr    cube_map_{ nullptr };
+        Texture*    cube_map_{ nullptr };
     };
 
     struct SkyBoxMap : EnvironmentMap
@@ -373,12 +373,12 @@ namespace Shard
 
     struct EnvironmentProbeMap
     {
-        Texture::Ptr    probes_;
+        Texture*    probes_;
     };
 
     struct SkyboxEnviromentMap : EnvironmentMap
     {
-        Texture::Ptr    skybox_radiance_{ nullptr };
+        Texture*    skybox_radiance_{ nullptr };
         float    intensity_{ 1.0f };
         float    exposure_{ -1.f };
     };

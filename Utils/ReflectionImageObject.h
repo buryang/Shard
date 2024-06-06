@@ -39,14 +39,14 @@ namespace Shard::Utils {
         ImageObjectSection& WritePointer(const TypeLayoutDesc& desc, const TypeLayoutDesc& derived_desc, uint32_t& offset_to_base);
         uint32_t Flatten(ImageFreezeObject& object, bool to_merge_sections = true)const;
         FORCE_INLINE uint32_t GetOffset()const { return data_.size(); }
-        FORCE_INLINE ImageObject::Ptr GetParent() { return parent_; }
+        FORCE_INLINE ImageObject* GetParent() { return parent_; }
         void ComputeHash();
         const FORCE_INLINE Blake3Hash64 GetHash()const {
             return hash_;
         }
     private:
         friend class ImageObject;
-        ImageObject::Ptr    parent_;
+        ImageObject*    parent_;
         Vector<uint8_t>    data_;
         Blake3Hash64    hash_;
         uint32_t    max_align_{ 0 };

@@ -6,16 +6,17 @@
 #include "Render/RenderGraphExe.h"
 #include "HAL/HALGlobalEntity.h"
 
-#define RESORT_ORDER_PASS
-
 namespace Shard
 {
     namespace Render
     {
         REGIST_PARAM_TYPE(BOOL, RENDER_ASYNC_COMPUTE, false);
         REGIST_PARAM_TYPE(BOOL, RENDER_CULLING_PASS, false);
+        REGIST_PARAM_TYPE(BOOL, RENDER_TRANSIENT_RESOURCE, false);
         REGIST_PARAM_TYPE(BOOL, RENDER_RESOURCE_ALIASING, false);
         REGIST_PARAM_TYPE(BOOL, RENDER_BARRIER_SPLIT, false);
+        REGIST_PARAM_TYPE(BOOL, RENDER_BARRIER_IMPLICIT, false); //only d3d12 support this
+        REGIST_PARAM_TYPE(BOOL, RENDER_REORDER_PASSES, false);
 
         class RenderGraph;
         class MINIT_API RenderGraphBuilder
@@ -26,14 +27,18 @@ namespace Shard
             void CullUnusedPasses(RenderResourceCache* cache);
             void GenerateOrderredPasses();
             void ReSortOrderredPasses();
-            void MergeOrderedPasses();
+            void MergeOrderedPasses(RenderResourceCache* cache);
             void InsertOrderedAutoResolvePasses();
             void AnalyseResourceUsage(RenderResourceCache* cache);
             void AnalyseResourceHALMemoryUsage(RenderResourceCache* cache);
         private:
             //build resource barrier
-            void AnalyseResourceTrasientResidency(RenderResourceCache* cache);
-            void AnalyseResourceTransition(RenderResourceCache* cache);
+            void AnalyseResourceResidencyWithTransient(RenderResourceCache* cache);
+            void AnalyseResourceResidencyWithoutTransient(RenderResourceCache* cache);
+            void AnalysePassResourceTransition(RenderResourceCache* cache);
+            void AnalyseDependencyLevelResourceTransition(RenderResourceCache* cache);
+            void AnalyseCrossQueueSync();
+            void AssignOrderedPassExecuteOrder();
             explicit RenderGraphBuilder(RenderGraph& graph) :graph_(graph) {}
             DISALLOW_COPY_AND_ASSIGN(RenderGraphBuilder);
         private:

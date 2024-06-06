@@ -28,123 +28,6 @@ namespace Shard
         /*when to allocator it*/
         Utils::ScalablePoolAllocator<uint8_t>* g_render_allocator = nullptr;
 
-        /*gfx queue and async compute queue*/
-        static constexpr uint32_t MAX_QUEUE_COUNT = 2;
-        struct TextureSubFieldState
-        {
-            EAccessFlags    state_;
-            RenderPass::Handle  first_pass_[MAX_QUEUE_COUNT];
-            RenderPass::Handle  last_pass_[MAX_QUEUE_COUNT];
-        };
-
-        struct MemorySlice
-        {
-            uint32_t    id_;
-            //uint32_t    flags_;
-            uint32_t    bucket_id_;
-            uint16_t    begin_time_{ 0u }; //dependency level begin
-            uint16_t    end_time_{ 0u }; //dependency level end
-            uint64_t    offset_{ 0u };
-            uint64_t    size_{ 0u };
-        };
-
-        static inline bool IsMemorySiceOverlap(const MemorySlice& lhs, const MemorySlice& rhs) {
-            return (rhs.begin_time_ > lhs.begin_time_ && rhs.begin_time_ < lhs.end_time_) ||
-                (rhs.begin_time_ < lhs.begin_time_ && rhs.end_time_ > lhs.end_time_) ||
-                (rhs.end_time_ > lhs.end_time_ && rhs.end_time_ < lhs.end_time_);
-        }
-
-        struct MemoryRegionPoint
-        {
-            uint64_t    offset_ : 63;
-            uint64_t    is_end_ : 1;
-        };
-
-        struct MemoryAliasBucket
-        {
-            uint64_t    size_;
-            uint32_t    bucket_id_;
-        };
-
-        class MemoryAliasCollector
-        {
-        public:
-            /*enqueue new slice as size descend order*/
-            void Enqueue(uint32_t slice_id, uint32_t flags, uint16_t begin_time, uint16_t end_time, uint64_t size) {
-                MemorySlice slice{ .id_ = slice_id, .begin_time_ = begin_time, .end_time_ = end_time, .size_ = size };
-                auto position = eastl::upper_bound(slices_.begin(), slices_.end(), slice, [&](auto curr_slice) { return curr_slice.size_ < slice.size_; });
-                slices_.insert(position, slice);
-            }
-            void DoAnalyse() {
-                for (auto slice_index = 0u; slice_index < slices_.size(); ++slice_index) {
-                    bool fit_result = false;
-                    auto& slice = slices_[slice_index];
-                    
-                    for (auto bucket_index = 0u; bucket_index < buckets_.size(); ++bucket_index) {
-                        if (fit_result = FitSliceInBucket(slice, buckets_[bucket_index], bucket_slices_[bucket_index])) {
-                            bucket_slices_[bucket_index].emplace_back(slice_index);
-                            break;
-                        }
-                    }
-                    if (!fit_result) {
-                        AllocNewBucketForSlice(slice, slice_index);
-                    }
-                }
-            }
-            const Vector<MemoryAliasBucket>& GetBuckets() { return buckets_; }
-            const MemoryAliasBucket& GetBucketForSlice(const uint32_t slice_id) {
-               //todo avoid search
-                auto iter = eastl::find_if(slices_.cbegin(), slices_.cend(), [slice_id](auto& sl) {return sl.id_ == slice_id; });
-                assert(iter != slices_.end());
-                return buckets_[iter->bucket_id_];
-            }
-        private:
-            void AllocNewBucketForSlice(MemorySlice& slice, uint32_t slice_index) {
-                slice.bucket_id_ = buckets_.size();
-                slice.offset_ = 0u;
-                buckets_.emplace_back(MemoryAliasBucket{slice.bucket_id_, (uint32_t)buckets_.size()});
-                bucket_slices_.push_back({ slice_index });
-            }
-            bool FitSliceInBucket(MemorySlice& slice, MemoryAliasBucket& bucket, SmallVector<uint32_t>& bucket_slices)
-            {
-                uint64_t best_region_gap = std::numeric_limits<uint64_t>::max();
-                SmallVector<MemoryRegionPoint> region_points;
-                GatherNonAliasAbleRegionPoints(region_points, slice, bucket_slices, bucket.size_);
-                for (auto n = 0u; n < region_points.size() - 1u; ++n) {
-                    if (region_points[n].is_end_ && !region_points[n + 1].is_end_) {
-                        const auto region_gap = region_points[n + 1].offset_ - region_points[n].offset_;
-                        if (region_gap > slice.size_ && region_gap < best_region_gap) {
-                            slice.offset_ = region_points[n].offset_;
-                        }
-                    }
-                }
-                if (best_region_gap != std::numeric_limits<uint64_t>::max()) {
-                    slice.bucket_id_ = bucket.bucket_id_;
-                    //bucket_slices.emplace_back(slice.id_);
-                    return true;
-                }
-                return false;
-            }
-            void GatherNonAliasAbleRegionPoints(SmallVector<MemoryRegionPoint>& region_points, const MemorySlice& curr_slice, const SmallVector<uint32_t>& slices, uint64_t bucket_size)
-            {
-                region_points.emplace_back(MemoryRegionPoint{ 0u, 1u }); //offset 0 as a fake end point
-                region_points.emplace_back(MemoryRegionPoint{ bucket_size, 0u }); //offset bucket_size as a fake begin point
-                for (const auto slice_id : slices) {
-                    const auto& slice = slices_[slice_id];
-                    if (IsMemorySiceOverlap(slice, curr_slice)) { //collect all time conflict regions
-                        region_points.emplace_back(MemoryRegionPoint(slice.offset_, 0u));
-                        region_points.emplace_back(MemoryRegionPoint(slice.offset_ + slice.size_, 1u));
-                    }
-                }
-                //sort region points ascend order
-                eastl::sort(region_points.begin(), region_points.end(), [](const auto& lhs, const auto& rhs) { return lhs.offset_ < rhs.offset_; });
-            }
-        private:
-            Vector<MemoryAliasBucket>   buckets_;
-            Vector<MemorySlice> slices_;
-            Vector<SmallVector<uint32_t>>  bucket_slices_;
-        };
-
         template<typename State>
         static void InitWholeTextureSubStates(const State& init_state, SmallVector<TextureSubFieldState>& states) {
             states.resize(1);
@@ -160,14 +43,29 @@ namespace Shard
             }
         }
 
-        void RenderGraphExecutor::Execute(HALUnionContext& context)
+        void RenderGraphExecutor::Execute()
         {
+            const auto queue_count = 1u;
+            Vector<Vector<HAL::HALCommandContext*>> queue_commands{ queue_count };
+
             for (auto& pass : ordered_passes_)
             {
-                auto curr_context = pass->IsAsync() ? context.async_rhi_ : context.rhi_;
-                ExecutePass(curr_context, pass);
+                auto* curr_context = HAL::HALGlobalEntity::Instance()->CreateCommandBuffer(); //todo 
+                const auto queue_index = pass->QueueIndex();
+                queue_commands[queue_index].emplace_back(curr_context);
+                
+                Utils::Schedule([&, this]() {
+
+                    ExecutePassPrologue(curr_context, pass);
+                    ExecutePass(curr_context, pass);
+                    ExecutePassEpilogue(curr_context, pass);
+                });
             }
 
+            //submit all command for each queue
+            for (auto n = 0u; n < queue_count; ++n) {
+                //todo
+            }
             //clear all transient resource
             RenderPass::PassRepoInstance().Clear(); //clear all pass resource
             for (auto texture : texture_repos_) {
@@ -180,28 +78,6 @@ namespace Shard
                     RenderBuffer::BufferRepoInstance().Free(buffer);
                 }
             }
-        }
-
-        RenderTexture::Handle RenderGraphExecutor::GetOrCreateTexture(const Field& field)
-        {
-            const String& key = field.GetParentName();
-            if (texture_map_.find(key) == texture_map_.end()) {
-                //transform field to desc
-                auto texture_handle = RenderTexture::TextureRepoInstance().Alloc<>(field);
-                texture_map_.insert(eastl::make_pair(key, texture_handle));
-            }
-            return texture_map_[key];
-        }
-
-        RenderBuffer::Handle RenderGraphExecutor::GetOrCreateBuffer(const Field& field)
-        {
-            const String& key = field.GetParentName();
-            if (buffer_map_.find(key) == buffer_map_.end()) {
-                //transform field to desc
-                auto buffer_handle = RenderBuffer::BufferRepoInstance().Alloc(field);
-                buffer_map_.insert(eastl::make_pair(key, buffer_handle));
-            }
-            return buffer_map_[key];
         }
 
         RenderGraphExecutor& RenderGraphExecutor::RegistExternalResource(const Field& field, RenderResource* external_resource)
@@ -222,12 +98,7 @@ namespace Shard
             return *this;
         }
 
-        template<typename Container, typename Function>
-        static void EnumerateContainer(Container& entities, Function&& func) {
-            for (auto entity : entities) {
-                func(entity);
-            }
-        }
+
 
         void RenderGraphExecutor::AnalyseRenderResourceResidency()
         {
@@ -250,7 +121,7 @@ namespace Shard
             }
 
             //allocate memory
-            auto* residency_manager = HAL::HALGlobalEntity::Instance()->GetPrCreateMemoryResidencyManager();
+            auto* residency_manager = HAL::HALGlobalEntity::Instance()->GetOrCreateMemoryResidencyManager();
             assert(residency_manager != nullptr);
             for (const auto& bucket_info : collector.GetBuckets()) {
                 HAL::HALAllocationCreateInfo create_info{ .size_ = bucket_info.size_ };
@@ -283,13 +154,64 @@ namespace Shard
             }
         }
 
-        void RenderGraphExecutor::ExecutePass(HAL::HALCommandContext* context, RenderPass::Handle pass)
+        void RenderGraphExecutor::ExecutePassPrologue(HAL::HALCommandContext* context, RenderPass::Handle pass)
         {
-            RENDER_EVENT("render_pass:{} @ queue[{}]", pass->GetName(). pass->GetPipeline());
-            pass->Execute(context);
+            //first do sync & transition
+            auto prologue_barrier = pass->GetPrologureBarrier();
+            if (!prologue_barrier.IsEmpty()) {
+                if(prologue_barrier.type_ == EBarrierBatchType::eSplitBegin)
+                {
+                    HAL::HALSplitBarrierBeginPacket barrier_info;
+                    context->Enqueue(&barrier_info);
+
+                }
+                else if (prologue_barrier.type_ == EBarrierBatchType::eNormal)
+                {
+                    HAL::HALBarrierPacket barrier_info;
+                    context->Enqueue(&barrier_info);
+                }
+                else
+                {
+                    LOG(ERROR) << fmt::format("barrier type{} is not support here", BarrierBatchTypeToChar(prologue_barrier.type_);
+                }
+            }
+            HAL::HALBeginRenderPassPacket begin_pass_info;
+            pass->GetScheduleContext().Enumerate([&begin_pass_info](auto& field) {
+                if (Utils::HasAnyFlags(field.GetSubFieldState().access_, EAccessFlags::eDSV)) {
+                    begin_pass_info.dsv_attach_exist_ = true;
+                    begin_pass_info.depth_stencil_.texture_ = resource_cache_->GetOrCreateTexture(field.HashName()); //todo
+                }
+                else if (Utils::HasAnyFlags(field.)) {
+                    auto& color_attach = begin_pass_info.color_attachment_[begin_pass_info.color_attach_count_++];
+                    assert(begin_pass_info.color_attach_count_ <= MAX_RENDER_TARGET_ATTACHMENTS);
+                    color_attach.texture_ = xx;
+                }
+            });
+            RENDER_GPU_EVENT_BEGIN(nullptr, context, "RenderPass:[{}] prologue transition", pass->GetName());
+            context->Enqueue(&begin_pass_info);
+            RENDER_GPU_EVENT_END(nullptr, context);
         }
 
-        RenderGraphExecutor& RenderGraphExecutor::QueueExtractedTexture(Field& field, RenderTexture::Ptr& extracted_texture)
+        void RenderGraphExecutor::ExecutePass(HAL::HALCommandContext* context, RenderPass::Handle pass)
+        {
+            RENDER_GPU_EVENT_BEGIN(nullptr, context, "RenderPass:[{}] @ queue[{}]", pass->GetName(). pass->GetPipeline());
+            pass->Execute(context);
+            RENDER_GPU_EVENT_END(nullptr, context);
+        }
+
+        void RenderGraphExecutor::ExecutePassEpilogue(HAL::HALCommandContext* context, RenderPass::Handle pass)
+        {
+            HAL::HALEndRenderPassPacket end_pass_info;
+            context->Enqueue(&end_pass_info);
+            auto epilogue_barrier = pass->GetEpilogueBarrier();
+            if (!epilogue_barrier.IsEmpty()) {
+
+            }
+            RENDER_GPU_EVENT_BEGIN(nullptr, context, "RenderPass:[{}] epilogure barrier", pass->GetName());
+            RENDER_GPU_EVENT_END(nullptr, context);
+        }
+
+        RenderGraphExecutor& RenderGraphExecutor::QueueExtractedTexture(Field& field, RenderTexture*& extracted_texture)
         {
             assert(field.IsOutput() && "extracted field should be output");
             auto texture_handle = GetOrCreateTexture(field);

@@ -5,7 +5,7 @@
 *https://github.com/SaschaWillems/Vulkan-glTF-PBR/blob/1bfea2ae1e09a9b2429e1eab5a55a405751dc1d2/base/VulkanglTFModel.cpp
 */
 
-namespace Shard
+namespace Shard::Scene
 {
 
     SceneProxyHelper& SceneProxyHelper::SetCamera(uint32_t index)
@@ -399,14 +399,60 @@ namespace Shard
     {
         return *this;
     }
+
+    EntityProxy::SharedPtr WorldScene::CreateEntity()
+    {
+        return std::make_shared<EntityProxy>(this);
+    }
+
+    WorldScene* Shard::WorldSceneUpdateContext::GetScence()
+    {
+        return static_cast<WorldScene*>(admin_);
+    }
+
+    void WorldSceneManager::Init()
+    {
+        LOG(INFO) << "create main active world model";
+        CreateWorld(WorldScene::EWorldType::eActive); //todo
+    }
+
+    void WorldSceneManager::UnInit()
+    {
+        LOG(INFO) << "destroy all worlds";
+        for (auto* world : worlds_) {
+            DestroyWorld(world);
+        }
+    }
+
+    WorldScene* WorldSceneManager::CreateWorld(WorldScene::EWorldType world_type)
+    {
+        if (WorldScene::EWorldType::eActive == world_type) {
+            if (auto iter = eastl::find_if(worlds_.begin(), worlds_.end(), [](auto w) { return w->GetWorldType() == world_type; });
+                iter != worlds_.end()) {
+                return nullptr; //can only create one active world
+            }
+        }
+        auto* new_world = new WorldScene; //todo new
+        new_world->Init(); //todo
+        worlds_.emplace_back(new_world);
+        return new_world;
+    }
+    WorldScene* WorldSceneManager::GetWorld(WorldScene::EWorldType world_type)
+    {
+        if (auto iter = eastl::find(worlds_.begin(), worlds_.end(), [world_type](auto* world) 
+                                                        { return world->GetWorldType() == world_type; }); iter != worlds_.end()) {
+            return *iter;
+        }
+        return nullptr;
+    }
+    void WorldSceneManager::DestroyWorld(WorldScene* world)
+    {
+        if (auto iter = eastl::find(worlds_.begin(), worlds_.end(), world); iter != worlds_.end()) {
+            world->UnInit(); //todo
+            delete world;
+            worlds_.erase(iter);
+        }
+    }
 }
 
-EntityProxy::SharedPtr Shard::Scene::WorldScene::CreateEntity()
-{
-    return std::make_shared<EntityProxy>(this);
-}
 
-WorldScene::Ptr Shard::Scene::WorldSceneUpdateContext::GetScence()
-{
-    return static_cast<WorldScene::Ptr>(admin_);
-}

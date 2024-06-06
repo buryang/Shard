@@ -10,12 +10,12 @@ namespace Shard::Utils {
     public:
         using SizeType = uint64_t;
         enum EArchiveMode {
-            eUndefined = 0,
-            eRead = 1 << 0,
-            eWrite = 1 << 1,
-            eAppend = eWrite | 0x100,
+            eUndefined  = 0x0,
+            eRead       = 0x1,
+            eWrite      = 0x2,
+            eAppend     = eWrite | 0x100,
         };
-        bool IsReading()const { return archive_mode_ & eRead; }
+        bool IsReading()const { return archive_mode_ & EArchiveMode::eRead; }
         virtual bool IsEof() const = 0;
         virtual constexpr SizeType Tell()const = 0;
         virtual void Serialize(void* data, SizeType size) = 0;
@@ -67,13 +67,16 @@ namespace Shard::Utils {
         template <typename T>
         friend BinaryArchive& operator <<(BinaryArchive& archive, T&& value) {
             assert(archive_blob_ != nullptr);
+            auto iter = std::advance(archive_blob_->begin(), curr_pos_);
             if (archive.IsReading()) {
-                //todo
+                
+                value = *static_cast<T*>(std::addressof(*iter));
             }
             else
             {
-
+                *static_cast<T*>(std::addressof(*iter)) = value;
             }
+            curr_pos_ += sizeof(T);
         }
     private:
         Blob* archive_blob_{ nullptr };

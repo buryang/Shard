@@ -1,7 +1,7 @@
 #include "Render/RenderShader.h"
 #include "Render/RenderShaderFactory.h"
-#include "RHI/RHIShader.h"
-#include "RHI/RHIGlobalEntity.h"
+#include "HAL/HALShader.h"
+#include "HAL/HALGlobalEntity.h"
 #include <folly/Hash.h>
 #include <zlib.h>
 #include <filesystem>
@@ -31,7 +31,7 @@ namespace Shard::Render
     const String& ShaderPlatform::ToString(const ShaderPlatform& platform)
     {
         auto& back_end = String("UnKown");
-        if (platform.back_end_ == RHI::ERHIBackEnd::eVu) {
+        if (platform.back_end_ == HAL::EHALBackEnd::eVu) {
             back_end = "";
         }
 
@@ -63,7 +63,7 @@ namespace Shard::Render
         return resource_index_;
     }
 
-    const RenderShaderType::Ptr RenderShader::GetShaderType() const
+    const RenderShaderType* RenderShader::GetShaderType() const
     {
         const auto* shader_type = RenderShaderType::GetShaderType(shader_type_);
         PCHECK(shader_type != nullptr) << "shader correspond type not found";
@@ -142,17 +142,17 @@ namespace Shard::Render
         }
     }
 
-    void RenderShaderPipeline::AddShader(RenderShader::Ptr shader)
+    void RenderShaderPipeline::AddShader(RenderShader* shader)
     {
         const auto* shader_type = shader->GetShaderType();
         auto freq = shader_type->GetFrequency();
         shaders_[Utils::EnumToInteger(freq)] = shader;
     }
 
-    void RenderShaderPipeline::SetRHI()
+    void RenderShaderPipeline::SetHAL()
     {
         const auto trans_pso2initializer_func = [this](const PipelineStateObjectDesc& desc) {
-            RHI::RHIPipelineStateObjectInitializer initializer;
+            HAL::HALPipelineStateObjectInitializer initializer;
             initializer.reserved_flags_ = desc.user_flags_;
             if (desc.type_ == PipelineStateObjectDesc::EPSOType::eGFX) {
                 //initializer.gfx_.
@@ -171,7 +171,7 @@ namespace Shard::Render
         };
         if (rhi_entity_ == nullptr) {
             const auto& rhi_initializer = trans_pso2initializer_func(desc_);
-            RHI::RHIGlobalEntity::Instance()->GetOrCreatePSOLibrary()->GetOrCreatEPipeline(rhi_initializer);
+            HAL::HALGlobalEntity::Instance()->GetOrCreatePSOLibrary()->GetOrCreatEPipeline(rhi_initializer);
         }
     }
 
@@ -193,10 +193,10 @@ namespace Shard::Render
 
 
         //set rhi
-        SetRHI();
+        SetHAL();
     }
 
-    RenderShader::Ptr RenderShaderPipeline::FindShader(EShaderFrequency freq)
+    RenderShader* RenderShaderPipeline::FindShader(EShaderFrequency freq)
     {
         return shaders_[Utils::EnumToInteger(freq)];
     }

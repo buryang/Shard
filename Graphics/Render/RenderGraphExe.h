@@ -23,16 +23,8 @@ namespace Shard
             using Ptr = RenderGraphExecutor*;
             using SharedPtr = std::shared_ptr<RenderGraphExecutor>;
             using CallBack = std::function<void(RenderGraphExecutor& executor)>;
-            typedef struct _CommandContext
-            {
-                HAL::HALCommandContext* rhi_{ nullptr };
-                HAL::HALCommandContext* async_rhi_{ nullptr };
-            }HALUnionContext;
         public:
-            void Bake(const RenderGraph& render_graph);
-
-            void Execute(HALUnionContext& context);
-
+            void Execute();
             //whether executor ready for executing, check bake status and resource status
             bool IsReady()const;
         private:
@@ -42,7 +34,9 @@ namespace Shard
             void AnalyseRenderResourceResidency();
             /*analyse pass and resource synchronization*/
             void AnalyseRenderResourceSync();
+            void ExecutePassPrologue(HAL::HALCommandContext* context, RenderPass::Handle pass);
             void ExecutePass(HAL::HALCommandContext* context, RenderPass::Handle pass);
+            void ExecutePassEpilogue(HAL::HALCommandContext* context, RenderPass::Handle pass);
             DISALLOW_COPY_AND_ASSIGN(RenderGraphExecutor);
         private:
             friend class RenderGraphBuilder;

@@ -8,20 +8,31 @@ namespace Shard::Utils
 	class Timer
 	{
 	public:
+        enum class ETimerType
+        {
+            eClock,
+            eSeconds,
+            eMilliSeconds,
+        };
 		FORCE_INLINE void Record() {
-			time_stamp_ = std::chrono::steady_clock::now();
+			time_stamp_ = std::chrono::high_resolution_clock::now();
 		}
-		FORCE_INLINE double ElapsedNanoSeconds() const{
-			return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - time_stamp_).count();
-		}
-		FORCE_INLINE double ElapsedMilliSeconds() const{
-			return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time_stamp_).count();
-		}
+        template<ETimerType time_type=ETimerType::eSeconds>
+        FORCE_INLINE auto Elapsed() const {
+            if constexpr (time_type == ETimerType::eSeconds) {
+                return std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - time_stamp_).count();
+            }
+            else if constexpr (time_type == ETimerType::eMilliSeconds) {
+                return std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - time_stamp_).count();
+            }
+            return (std::chrono::high_resolution_clock::now() - time_stamp_).count();
+        }
 		virtual ~Timer() = default;
 	private:
-		std::chrono::steady_clock::time_point	time_stamp_;
+		std::chrono::high_resolution_clock::time_point	time_stamp_;
 	};
 
+    //floating-point clocks are usually only used to store relatively short time
 	class ScopedTimer : public Timer
 	{
 	public:
@@ -29,7 +40,7 @@ namespace Shard::Utils
 			Record();
 		}
 		~ScopedTimer() {
-			delta_time_ = ElapsedMilliSeconds();
+			delta_time_ = Elapsed();
 		}
 	private:
 		double& delta_time_;
@@ -47,7 +58,7 @@ namespace Shard::Utils
 			Timer::Record();
 		}
 		~Profiler() {
-			const auto elapsed = Timer::ElapsedMilliSeconds();
+			const auto elapsed = Timer::Elapsed();
 			RegistProfile(tag_, elapsed);
 		}
 		FORCE_INLINE const String& GetName()const {

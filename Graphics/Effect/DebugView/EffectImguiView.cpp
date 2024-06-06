@@ -12,13 +12,13 @@ namespace Shard::Effect
     {
     }
 
-    void EffectDrawImguiView::Draw(Renderer::RtRendererGraph& graph, System::DebugView::DebugViewSystem& debugview)
+    void EffectDrawImguiView::Draw(Render::RenderGraph& graph, System::DebugView::DebugViewSystem& debugview)
     {
         graph.AddPass([](void) { 
             debugview.GetImGUIWrapper()->Render();
         });
 
-        //todo move pipeline and command buffer logic from RHI here
+        //todo move pipeline and command buffer logic from HAL here
     }
 }
 #endif

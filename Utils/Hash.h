@@ -7,9 +7,6 @@
 
 namespace Shard::Utils {
 
-    template<typename T>
-    concept Integral = std::is_integral_v<T>; 
-
     template<typename Hash, uint32_t hash_size=20*8>
     class HashSignature {
     public:
@@ -35,7 +32,7 @@ namespace Shard::Utils {
         FORCE_INLINE constexpr bool operator!=(const HashSignature& rhs) const {
             return !(*this == rhs);
         }
-        FORCE_INLINE operator Integral auto () const { return *reinterpret_cast<Integral auto*>(hash_); }
+        FORCE_INLINE operator Integer auto () const { return *reinterpret_cast<Integer auto*>(hash_); }
         //friend void operator << (IOArchive& ar, const HashSignature& hash) {
         //    ar.Serialize(hash.hash_, MAX_HASH_SIZE / 8);
         //}
@@ -171,7 +168,7 @@ namespace Shard::Utils {
     }
 
     template<uint32_t hash_size=64>
-    auto CalcBlake3HashForBytes(const uint8_t* bytes, size_t size)->HashSignature<blake3_hasher, hash_size>
+    auto InternBlake3HashForBytes(const uint8_t* bytes, size_t size)->HashSignature<blake3_hasher, hash_size>
     {
         using HashType = HashSignature<blake3_hasher, hash_size>;
         HashType hash;
@@ -180,5 +177,27 @@ namespace Shard::Utils {
         blake3_hasher_update(&hasher, bytes, size);
         blake3_hasher_finalize(&hasher, hash.GetBytes(), hash_size);
         return hash;
+    }
+
+    template<uint32_t hash_size=64>
+    auto InternSpookyV2HashForBytes(const uint8_t* bytes, size_t size)->HashSignature<folly::hash::SpookyHashV2, hash_size>
+    {
+        uint64_t hash0, hash1;
+        HashSignature<folly::hash::SpookyHashV2, hash_size> hash;
+        folly::hash::SpookyHashV2::Hash128(bytes, size, &hash0, &hash1);
+        if constexpr (hash_size == 32u) {
+            *(uint32_t*)hash.GetBytes() = (uint32_t)hash0;
+        }
+        else if constexpr (hash_size == 64u) {
+            *(uint64_t*)hash.GetBytes() = hash0;
+        }
+        else if constexpr (hash_size == 128u) {
+            auto* ptr = reinterpret_cast<uint64_t*>hash.GetBytes();
+            *ptr++ = hash0;
+            *ptr = hash1;
+        }
+        else {
+            static_assert(false, "calc not support spooky hash size");
+        }
     }
 }

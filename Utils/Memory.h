@@ -2,6 +2,12 @@
 #include "Utils/CommonUtils.h"
 //http://dmitrysoshnikov.com/compilers/writing-a-memory-allocator/
 
+//todo realize memory statistics information
+//The key to providing good memory analysis tools is (a) to provide accurate 
+//information, (b)to present the data in a way that is convenient and that makes
+//problems obvious, and (c)to provide contextual information to aid the team
+//in tracking down the root cause of problems when they occur.
+
 namespace Shard
 {
     namespace Utils
@@ -478,10 +484,10 @@ namespace Shard
             POOL_DEFAULT_ID         = 0x0,
 #ifdef USE_UNIFORM_POOL
             POOL_JOBSYSTEM_ID       = POOL_DEFAULT_ID,
-            POOL_RHI_ID             = POOL_DEFAULT_ID,
+            POOL_HAL_ID             = POOL_DEFAULT_ID,
 #else
             POOL_JOBSYSTEM_ID       = 0x1,
-            POOL_RHI_ID             = 0x2,
+            POOL_HAL_ID             = 0x2,
 #endif
             POOL_NUM,
             //to avoid conflict; you'd better  use 

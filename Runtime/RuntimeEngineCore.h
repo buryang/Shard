@@ -33,12 +33,13 @@ namespace Shard
             }
             virtual ~Engine() = default;
             //export system for message loop
-            SI::InputSystem::Ptr GetInputSystem();
+            SI::InputSystem* GetInputSystem();
         protected:
-            Scene::WorldScene::Ptr    world_{ nullptr };
-            SI::InputSystem::Ptr input_system_{ nullptr };
+            Scene::WorldScene*  world_{ nullptr }; //current active world
+            Scene::WorldSceneManager    world_manager_; //all world manager
+            SI::InputSystem*    input_system_{ nullptr };
             void ResetTimeStatistics();
-            //Renderer::
+            //Render::
         private:
             Utils::JobEntry*    prev_render_{ nullptr };
             Utils::WindowHandle window_{ nullptr };
@@ -51,8 +52,6 @@ namespace Shard
             //global internal allocator for whole engine
             Utils::StackAllocator<void> frame_transient_alloc_;
             Utils::LinearAllocator<void>    persist_alloc_;
-            Scene::WorldScene::Ptr    world_{ nullptr };
-            
         };
 
 #ifdef APPLICATION_RUNTIME

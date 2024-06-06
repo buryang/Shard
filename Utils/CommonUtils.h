@@ -33,7 +33,6 @@
 #include "glm/ext.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "glog/logging.h"
 #include "eastl/vector.h"
 #include "eastl/fixed_vector.h"
 #include "eastl/hash_map.h"
@@ -59,11 +58,19 @@
 #include <algorithm>
 #include <cassert>
 #include <bit>
+#include <concepts>
 #ifdef _WIN32
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 #include <windows.h>
 #else
 #include <codecvt>
 #endif
+#ifdef _DEBUG
+#define GOOGLE_STRIP_LOG 0  //enable all
+#else
+#define GOOGLE_STRIP_LOG 2 //enable ERROR & FATAL
+#endif
+#include "glog/logging.h"
 
 #pragma warning(pop)
 
@@ -89,6 +96,13 @@ class_name& operator=(class_name&&)=delete;
   __VA_OPT__(FOR_EACH_AGAIN PARENS (MACRO, __VA_ARGS__))
 #define FOR_EACH_AGAIN() FOR_EACH_HELPER
 
+#define DECLARE_ENUM_BIT_OPS(enum_type)\
+inline enum_type operator|(enum_type lhs, enum_type rhs){ return Utils::LogicOrFlags(lhs, rhs); }\
+inline enum_type operator&(enum_type lhs, enum_type rhs){ return Utils::LogicAndFlags(lhs, rhs);}\
+inline enum_type operator~(enum_type val) { return static_cast<enum_type>(~Utils::EnumToInteger(val)); }
+
+#define REBIND_ALLOCATOR(Allocator, NewType) std::allocator_traits<(Allocator)>::rebind_traits<NewType>;
+
 namespace Shard {
 
     using glm::vec2;
@@ -113,19 +127,18 @@ namespace Shard {
     using glm::quat;
 
     using size_type = std::size_t;
-
     template<typename T, typename Allocator = eastl::allocator>
     using Vector = eastl::vector<T, Allocator>;
     template<typename T, uint32_t reverse_size=16, bool overflow=true, typename Allocator = eastl::allocator>
     using SmallVector = eastl::fixed_vector<T, reverse_size, overflow, Allocator>;
     template<typename T, uint32_t reverse_size>
     using Array = SmallVector<T, reverse_size, false, eastl::dummy_allocator>;
-    template<typename Key, typename Val>
-    using Map = eastl::hash_map<Key, Val>;
+    template<typename Key, typename Val, typename Allocator = eastl::allocator>
+    using Map = eastl::hash_map<Key, Val, allocator=Allocator>;
     template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
     using FixedMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
     template<typename Val>
-    using Set = eastl::hash_set<Val>;
+    using Set = eastl::set<Val>;
     template<typename Value, size_t node_count>
     using FixedSet = eastl::fixed_hash_set<Value, node_count>;
     template<typename T>
@@ -145,8 +158,8 @@ namespace Shard {
     template<typename T>
     using Optional = eastl::optional<T>;
 
-    using String = eastl::string;
-    using WString = eastl::wstring;
+    using String = std::string;
+    using WString = std::wstring;
 
 #ifdef _UNICODE
     using Tchar = wchar_t;
@@ -200,21 +213,16 @@ namespace Shard::Utils {
         return std::underlying_type_t<Enum>(enum_var);
     }
 
-    template <typename T>
-    requires std::is_integral_v<T>
-        static inline constexpr bool IsPow2(T x) {
-        return (x & (x - 1)) == 0u;
-    }
+    template<typename T>
+    concept Integer = std::integral<T>;
 
-    template<typename T, typename U>
-    requires std::is_integral_v<T> && std::is_integral_v<U>
-        static inline constexpr T AlignDown(T val, U alignment) {
+    template<Integer T, Integer U>
+    static inline constexpr T AlignDown(T val, U alignment) {
         return val & (~static_cast<T>(alignment - 1));
     }
 
-    template<typename T, typename U>
-    requires std::is_integral_v<T>&& std::is_integral_v<U>
-        static inline constexpr T AlignUp(T val, U alignment) {
+    template<Integer T, Integer U>
+    static inline constexpr T AlignUp(T val, U alignment) {
         return (val + alignment - 1) & ~(static_cast<T>(alignment - 1));
     }
 
@@ -222,9 +230,6 @@ namespace Shard::Utils {
     FORCE_INLINE constexpr T RoundDiv(T x, T y) {
         return (x + y / (T)2) / y; 
     }
-    
-    template<typename T>
-    concept Integer = std::is_integral_v<T>;
 
     FORCE_INLINE constexpr uint8_t BitScanLSB(Integer auto mask)
     {
@@ -243,11 +248,29 @@ namespace Shard::Utils {
     }
 
     FORCE_INLINE constexpr bool IsPowOf2(Integer auto num) {
-        return (num & (num - 1)) == 0;
+        return num && (num & (num - 1)) == 0;
     }
 
     FORCE_INLINE constexpr uint8_t CountBits(Integer auto mask) {
         return std::popcount(mask);
+    }
+
+    FORCE_INLINE auto Min(Integer auto lhs, Integer auto rhs) {
+        return rhs ^ ((lhs ^ rhs) & -(lhs < rhs));
+    }
+
+    FORCE_INLINE auto Max(Integer auto lhs, Integer auto rhs) {
+        return lhs ^ ((lhs ^ rhs) & -(lhs < rhs));
+    }
+
+    template<typename T>
+    FORCE_INLINE Span<T> MakeSpan(T* data, size_type size) {
+        return Span<T>(data, size);
+    }
+
+    template<typename T, template <typename> typename CContainer>
+    FORCE_INLINE Span<T> MakeSpan(CContainer<T>& container) {
+        return MakeSpan(container.data(), container.size());
     }
 
     template<class AtomicBOOL = std::atomic_bool>
