@@ -251,3 +251,5 @@ namespace Shard
         };
     }
 }
+
+//todo texture compression https://www.ludicon.com/castano/blog/2025/02/gpu-texture-compression-everywhere/

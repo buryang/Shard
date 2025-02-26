@@ -1,4 +1,9 @@
 #pragma once
+
+#include <nvclusterlod/nvclusterlod_hierarchy_storage.hpp>
+#include <nvclusterlod/nvclusterlod_mesh_storage.hpp>
+#include <nvclusterlod/nvclusterlod_cache.hpp>
+
 #include "Core/EngineGlobalParams.h"
 #include "Utils/CommonUtils.h"
 #include "HAL/HALCommandIR.h"
@@ -22,6 +27,13 @@ namespace Shard::Renderer
     //total number of vertices across all subdivision patterns
     REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_TESSELLATION_MAX_VERTICES, 256);
     REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_TESSELLATION_MAX_CONFIGS, 11 * 11);
+
+    //configure for clas/group 
+    REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_CLAS_VERTICES, 64);
+    REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_CLAS_TRIANGLES, 64);
+    REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_CLAS_GROUP_SIZE, 32);
+
+
 
     enum class EPrimitiveState
     {
@@ -93,29 +105,6 @@ namespace Shard::Renderer
 
     };
 
-    namespace
-    {
-        struct ClusterInfo
-        {
-            uint32_t instanceID;
-            uint32_t clusterID;
-        };
-
-        struct TraversalInfo
-        {
-            uint32_t instanceID;
-            uint32_t packedNode;
-        };
-#ifdef  aaa //raytracing
-        struct BlasBuildInfo
-        {
-            uint32_t cluster_ref_count; //the number of CLAS this blas reference
-            uint32_t cluster_ref_stride; //stride of array(typically 8 for 64bit)
-            uint64_t cluster_reference; //start address of the array
-        };
-#endif
-    }
-
     class GPUSceneProxy
     {
     public:
@@ -156,15 +145,22 @@ namespace Shard::Renderer
         size_type   curr_frame_index_{ 0u };
     private:
         /****************************************************************************************/
-        /*                        CLAS data members                                             */
+        /*                        CLAS data members, for loading nvclusterlod asset             */
+        /*                                                  */
         /****************************************************************************************/
         GPUSceneStreaming stream_;
         TessellationTable tessellation_tbl_;
+        /*persisitent memory hold clusters*/
         HAL::HALBuffer* persistent_memory_{ nullptr };
         HAL::HALBuffer* persistent_memory_used_bits_{ nullptr };
 
         /*buffer for clas scratch buffer, free range and bin*/
         HAL::HALBuffer* temporary_buffer_{ nullptr };
+
+        /*instance traversal buffers*/
+        HAL::HALBuffer* traversal_info_buffer_{ nullptr };
+        /*traversal result, cluster need to load to render*/
+        HAL::HALBuffer* render_cluster_info_buffer_{ nullptr };
 
 #if aaaa //raytracing member
 #endif

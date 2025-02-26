@@ -126,9 +126,10 @@ namespace Shard
          * warp all object function in oop sync system; with an handlemanager to store all object
          * and like the unity hybridcompoent
          */
-        template<typename Handle>
+        template<typename ObjectClass>
         struct ECSyncObjectRefComponent
         {
+            using Handle = ObjectClass::Handle;
             Handle  handle_;
         };
 
@@ -154,14 +155,17 @@ namespace Shard
                 vec3    lie_vec_;
             };
 
-            using ECSLocalSpatitalTransformComponent = ECSSpatialTransformComponent;
-            using ECSWorldSpatialTransformComponent = ECSSpatialTransformComponent;
+            using ECSLocalSpatitalTransformComponent = ECSSpatialTransformComponent; //local-to-world
+            using ECSWorldSpatialTransformComponent = ECSSpatialTransformComponent; //inverse
 
             struct ECSSpatialBoundBoxComponent
             {
                 vec3    original_;
                 vec3    extents_;
             };
+
+            using ECSLocalSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
+            using ECSWorldSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
         }
 
         struct ECSStaticMeshComponent

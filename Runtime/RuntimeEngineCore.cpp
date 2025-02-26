@@ -67,6 +67,7 @@ namespace Shard
             Utils::SimpleJobSystem::Instance().UnInit();
         }
 
+        //https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
         void Engine::Run() 
         {
             const auto fixed_dt = 1.f / GET_PARAM_TYPE_VAL(UINT, ENGINE_TARGET_FPS);
@@ -74,10 +75,14 @@ namespace Shard
                 if (acc_delta_time_ > 10.f) { //too long time delay
                     acc_delta_time_ = 0.f;
                 }
-        
-                while (acc_delta_time_ >= fixed_dt) {
+                //fixed timestep update loops for games and physics simulations
+                //First idea is to discard temporary key flags (like Pressed and Released) after every tick, so they aren¡¯t applied multiple times.
+                //Then, we can also divide the mouse delta by number of ticks to apply it over time.Alternatively you could skip this and set the delta
+                //to zero after every tick, but I think splitting the delta over multiple ticks is nicer.Finally, you clear the rest of temporary input data once you ran all your ticks.
+                const auto num_ticks = int(floor(acc_delta_time_/fixed_dt));
+                for (auto tick = 0u; tick < num_ticks; ++tick) {
+                    //todo divide mouse delta by num_ticks
                     FixedUpdate();
-                    acc_delta_time_ -= fixed_dt;
                 }
             }
             else {

@@ -1,4 +1,4 @@
-#ifndef _BSDF_INC_
+﻿#ifndef _BSDF_INC_
 #define _BSDF_INC_
 
 #include "CommonUtils.hlsli"
@@ -98,7 +98,7 @@ float V_SmithGGXCorrelatedAnisotropic(float at, float ab, float ToV, float BoV,
 {
     float lambdaV = NoL * length(float3(at * ToV, ab * BoV, NoV));
     float lambdaL = NoV * length(float3(at * ToL, ab * BoL, NoL));
-    float v = 0.5 / (lamddaV + lambdaL);
+    float v = 0.5 / (lambdaV + lambdaL);
     return SaturateMediump(v);
 }
 
@@ -1254,5 +1254,50 @@ float3 BRDF_GetDiffuse(BRDFState brdf)
 
 //todo sheen LTC approx https://github.com/tizian/ltc-sheen
 //todo https://auzaiffe.wordpress.com/2024/04/15/vndf-importance-sampling-an-isotropic-distribution/
+//todo Sampling and Probability
+
+/**
+*\brief code from "Bounded VNDF Sampling for Smith–GGX Reflections"
+*/
+float3 SampleGGXReflectionBoundedVNDF(float3 i, float2 alpha, float2 rand)
+{
+    float3 i_std = normalize(float3(i.xy * alpha, i.z));
+    // Sample a spherical cap
+    float phi = 2.0f * M_PI * rand.x;
+    float a = saturate(min(alpha.x, alpha.y)); // Eq. 6
+    float s = 1.0f + length(float2(i.x, i.y)); // Omit sgn for a <=1
+    float a2 = a * a;
+    float s2 = s * s;
+    float k = (1.0f - a2) * s2 / (s2 + a2 * i.z * i.z); // Eq. 5
+    float b = i.z > 0 ? k * i_std.z : i_std.z;
+    float z = mad(1.0f - rand.y, 1.0f + b, -b);
+    float sinTheta = sqrt(saturate(1.0f - z * z) );
+    float3 o_std = { sinTheta * cos(phi), sinTheta * sin(phi), z };
+    //Compute the microfacet normal m
+    float3 m_std = i_std + o_std;
+    float3 m = normalize(float3(m_std.xy * alpha, m_std.z));
+    //Return the reflection vector o
+    return 2.0f * dot(i, m) * m - i;
+}
+
+float PDFGGXRefectionBoundedVNDF(float3 i, float3 o, float2 alpha)
+{
+    float3 m = normalize(i + o);
+    float ndf = D(m, alpha); //𝐷(m) is the GGX NDF
+    float2 ai = alpha * i.xy;
+    float len2 = dot(ai, ai);
+    float t = sqrt(len2 + i.z * i.z);
+    if (i.z >= 0.0f)
+    {
+        float a = saturate(min(alpha.x, alpha.y)); // Eq. 6
+        float s = 1.0f + length(float2(i.x, i.y)); // Omit sgn for a <=1
+        float a2 = a * a;
+        float s2 = s * s;
+        float k = (1.0f - a2) * s2 / (s2 + a2 * i.z * i.z); // Eq. 5
+        return ndf / (2.0f * (k * i.z + t)); // Eq. 8 * || dm/do ||
+    }
+    // Numerically stable form of the previous PDF for i.z < 0
+    return ndf * (t - i.z) / (2.0f * len2); // = Eq. 7 * || dm/do ||
+}
 
 #endif //_BSDF_INC_

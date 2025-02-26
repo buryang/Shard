@@ -22,11 +22,11 @@
     <ClCompile Include="Graphics\Core\EngineGlobalParams.cpp" />
     <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
     <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
-    <ClCompile Include="Graphics\Effect\Base\EffectBasePass.cpp" />
-    <ClCompile Include="Graphics\Effect\DebugView\EffectDebugView.cpp" />
-    <ClCompile Include="Graphics\Effect\DebugView\EffectImguiView.cpp" />
-    <ClCompile Include="Graphics\Effect\Font\EffectFonts.cpp" />
-    <ClCompile Include="Graphics\Effect\PostProcess\EffectDepthOfField.cpp" />
+    <ClCompile Include="System\Render\Effect\Base\EffectBasePass.cpp" />
+    <ClCompile Include="System\Render\Effect\DebugView\EffectDebugView.cpp" />
+    <ClCompile Include="System\Render\Effect\DebugView\EffectImguiView.cpp" />
+    <ClCompile Include="System\Render\Effect\Font\EffectFonts.cpp" />
+    <ClCompile Include="System\Render\Effect\PostProcess\EffectDepthOfField.cpp" />
     <ClCompile Include="Graphics\HAL\Vulkan\HALQueryVulkan.cpp" />
     <ClCompile Include="Graphics\HAL\Vulkan\HALRenderPassVulkan.cpp" />
     <ClCompile Include="Graphics\Render\RenderBarrier.cpp" />
@@ -81,6 +81,7 @@
     <ClCompile Include="System\Render\RuntimeWorkIR.cpp" />
     <ClCompile Include="System\Render\RuntimeWorkProcessor.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="System\Render\SceneProxy\SceneProxy.cpp" />
     <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
@@ -97,11 +98,11 @@
     <ClInclude Include="Graphics\Core\GFXDefinitions.h" />
     <ClInclude Include="Graphics\Core\EngineGlobalParams.h" />
     <ClInclude Include="Effect\EffectRayTracing.h" />
-    <ClInclude Include="Graphics\Effect\Base\EffectBasePass.h" />
-    <ClInclude Include="Graphics\Effect\DebugView\EffectDebugView.h" />
-    <ClInclude Include="Graphics\Effect\DebugView\EffectImguiView.h" />
-    <ClInclude Include="Graphics\Effect\Font\EffectFonts.h" />
-    <ClInclude Include="Graphics\Effect\PostProcess\EffectDepthOfField.h" />
+    <ClInclude Include="System\Render\Effect\Base\EffectBasePass.h" />
+    <ClInclude Include="System\Render\Effect\DebugView\EffectDebugView.h" />
+    <ClInclude Include="System\Render\Effect\DebugView\EffectImguiView.h" />
+    <ClInclude Include="System\Render\Effect\Font\EffectFonts.h" />
+    <ClInclude Include="System\Render\Effect\PostProcess\EffectDepthOfField.h" />
     <ClInclude Include="Graphics\HAL\HALQuery.h" />
     <ClInclude Include="Graphics\HAL\HALRenderPass.h" />
     <ClInclude Include="Graphics\HAL\Vulkan\HALQueryVulkan.h" />
@@ -112,6 +113,7 @@
     <ClInclude Include="Graphics\Render\RenderGraphExe.h" />
     <ClInclude Include="Graphics\Render\RenderGraphPerfDebug.h" />
     <ClInclude Include="Graphics\Render\RenderPass.h" />
+    <ClInclude Include="Graphics\Render\RenderPassUtils.h" />
     <ClInclude Include="Graphics\Render\RenderResourceDefinitions.h" />
     <ClInclude Include="Graphics\Render\RenderResources.h" />
     <ClInclude Include="Graphics\Render\RenderShader.h" />
@@ -169,6 +171,9 @@
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="System\Input\InputSystem.h" />
+    <ClInclude Include="System\Render\Runtime\RumtimePrimitiveCPUCulling.h" />
+    <ClInclude Include="System\Render\Runtime\RuntimeMeshBatchGenerator.h" />
+    <ClInclude Include="System\Render\SceneProxy\SceneProxy.h" />
     <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
     <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
     <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
@@ -196,9 +201,13 @@
     <None Include="Shaders\CommonUtils.hlsli" />
     <None Include="Shaders\DebugView\DebugViewCommon.hlsli" />
     <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
+    <None Include="Shaders\GPUScene\ClusterCommon.hlsli" />
+    <None Include="Shaders\GPUScene\Culling.hlsli" />
+    <None Include="Shaders\GPUScene\StreamCommon.hlsli" />
     <None Include="Shaders\Lighting\LTC.hlsli" />
     <None Include="Shaders\Material.hlsli" />
     <None Include="Shaders\Math.hlsli" />
+    <None Include="Shaders\PersistentMem\Common.hlsli" />
     <None Include="Shaders\ShaderAssert.hlsli" />
     <None Include="Shaders\ShaderPrintf.hlsli" />
     <None Include="Utils\Algorithm.inl" />
@@ -231,6 +240,26 @@
     <FxCompile Include="Shaders\Fonts\df.hlsl" />
     <FxCompile Include="Shaders\Fonts\PSFontsShader.hlsl" />
     <FxCompile Include="Shaders\Fonts\VSFontsShader.hlsl" />
+    <FxCompile Include="Shaders\GPUScene\Streaming.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\GPUScene\Traversal.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\MBOIT\CSMBOIT.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
@@ -247,9 +276,29 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
+    <FxCompile Include="Shaders\PersistentMem\CSMemoryFree.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\PersistentMem\CSMemoryMalloc.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Graphics\Effect\MBOIT\Readme.txt" />
+    <Text Include="System\Render\Effect\MBOIT\Readme.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

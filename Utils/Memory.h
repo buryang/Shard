@@ -212,6 +212,57 @@ namespace Shard
             void* memory_{ nullptr };
         };
 
+        namespace CBT //https://www.arxiv.org/abs/2407.02215
+        {
+            class BinaryTree
+            {
+            public:
+                void Init(size_type tree_depth) {
+                    const auto sign_size = tree_depth * (tree_depth + 1u) / 2;
+                    sign_.resize(tree_depth);
+                }
+                void UnInit() {
+                    //do nothing
+                }
+                size_type Accquire() {
+
+                }
+                void Release(size_type index) {
+
+                }
+                ~BinaryTree() = default;
+            private:
+                BitVector<> sign_;
+                //todo support corrent
+            };
+
+            template<typename T>
+            class PooledAllocator
+            {
+            public:
+                [[nodiscard]] T* allocate() {
+                    const auto index = tree_->Accquire();
+                    if (index != -1) {
+                    }
+                    return nullptr;
+                }
+                void deallocate(T* ptr) {
+                    const auto index = PointerToIndex(ptr);
+                    ptr->~T();
+                    tree_->Release(ptr);
+                    //todo
+                }
+            protected:
+                size_type PointerToIndex(T* ptr) const {
+
+                }
+            private:
+                DISALLOW_COPY_AND_ASSIGN(PooledAllocator);
+            private:
+                BinaryTree  tree_;
+            };
+        }
+
         //memory pool allocator from apex.ai
         namespace MemoryPool
         {

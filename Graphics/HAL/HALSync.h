@@ -2,6 +2,8 @@
 #include "Graphics/HAL/HALCommonUtils.h"
 #include "Graphics/HAL/HALCommand.h"
 
+//https://anki3d.org/simplified-pipeline-barriers/ simplify barriers todo 
+
 namespace Shard::HAL {
 
     /* only vulkan split barrier use event now,

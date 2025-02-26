@@ -54,4 +54,24 @@ namespace Shard::HAL
             DeleteArray<T>(ptr, count_);
         }
     };
+
+    enum class ERasterizerCullingMode : uint8_t
+    {
+        eOff,
+        eClkWalk, //front
+        eCClkWalk, //back
+
+        eNums,
+        eNumBits = 2u,
+    };
+
+    enum class ERasterizerFillMode : uint8_t
+    {
+        ePoint,
+        eWireFrame,
+        eSolid,
+
+        eNums,
+        eNumBits = 2u,
+    };
 }

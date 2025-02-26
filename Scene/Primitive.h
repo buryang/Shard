@@ -1,8 +1,15 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 #include "folly/DiscriminatedPtr.h"
+#include "Graphics/Render/RenderResources.h"
+#include "Material.h"
 
-namespace Shard
+/**
+ * \relates https://gdcvault.com/play/1020787/Math-for-Game-Programmers-Introduction
+ *  Grassmann Algebra for Intesection calc
+ */
+
+namespace Shard::Scene
 {
 
     enum class EInputTopoType :uint8_t
@@ -116,10 +123,62 @@ namespace Shard
 
     };
 
+    struct TerrainSection
+    {
+        AABB    local_bounding_;
+        Mesh    vertex_;
+    };
+
+    struct TerrainData
+    {
+        Vector<TerrainSection>  sections_;
+        AABB    local_bounding_;
+        //vec2    resolution_;
+        vec2    size_; //size in world 
+        float   bump_scale_{ 1.f };
+
+
+        //property flag bits
+        uint32_t    with_cpu_usage_ : 1;
+        //todo others
+
+        //todo HAL
+
+        //todo layers
+    };
+
     struct Cone
     {
         vec3    pos_;
         vec3    normal_;
+    };
+
+    struct HalfEdge
+    {
+        uint32_t    twin_;
+        uint32_t    prev_;
+        uint32_t    next_;
+        uint32_t    vertex_;
+        uint32_t    face_;
+        uint32_t    index_;
+    };
+
+    //todo:plane to 4D vector Grassmann Algebra
+    struct Plane
+    {
+        vec3    normal_;
+        vec3    tangent_;
+    };
+
+    struct SubMeshIndexInfo32 //copy from unity 
+    {
+        uint32_t    start_index_ : 20;
+        uint32_t    length_ : 7;
+        uint32_t    reserved_ : 4;
+        uint32_t    material_index_enabled_ : 1;
+        SubMeshIndexInfo32() {
+            *(uint32_t*)(this) = 0u;
+        }
     };
 
     //mesh cluster/lod 
@@ -134,31 +193,118 @@ namespace Shard
         //todo
     };
 
-    struct StaticMesh : Mesh
-    {
-
-    };
-
-    struct SkinMesh : Mesh
-    {
-
-    };
-
     struct SkinBone
     {
         uint32_t    id_{ 0u };
     };
 
-
-    struct ECSStaticMeshComponent
+    struct VertexStream
     {
-        StaticMesh* handle_{ nullptr };
+        enum EType : uint8_t
+        {
+            ePos,
+            eNormal,
+            eTangent,
+            eColor,
+            eTextureUV,
+            eTextureUV1,
+            eShadowUV,
+        };
+        const Render::RenderBuffer* vertex_buffer_; //todo change to handle
+        uint8_t stream_index_{ 0u };
+        uint8_t offset_{ 0u };
+        EType   type_;
+        //todo attribute index
+        uint8_t    stride_{ 0u };
     };
 
-    struct ECSSkinMeshComponent
+    class VertexFactoryRenderInterface : public Render::RenderResource
     {
-        SkinMesh* handle_{ nullptr };
+    public:
+        using Handle = uint32_t; //todo
+        template<typename  Function>
+        void EnumerateVertexStreams(Function&& func) {
+            for (auto& stream : vertex_streams_) {
+                func(stream);
+            }
+        }
+        virtual VertexStream* GetVertexStream(uint32_t index) = 0;
+        virtual bool IsStaticMesh()const = 0;
+        virtual ~VertexFactoryRenderInterface() {}
+    protected:
+        Array<VertexStream, 2>  vertex_streams_;
+        //stream rhi declare todo
     };
+
+    class MeshFactoryInterface
+    {
+    public:
+        virtual void Init() {}
+        virtual void UnInit() {}
+        virtual void Tick() = 0;
+        virtual bool IsStaticMesh() const = 0;
+        //todo fix mesh collect interface
+        virtual bool CollectRenderMeshBatch(const auto& filter, auto& mesh_collector)const = 0;
+
+        //material releated
+        virtual PrimitiveMaterialInterface* GetMaterial(uint32_t material_index) const { return nullptr; }
+        virtual bool SetMaterial(uint32_t material_index, PrimitiveMaterialInterface* material) { return true; }
+        virtual PrimitiveMaterialInterface* GetMaterialByHash(const PrimitiveMaterialInterface::HashName& name) const { return nullptr; }
+        virtual bool SetMaterial(const PrimitiveMaterialInterface::HashName& name, PrimitiveMaterialInterface* material) { return true; }
+        virtual ~MeshFactoryInterface() {}
+    };
+
+    //todo bind shader to mesh factory
+
+    class MeshSection
+    {
+    public:
+        MeshSection() = default;
+
+    protected:
+        Render::RenderBuffer* vertex_buffer_{ nullptr };
+    };
+
+    class MeshLOD
+    {
+    public:
+        void Init();
+    protected:
+        SmallVector<MeshSection>    sections_;
+        //ray tracing geometry
+        RayTracingGeometry  raytracing_geometry_;
+
+        //bit properties
+        uint32_t    with_raytracing_geometry_ : 1;
+        uint32_t    with_depth_only_indices_ : 1;
+        uint32_t    with_color_vertex_data_ : 1;
+    };
+
+    //static mesh and procedual mesh factory
+    class StaticMeshFactory : public MeshFactoryInterface
+    {
+    public:
+        bool IsStaticMesh() const final { return true; }
+        bool CollectRenderMeshBatch(const auto& filter, auto& mesh_collector) const override;
+    protected:
+        SmallVector<MeshLOD>    lods_;
+        SmallVector<PrimitiveMaterialInterface*>   materials_;
+    };
+
+    class SkinMeshFactory : public MeshFactoryInterface    {
+    public:
+        bool IsStaticMesh() const final { return false; }
+        bool CollectRenderMeshBatch(const auto& filter, auto& mesh_collector) const override;
+    };
+
+    //todo error nedd mesh compoent wrap abstract mesh not factory
+    struct ECSMeshComponent : ECSyncObjectRefComponent<MeshFactoryInterface>
+    {
+        SubMeshIndexInfo32  sub_mesh_;
+    };
+
+    //todo HLOD Group
+    //todo virtual geometry
 
     struct Curve
     {
@@ -238,6 +384,18 @@ namespace Shard
     struct PolygonalLight
     {
         enum { Type = ELightType::ePOLYGONAL };
+    };
+
+    //unreal engine light light
+    struct ECSLightComponent
+    {
+        vec3    pos_;
+        vec3    direction_;
+        vec3    tangent_;
+        vec4    color_;
+        float   fall_off_exp_;
+        float   specular_scale_;
+        float   spot_angles_;
     };
 
     using LightPtr = folly::DiscriminatedPtr<PointLight, SpotLight, DistantLight>;
@@ -416,6 +574,13 @@ namespace Shard
     };
 
 
+    class MINIT_API PrimitiveMeshFactory
+    {
+    public:
+        virtual uint32_t GetVertexStreamCount() const = 0;
+        virtual void GetVertexStream(uint32_t stream_index) const = 0;
+        virtual ~PrimitiveMeshFactory() = 0;
+    };
 
 
 }

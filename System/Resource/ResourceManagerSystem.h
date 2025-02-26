@@ -51,6 +51,7 @@ namespace Shard::System::Resource
 		virtual void ResponseRequest(ResourceID reource_id);
 	};
 
+    /*resource streaming part*/
 	class MINIT_API ResourceManagerSystem : public Utils::ECSSystem
 	{
 	public:
@@ -71,19 +72,25 @@ namespace Shard::System::Resource
 				eLoad,
 				eUnload,
 			};
+            /*
             enum class EPriority : uint8_t {
                 eLow,
                 eMedium,
                 eHigh,
                 eUltra,
             };
+            */
 			EType	type_{ EType::eLoad };
-            EPriority   piroity_{ EPriority::eMedium };
+            //EPriority   priority_{ EPriority::eMedium };
+            float   priority_{ 0.f }; //0~1
 			ResourceRecord*	record_{ nullptr };
 			ResourceID	resource_id_;
+            //todo load post work
+            std::function<void(ResourceRecord*)>    post_callback_;
 		};
-		Vector<ResourceRequest> pending_requests_;
-		Vector<ResourceRequest> active_requests_;
+        //change vector to list for reorder the request
+		List<ResourceRequest> pending_requests_;
+		List<ResourceRequest> active_requests_;
 		ResourceProviderBase*	resource_provider_{ nullptr };
 	};
 

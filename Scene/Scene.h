@@ -1,7 +1,8 @@
 #pragma once
 #include "Utils/SimpleEntitySystem.h"
 #include "Utils/SimpleEntitySystemPrimitive.h"
-#include "Scene/Primitive.h"
+#include "Utils/Handle.h"
+#include "Primitive.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
@@ -183,6 +184,8 @@ namespace Shard
             FORCE_INLINE EWorldType GetWorldType() const { return type_; }
             void SetWorldType(EWorldType type) { type_ = type; }
         private:
+            using MeshFactoryManager = ResourceManager<MeshFactoryInterface>;
+            MeshFactoryManager  mesh_factory_manager_; //manage all primitive meshes
             EWorldType  type_;
         };
 

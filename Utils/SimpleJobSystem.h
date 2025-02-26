@@ -7,6 +7,8 @@
 #include <atomic>
 #include <optional>
 
+//todo job graph and job priority 
+
 
 namespace Shard
 {
@@ -15,6 +17,7 @@ namespace Shard
         struct JobEntry
         {
             using JobDeAllocator = std::function<void(JobEntry*)>;
+            //std::atomic<uint32_t>   counter_{ 0u }; job dependency counter
             mutable std::atomic<uint32_t>    ref_count_{ 1u };
             JobEntry*    parent_{ nullptr };
             JobEntry*    subsequent_{ nullptr };

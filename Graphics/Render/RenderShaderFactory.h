@@ -100,8 +100,9 @@ namespace Shard::Render
 
     struct ShaderCompileEnv
     {
-        ShaderPlatform    platform;
-        //other related parameters todo 
+        ShaderPlatform    platform_;
+        //other related parameters macros
+        SmallVector<String> macros_;
     };
 
     struct ShaderCompileJobIn

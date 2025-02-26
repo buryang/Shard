@@ -13,9 +13,6 @@
 [submodule "ThirdParty/CmdParser"]
 	path = ThirdParty/CmdParser
 	url = https://github.com/FlorianRappl/CmdParser.git
-[submodule "ThirdParty/meshoptmizer"]
-	path = ThirdParty/meshoptimizer
-	url = https://github.com/zeux/meshoptimizer.git
 [submodule "ThirdParty/imgui-node-editor"]
 	path = ThirdParty/imgui-node-editor
 	url = https://github.com/thedmd/imgui-node-editor.git
@@ -28,3 +25,6 @@
 [submodule "ThirdParty/nv_cluster_lod_builder"]
 	path = ThirdParty/nv_cluster_lod_builder
 	url = https://github.com/nvpro-samples/nv_cluster_lod_builder.git
+[submodule "meshoptimizer"]
+	path = meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git

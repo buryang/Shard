@@ -74,7 +74,9 @@ namespace Shard::System::Resource
 									  .record_ = record };
 		{
 			std::shared_lock<std::shared_mutex> lock(access_mutex_);
-			pending_requests_.emplace_back(load_request);
+			//pending_requests_.emplace_back(load_request);
+            auto insert_iter = eastl::find_if(pending_requests_.begin(), pending_requests_.end(), [&load_request](auto iter) { return iter->priority_ < load_request->priority_; });
+            pending_requests_.insert(insert_iter, load_request);
 		}
 	}
 	

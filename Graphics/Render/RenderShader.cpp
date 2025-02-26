@@ -44,7 +44,7 @@ namespace Shard::Render
         return std::format("{}{}", back_end, shader_model);
     }
 
-    RenderShader::RenderShader(const RenderShaderInitializeInput& initializer):shader_type_(initializer,shader_type_)
+    RenderShader::RenderShader(const RenderShaderInitializer& initializer):shader_type_(initializer,shader_type_)
     {
         BindShaderParameters(initializer.shader_params_);
     }

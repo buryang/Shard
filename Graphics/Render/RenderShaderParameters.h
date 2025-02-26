@@ -14,6 +14,31 @@ namespace Shard::Render {
 
     using RenderShaderParameterInfosMap = Map<const String&, ShaderParametersReflection>;
 
+    //todo binding shader parameters
+    struct ShaderParametersBinding
+    {
+        //todo
+    };
+
+    using RenderShaderParameterBindings = SmallVector<ShaderParametersBinding>;
+
+    struct ShaderInputStream
+    {
+        enum class EType
+        {
+            eVertex,
+            eIndex,
+            e
+        };
+        EType   type_;
+        HAL::HALBuffer* stream_{ nullptr };
+        uint32_t    offset_{ 0u };
+        uint32_t    count_{ 0u };
+        uint32_t    stride_{ 0u };
+    };
+
+    using RenderShaderInputStreams = SmallVector<ShaderInputStream>;
+
     //parameters for shader def
     enum class EShaderResourceType {
         eTrivalData,

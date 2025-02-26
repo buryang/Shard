@@ -166,7 +166,7 @@ namespace Shard::Render
     };
 
     /*data to initialize shader infos*/
-    struct RenderShaderInitializeInput
+    struct RenderShaderInitializer
     {
         RenderShaderType::HashType    shader_type_;
         RenderShaderCode    shader_code_;
@@ -183,7 +183,7 @@ namespace Shard::Render
         using PermutationVec = PermutationTupleNULL;
         using HashType = Utils::Blake3Hash64;
 
-        static Ptr Create(const RenderShaderInitializeInput& input) {
+        static Ptr Create(const RenderShaderInitializer& input) {
             return nullptr;
         }
 
@@ -195,13 +195,15 @@ namespace Shard::Render
             return false;
         }
 
-        struct ShaderParam
+        struct ShaderParameter 
         {
-            virtual ~ShaderParam() {}
+            virtual ~ShaderParameter() {}
+            //todo bind shader param from vertex factory and material
+            virtual void GetParameterBindings() const = 0;
         };
         RenderShader() = default;
         //initial render from compiled code
-        RenderShader(const RenderShaderInitializeInput& initializer);
+        RenderShader(const RenderShaderInitializer& initializer);
         virtual ~RenderShader() {}
         const HashType& GetShaderHash()const;
         const uint32_t GetResourceIndex()const;

@@ -32,6 +32,7 @@ namespace Shard::Utils
 		std::chrono::high_resolution_clock::time_point	time_stamp_;
 	};
 
+    //to do https://stackoverflow.com/questions/31391914/timing-in-an-elegant-way-in-c
     //floating-point clocks are usually only used to store relatively short time
 	class ScopedTimer : public Timer
 	{

@@ -53,7 +53,8 @@ namespace Shard::System::Camera
         void Init() override;
         void UnInit() override;
         void Update(Utils::ECSSystemUpdateContext& ctx) override;
-    private:
+    protected:
         float direction_scale_{ 1.f };
+        ECSCameraComponent* camera_{ nullptr }; //camera singleton
     };
 }

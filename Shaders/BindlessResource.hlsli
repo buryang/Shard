@@ -1,6 +1,9 @@
 #ifndef _BINDLESS_RESOURCE_INC_
 #define _BINDLESS_RESOURCE_INC_
-
+/*
+* according to REAC 2024, bindless only need to support for r/w views while constant/vertex/index 
+* buffers are faster with direct bind(NVIDIA)
+*/
 //space macro defines
 #define SHARD_BINDLESS_TEXTURE_SPACE 0
 #define SHARD_BINDLESS_BUFFER_SPACE 1

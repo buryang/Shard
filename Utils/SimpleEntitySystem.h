@@ -603,7 +603,6 @@ namespace Shard
         
         struct ECSComponentGroupBase
         {
-            using Ptr = ECSComponentGroupBase*;
         };
 
         template<typename, typename>
@@ -837,14 +836,9 @@ namespace Shard
         };
 
         struct ECSSystemUpdateContext {
-            enum {
-                MAX_SYSTEM_DEPEND = 4,
-            };
-            void*    admin_{ nullptr };
             float    delta_time_{ 0.f };//in seconds
             uint64_t    frame_index_{ 0u }; //frame index
             EUpdatePhase phase_{ EUpdatePhase::eFrameStart };
-            //Array<std::atomic<JobEntry*>, MAX_SYSTEM_DEPEND>    dependency_; //only one?
         };
 
         template<typename ...Component>

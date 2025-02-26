@@ -1,6 +1,8 @@
 #include "Graphics/Core/EngineGlobalParams.h"
 #include "Scene/Scene.h"
-#include "System/App/CameraSystem.h"
+#include "System/Input/InputSystem.h"
+#include "glm/gtx/matrix_operation.hpp"
+#include "CameraSystem.h"
 
 namespace Shard::System::Camera {
 
@@ -48,20 +50,24 @@ namespace Shard::System::Camera {
 
     void FPSCameraMovementSystem::Init()
     {
+        camera_ = nullptr; //todo
     }
 
     void FPSCameraMovementSystem::UnInit()
     {
+        if (nullptr != camera_) {
+            //todo
+            camera_ = nullptr;
+        }
     }
 
     void FPSCameraMovementSystem::Update(Utils::ECSSystemUpdateContext& ctx)
     {
-        const auto& mouse_state = ctx;//todo
-        auto* camera = static_cast<Scene::WorldScene*>(ctx.admin_)->GetSingletonComponent<ECSCameraComponent>();
+        const auto& mouse_state = Input::InputSystem::Instance().GetMouseState();
         //get mouse delta movement
-        if (mouse_state.mouse_pos_deta_) {
-            const auto rotation = glm::diagonal3x3({ mouse_state.mouse_pos_deta_.x, mouse_state.mouse_pos_deta_.y, 1.f }); //todo
-            camera->Update(rotation);
+        if (mouse_state.mouse_pos_deta_ != vec2{0.f, 0.f}) {
+            const auto rotation = glm::diagonal3x3(vec3{ mouse_state.mouse_pos_deta_.x, mouse_state.mouse_pos_deta_.y, 1.f }); 
+            camera_->Update(rotation);
         }
     }
 

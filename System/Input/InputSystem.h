@@ -1,6 +1,8 @@
 #pragma once
 #include "Utils/CommonUtils.h"
 
+//todo https://dev.epicgames.com/documentation/en-us/unreal-engine/enhanced-input-in-unreal-engine
+
 namespace Shard::System
 {
     namespace Input
@@ -209,7 +211,7 @@ namespace Shard::System
         */
 
         //todo maybe use monostate only 
-        class MINIT_API    InputSystem
+        class MINIT_API InputSystem
         {
         public:
             using Ptr = InputSystem*;

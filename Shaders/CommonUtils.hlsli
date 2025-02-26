@@ -27,6 +27,24 @@
 #define VK_INPUT_AATTACHMENT(ATTACH)
 #endif
 
+//In HLSL, you cannot directly embed a RWStructuredBuffer (or any resource type like buffers/textures) as a member of a struct 
+#define BUFFER_REF(type_in) uint64 
+
+//fp16 https://therealmjp.github.io/posts/shader-fp16/
+//You’ll also need to make sure that you’re not inadvertantly 
+//using the half datatype, since by default this is still mapped to fp32 in HLSL! 
+#define half min16float
+#define half2 min16float2
+#define half3 min16float3
+#define half4 min16float4
+#define half3x3 min16float3x3
+#define half3x4 min16float3x4
+
+//pack and unpack value to a integral， cfg format（shift:bits)
+#define UNPACK_BITS(val, cfg) ((val>>(true ? cfg)) &((1<<(false ? cfg))-1))
+#define PACK_FLAG(cfg, val) (val<<(true ? cfg))
+#define PACK_MASK(cfg) (((1<<(false ? cfg))-1)<<(true ? cfg))
+
 //from https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 ACESFilmToneMap(float3 x)
 {
@@ -93,7 +111,7 @@ float IGN(float2 p, int frame)
 
 //http://www.jcgt.org/published/0009/03/02/
 //(N → N): pcg3d, pcg4d is recommend by above paper
-//also:https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
+//also:https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ && https://rene.ruhr/gfx/gpuhash/
 uint3 pcg3d(uint3 v)
 {
     v = v * 1664525u + 1013904223u;
@@ -123,6 +141,8 @@ uint4 pcg4d(uint4 v)
 }
 //https://nullprogram.com/blog/2018/07/31/
 //https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
+//https://www.youtube.com/watch?v=SePDzis8HqY
+//https://blog.demofox.org/2024/09/02/summing-blue-noise-octaves-like-perlin-noise/
 
 float Pow3(float x)
 {

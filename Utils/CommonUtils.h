@@ -41,11 +41,13 @@
 #include "eastl/fixed_hash_set.h"
 #include "eastl/list.h"
 #include "eastl/queue.h"
+#include "EASTL/set.h"
 #include "eastl/stack.h"
 #include "eastl/span.h"
 #include "eastl/optional.h"
 #include "eastl/string.h"
-#include "EASTL/sort.h"
+#include "eastl/sort.h"
+#include "EASTL/tuple.h"
 #include "eastl/bitset.h"
 #include "eastl/bitvector.h"
 #include "eastl/unique_ptr.h"
@@ -54,6 +56,8 @@
 #include "eastl/algorithm.h"
 #include "folly/Poly.h" 
 #include "fmt/format.h"
+//according to https://martin.ankerl.com/2019/04/01/hashmap-benchmarks-03-01-result-InsertHugeInt/ tsl::robin is faster
+#include "robin-hood-hashing/src/include/robin_hood.h"
 #include <memory>
 #include <algorithm>
 #include <cassert>
@@ -105,24 +109,24 @@ inline enum_type operator~(enum_type val) { return static_cast<enum_type>(~Utils
 
 namespace Shard {
 
-    using glm::vec2;
-    using glm::vec3;
-    using glm::vec4;
+    using float2 = glm::vec2;
+    using float3 = glm::vec3;
+    using float4 = glm::vec4;
 
-    using glm::mat3;
-    using glm::mat4;
+    using float3x3 = glm::mat3;
+    using float4x4 = glm::mat4;
 
-    using glm::ivec2;
-    using glm::ivec3;
-    using glm::ivec4;
+    using int2 = glm::ivec2;
+    using int3 = glm::ivec3;
+    using int4 = glm::ivec4;
 
-    using glm::uvec2;
-    using glm::uvec3;
-    using glm::uvec4;
+    using uint2 = glm::uvec2;
+    using uint3 = glm::uvec3;
+    using uint4 = glm::uvec4;
 
-    using glm::bvec2;
-    using glm::bvec3;
-    using glm::bvec4;
+    using bool2 = glm::bvec2;
+    using bool3 = glm::bvec3;
+    using bool4 = glm::bvec4;
 
     using glm::quat;
 
@@ -137,6 +141,9 @@ namespace Shard {
     using Map = eastl::hash_map<Key, Val, allocator=Allocator>;
     template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
     using FixedMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
+    
+    //todo robin_hood map
+
     template<typename Val>
     using Set = eastl::set<Val>;
     template<typename Value, size_t node_count>
@@ -149,8 +156,11 @@ namespace Shard {
     using List = eastl::list<T>;
     template<size_t N>
     using BitSet = eastl::bitset<N>;
-    template<class Allocator>
+    template<class Allocator=eastl::allocator>
     using BitVector = eastl::bitvector<Allocator>;
+
+    template<typename...T>
+    using Tuple = eastl::tuple<std::forward<T>...>;
 
     template<typename T>
     using Span = eastl::span<T>;
@@ -271,6 +281,29 @@ namespace Shard::Utils {
     template<typename T, template <typename> typename CContainer>
     FORCE_INLINE Span<T> MakeSpan(CContainer<T>& container) {
         return MakeSpan(container.data(), container.size());
+    }
+
+    //https://en.wikipedia.org/wiki/Fast_inverse_square_root quake3 fast invsqrt
+    FORCE_INLINE float Q_rsqrt(float number)
+    {
+        long i;
+        float x2, y;
+        const float threehalfs = 1.5F;
+
+        x2 = number * 0.5F;
+        y = number;
+        i = *(long*)&y;						// evil floating point bit level hacking
+        i = 0x5f3759df - (i >> 1);               // what the fuck?
+        y = *(float*)&i;
+        y = y * (threehalfs - (x2 * y * y));   // 1st iteration
+        //	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+        return y;
+    }
+
+    FORCE_INLINE float Q_fabs(float f) {
+        int tmp = *(int*)&f;
+        tmp &= 0x7FFFFFFF;
+        return *(float*)&tmp;
     }
 
     template<class AtomicBOOL = std::atomic_bool>
