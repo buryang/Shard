@@ -28,3 +28,6 @@
 [submodule "ThirdParty/robin-hood-hashing"]
 	path = ThirdParty/robin-hood-hashing
 	url = https://github.com/martinus/robin-hood-hashing.git
+[submodule "ThirdParty/meshoptimizer"]
+	path = ThirdParty/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
