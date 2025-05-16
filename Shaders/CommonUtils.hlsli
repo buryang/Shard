@@ -1,35 +1,20 @@
 ﻿#ifndef _COMMON_UTILS_INC_
 #define _COMMON_UTILS_INC_
 
-#define M_PI 3.14159265359
-#define M_INV_PI 0.3183098861
-#define M_E 2.71828182845
-#define M_GLODEN_RATIO_CONJUGATE 0.61803398875
+#include "Platform.hlsli"
 
-#define MEDIUMP_FLT_MIN 0.00006103515625
-#define MEDIUMP_FLT_MAX 65504.0
-#define SaturateMediump(x) min(x, MEDIUMP_FLT_MAX)
-
-#ifdef __spirv__ //for DXC compile to spir-v
-#define VK_PUSH_CONSTANT [[vk::push_constant]]
-#define VK_BINDING(BIND, SET) [[vk::binding(BIND, SET)]]
-#define VK_LOCATION(INDEX) [[vk::location(INDEX)]]
-#define VK_CONSTANT(INDEX) [[vk::constant_id(INDEX)]]
-#define VK_COUNTER(INDEX) [[vk::counter_binding(INDEX)]]
-//https://github.com/Microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#subpass-inputs
-#define VK_INPUT_AATTACHMENT(ATTACH) [[vk::input_attachment_index(ATTACH)]]
-#else 
-#define VK_PUSH_CONSTANT
-#define VK_BINDING(BIND, SET)
-#define VK_LOCATION(INDEX)
-#define VK_CONSTANT(INDEX)
-#define VK_COUNTER(INDEX)
-#define VK_INPUT_AATTACHMENT(ATTACH)
-#endif
+//*************************************************************************************************************************************************************//
+//In order to migrate to Workgraph in the future, encapsulate all implementations as functions as much as possible, and then call them in the entry function   //
+//*************************************************************************************************************************************************************//
 
 //In HLSL, you cannot directly embed a RWStructuredBuffer (or any resource type like buffers/textures) as a member of a struct 
 #define BUFFER_REF(type_in) uint64 
 
+#ifdef __cplusplus
+typedef unsigned int uint;
+typedef glm::vec4 float4;
+typedef glm::mat4 float4x4;
+#else
 //fp16 https://therealmjp.github.io/posts/shader-fp16/
 //You’ll also need to make sure that you’re not inadvertantly 
 //using the half datatype, since by default this is still mapped to fp32 in HLSL! 
@@ -39,11 +24,77 @@
 #define half4 min16float4
 #define half3x3 min16float3x3
 #define half3x4 min16float3x4
+#endif
 
 //pack and unpack value to a integral， cfg format（shift:bits)
 #define UNPACK_BITS(val, cfg) ((val>>(true ? cfg)) &((1<<(false ? cfg))-1))
 #define PACK_FLAG(cfg, val) (val<<(true ? cfg))
 #define PACK_MASK(cfg) (((1<<(false ? cfg))-1)<<(true ? cfg))
+
+inline void PackBits(inout uint packed, uint value, uint pos, uint bits)
+{
+    uint value_mask = value & ((1 << bits) - 1);
+    packed |= (value_mask << pos);
+}
+
+inline uint BitsMask(uint bits, uint shift)
+{
+    return ((1u << bits) - 1) << shift;
+}
+
+inline uint InsertBits(uint mask, uint preserve, uint enable)
+{
+    return (preserve & mask) | (enable & ~mask);
+}
+
+inline uint UnpackBits(uint packed, uint pos, uint bits)
+{
+    return (packed >> pos) & ((1 << bits) - 1);
+}
+
+uint3 UnpackBitsToUint3(uint packed, int3 component_bits)
+{
+    return uint3(UnpackBits(packed, 0, component_bits.x),
+                UnpackBits(packed, component_bits.x, component_bits.y),
+                UnpackBits(packed, component_bits.y + component_bits.x, component_bits.z));
+}
+
+/*shuffle bits from low to high*/
+uint ShuffleBitsU32(uint high, uint low, uint shuffle_bits)
+{
+    shuffle_bits &= 31u;
+    uint result = low >> shuffle_bits;
+    result |= shuffle_bits > 0u ? (high >> (32u - shuffle_bits)) : 0u;
+    return result;
+}
+
+uint FloatToInteger(float value, float scale)
+{
+    return uint(value * scale + 0.5);
+
+}
+
+#define RGBA_FLOAT_TO_INTEGER10_SCALE 1023
+
+/*color space pack/unpack*/
+uint PackFloat4ToR10G10B10A2Unorm(float4 unpacked)
+{
+    uint packed = FloatToInteger(unpacked.x, RGBA_FLOAT_TO_INTEGER10_SCALE);
+    packed |= FloatToInteger(unpacked.y, RGBA_FLOAT_TO_INTEGER10_SCALE) << 10;
+    packed |= FloatToInteger(unpacked.z, RGBA_FLOAT_TO_INTEGER10_SCALE) << 20;
+    packed |= FloatToInteger(unpacked.w, 3) << 30;
+    return packed;
+}
+
+float4 UnpackR10G10B10A2ToFloat4(uint packed)
+{
+    float4 unpacked;
+    unpacked.x = float(packed & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
+    unpacked.y = float((packed >> 10) & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
+    unpacked.z = float((packed >> 20) & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
+    unpacked.w = float((packed >> 30) & 0x3u) / 3;
+    return unpacked;
+}
 
 //from https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 ACESFilmToneMap(float3 x)
@@ -67,149 +118,6 @@ float3 SRGBToLinear(float3 rgb)
 {
     float3 lin_rgb = lerp(rgb / 12.92f, pow((rgb + 0.055f) / 1.055f, float3(2.4)), step(float3(0.04045f), rgb));
     return saturate(lin_rgb);
-}
-
-/*------------noise function---------------*/
-//https://www.shadertoy.com/view/4djSRW
-//https://github.com/everyoneishappy/happy.fxh.git
-//---white noise---------
-float Hash11(float p)
-{
-    p = frac(p * .1031f);
-    p *= p + 33.33f;
-    p *= p + p;
-    return frac(p);
-}
-
-float Hash12(float2 p)
-{
-    float3 p3 = frac(float3(p.xyx) * .1031f);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return frac((p3.x + p3.y) * p3.z);
-}
-
-float Hash13(float3 p3)
-{
-    p3 = frac(p3 * .1031f);
-    p3 += dot(p3, p3.zyx + 31.32f);
-    return frac((p3.x + p3.y) * p3.z);
-}
-
-/*---IGN(interleaved gradient noise) noise----------
- from "Next Generation Post Processing inCall of Duty Advanced Warfare":
- Experimenting and optimizing a noise generator, we found a noise function that we could classify 
- as being half way between dithered and random, and that we called Interleaved Gradient Noise
-*/
-float IGN(float2 p, int frame)
-{
-    p += float(frame) * 5.588238f;
-    return frac(52.9829189f * frac(0.06711056f * float(p.x) + 0.00583715f * float(p.y)));
-}
-//----blue noise--------
-//you can get free blue noise from here:http://momentsingraphics.de/BlueNoise.html
-//sample blue noise should use nearest filter  
-
-//http://www.jcgt.org/published/0009/03/02/
-//(N → N): pcg3d, pcg4d is recommend by above paper
-//also:https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ && https://rene.ruhr/gfx/gpuhash/
-uint3 pcg3d(uint3 v)
-{
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.z;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v ˆ = v >> 16u;
-    v.x += v.y * v.z;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    return v;
-}
-
-uint4 pcg4d(uint4 v)
-{
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-    v ˆ = v >> 16u;
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-    return v;
-}
-//https://nullprogram.com/blog/2018/07/31/
-//https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
-//https://www.youtube.com/watch?v=SePDzis8HqY
-//https://blog.demofox.org/2024/09/02/summing-blue-noise-octaves-like-perlin-noise/
-
-float Pow3(float x)
-{
-    return x * x * x;
-}
-
-float2 Pow3(float2 x)
-{
-    return x * x * x;
-}
-
-float3 Pow3(float3 x)
-{
-    return x * x * x;
-}
-
-float4 Pow3(float4 x)
-{
-    return x * x * x;
-}
-
-float Pow4(float x)
-{
-    float xx = x * x;
-    return xx * xx;
-}
-
-float2 Pow4(float2 x)
-{
-    float2 xx = x * x;
-    return xx * xx;
-}
-
-float3 Pow4(float3 x)
-{
-    float3 xx = x * x;
-    return xx * xx;
-}
-
-float4 Pow4(float4 x)
-{
-    float4 xx = x * x;
-    return xx * xx;
-}
-
-float Pow5(float x)
-{
-    float xx = x * x;
-    return xx * xx * x;
-}
-
-float2 Pow5(float2 x)
-{
-    float2 xx = x * x;
-    return xx * xx * x;
-}
-
-float3 Pow5(float3 x)
-{
-    float3 xx = x * x;
-    return xx * xx * x;
-}
-
-float4 Pow5(float4 x)
-{
-    float4 xx = x * x;
-    return xx * xx * x;
 }
 
 //HDR encode as: https://iwasbeingirony.blogspot.com/2010/06/difference-between-rgbm-and-rgbd.html
@@ -242,13 +150,26 @@ float3 RGBDDecode(float4 rgbd)
 
 
 //morton code from:https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+/**
+\brief: input x 16-bit vec
+*/
 uint2 ExpandBits2D(uint2 x)
 {
-    x &= 0x0000ffff; // x = ---- ---- ---- ---- fedc ba98 7654 3210
-    x = (x ^ (x << 8)) & 0x00ff00ff; // x = ---- ---- fedc ba98 ---- ---- 7654 3210
-    x = (x ^ (x << 4)) & 0x0f0f0f0f; // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
-    x = (x ^ (x << 2)) & 0x33333333; // x = --fe --dc --ba --98 --76 --54 --32 --10
-    x = (x ^ (x << 1)) & 0x55555555; // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+    x &= 0x0000ffffu; // x = ---- ---- ---- ---- fedc ba98 7654 3210
+    x = (x ^ (x << 8)) & 0x00ff00ffu; // x = ---- ---- fedc ba98 ---- ---- 7654 3210
+    x = (x ^ (x << 4)) & 0x0f0f0f0fu; // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
+    x = (x ^ (x << 2)) & 0x33333333u; // x = --fe --dc --ba --98 --76 --54 --32 --10
+    x = (x ^ (x << 1)) & 0x55555555u; // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+    return x;
+}
+
+uint2 ReverseBits2D(uint2 x)
+{
+    x &= 0x55555555u;
+    x = (x ^ (x >> 1)) & 0x33333333u;
+    x = (x ^ (x >> 2)) & 0x0f0f0f0fu;
+    x = (x ^ (x >> 4)) & 0x00ff00ffu;
+    x = (x ^ (x >> 8)) & 0x0000ffffu;
     return x;
 }
 
@@ -256,6 +177,12 @@ uint Morton2D(float2 xy)
 {
     uint2 expand_xy = ExpandBits2D(uint2(xy));
     return (expand_xy.x << 1) + expand_xy.y;
+}
+
+float2 ReverseMorton2D(uint x)
+{
+    float2 pixel = float2(ReverseBits2D(uint2(x, x >> 1)));
+    return pixel;
 }
 
 //https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/
@@ -273,10 +200,25 @@ uint ExpandBits3D(uint3 v)
 //calc morton code for the 3d coordinate located in uint cube[0,1]
 uint Morton3D(float3 xyz)
 {
-    const float cube_scale = 1024.f;
+    const float cube_scale = 1024.f; //remap to 10bit integer
     xyz = min(max(xyz * cube_scale, 0.f), cube_scale - 1.f);
     uint3 expand_xyz = ExpandBits3D(uint3(xyz));
-    return (expand_xyz.x << 2) + (expand_xyz.y << 1) + expand_xyz.z;
+    return (expand_xyz.x << 2) + (expand_xyz.y << 1) + expand_xyz.z; //todo + or | 
+}
+
+inline uint ExtractLSB(uint x)
+{
+    return x & -x;
+}
+
+inline uint ExtractMSB(uint x)
+{
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    return x - (x >> 1);
 }
 
 //https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/

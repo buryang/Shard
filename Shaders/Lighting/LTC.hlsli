@@ -1,6 +1,7 @@
 #ifndef _LTC_INC_
 #define _LTC_INC_
 //https://zero-radiance.github.io/post/line-lights/
+//https://www.eurogamer.net/digitalfoundry-2025-assassins-creed-shadows-tech-qa-rtgi-shader-compilation-taa-and-more
 #include "../CommonUtils.hlsli"
 
 // This function assumes that inputs are well-behaved, e.i.

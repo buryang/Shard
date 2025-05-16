@@ -16,5 +16,21 @@ struct MaterialProperties
     float opacity_;
 };
 
+struct MaterialFlags
+{
+    
+};
+
+uint PackMaterialFlags(MaterialFlags flags)
+{
+    uint packed;
+    return packed;
+}
+
+void UnpackMaterialFlags(uint packed, out MaterialFlags flags)
+{
+    
+}
+
 
 #endif //_MATERIAL_INC_ 

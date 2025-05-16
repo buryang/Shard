@@ -31,3 +31,6 @@
 [submodule "ThirdParty/meshoptimizer"]
 	path = ThirdParty/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
+[submodule "ThirdParty/nv_cluster_builder"]
+	path = ThirdParty/nv_cluster_builder
+	url = https://github.com/nvpro-samples/nv_cluster_builder.git
