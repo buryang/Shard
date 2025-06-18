@@ -1,5 +1,8 @@
 #ifndef _DATA_TRANSCODE_INC_
 #define _DATA_TRANSCODE_INC_
+
+#include "ClusterCommon.hlsli"
+#include "TraversalCommon.hlsli"
 /**
 * realize vertex/index compression like Dense Geometry Format(DGF) etc.
 * unreal engine nanite has two representation(memory/disk), memory represent main
@@ -8,9 +11,23 @@
 * but its main advantage is for memory representation for ray tracing
 */
 
+//BVH BLAS compaction
+//https://developer.nvidia.com/blog/tips-acceleration-structure-compaction/
+
 //whether enable the DGF compression 
 #define CLUSTER_DGF_COMPRESS_ENABLE
 #define CLUSTER_VERTEX_COMPRESS_ENABLED 1
+#define CLUSTER_TRIANGLE_CONNECTIVITY_ENABLED 1
+
+//node bit mask definiation
+#define NODE_CHILD_NODE_OFFSET 1
+#define NODE_CHILD_NODE_BITS 26
+#define NODE_CHILD_NODE_COUNT_MINUS1_OFFSET 26
+#define NODE_CHILD_NODE_COUNT_MINUS1_BITS 5
+#define NODE_CHILD_GROUP_INDEX_OFFSET 1
+#define NODE_CHILD_GROUP_INDEX_BITS 23
+#define NODE_CHILD_GROUP_CLUSTERS_MINIUS1_OFFSET 23
+#define NODE_CHILD_GROUP_CLUSTERS_MINIUS1_BITS 8
 
 
 struct TranformedLocalVertex
@@ -18,16 +35,8 @@ struct TranformedLocalVertex
     //todo    
 };
 
-//triangle index remap
-struct TriRemapEntry
-{
-    uint input_triangle_index;
-    
-    uint index0;
-    uint index1;
-    uint index2; //
-};
 
+#if 0
 //encoded cluster and group bitstream info
 struct PackedClusterInfo
 {
@@ -60,9 +69,11 @@ struct PackedGroupInfo
 struct PackedViewInfo
 {
     int4 view_rect;//view rectangle
-    
+    uint streaming_priority_category_flags;
+    int lighting_channel_mask;
 };
 
+#endif
 
 #ifdef CLUSTER_DGF_COMPRESS_ENABLE
 
@@ -77,6 +88,39 @@ void UnpackDGFBlockForTriangle(ByteAddressBuffer encode_data, uint block_offset,
     
 }
 #endif
+
+void PackNode(uint node_child_offset, uint node_child_count, out Node node)
+{
+    uint packed = 1u << 31; //node flag
+    PackBits(packed, node_child_offset, NODE_CHILD_NODE_OFFSET, NODE_CHILD_NODE_BITS);
+    PackBits(packed, node_child_count - 1, NODE_CHILD_NODE_COUNT_MINUS1_OFFSET, NODE_CHILD_NODE_COUNT_MINUS1_BITS);
+    node.child_group_reference = packed;
+    node.is_leaf_loaded = 0u; //todo
+}
+
+void PackNode(uint group_index, uint group_cluster_count, out Node node)
+{
+    uint packed = 0u;
+    PackBits(packed, group_index, NODE_CHILD_GROUP_INDEX_OFFSET, NODE_CHILD_GROUP_INDEX_BITS);
+    PackBits(packed, group_cluster_count - 1, NODE_CHILD_NODE_COUNT_MINUS1_OFFSET, NODE_CHILD_NODE_COUNT_MINUS1_BITS);
+    //todo
+    node.child_group_reference = packed;
+}
+
+void UnpackNode(in uint2 packed, out Node node)
+{
+    
+}
+
+void PackGroup(Group group)
+{
+    
+}
+
+void UnpackGroup(in uint4 packed, out Group group)
+{
+    
+}
 
 void UnpackClusterInfo(in ClusterHeader cluster_header, out ClusterInfo cluster_info)
 {
@@ -98,8 +142,16 @@ void UnpackedCompressedPosition(uint2 vertex_compressed, in PackedClusterInfo cl
 {
     
 }
+#endif //CLUSTER_VERTEX_COMPRESS_ENABLED
 
-#endif
+#if CLUSTER_TRIANGLE_CONNECTIVITY_ENABLED
+//unreal engine encode triangle index [base_index, delta0, delta1]
+uint3 UnpackCompressedTriangleVertexIndex(uint tri_index, in PackedClusterInfo cluster)
+{
+    
+}
+#else
+#endif //CLUSTER_TRIANGLE_CONNECTIVITY_ENABLED
 
 void UnpackVertexPosition(in PackedClusterInfo cluster, uint vertex_index, out float3 vertice)
 {

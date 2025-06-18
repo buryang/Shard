@@ -5,6 +5,10 @@
 #include "../Math.hlsli"
 #include "ClusterCommon.hlsli"
 
+
+#define CULLING_CLUSTER_WORKGROUP 64 //
+#define CULLING_INSTANCE_WPO_ENABLED //whether need world position offset enabled 
+
 //64bit-atomic: 32-bit Depth; 32-bit Triangle/Visible Cluster ID
 struct VisibleID
 {
@@ -95,10 +99,21 @@ bool IntersectHiz(float4 clip_min, float4 clip_max, float4 hiz_size_factors)
 
 struct TraversalClusterCullingCallback
 {
+    void PreCulling()
+    {
+        
+    }
+    
     void ProcessCluster(Cluster cluster)
     {
     
-    };
+    }
+    
+    void PostCulling()
+    {
+        
+    }
 };
+
 
 #endif //_CULLING_INC_ 

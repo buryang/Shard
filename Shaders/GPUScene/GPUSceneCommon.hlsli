@@ -11,8 +11,11 @@
 #include "StreamingCommon.hlsli"
 #endif
 #include "ClusterCommon.hlsli"
+#include "DataTranscode.hlsli"
 
-#define MAX_CUSTOM_PRIMITIVE_DATA_NUM 16
+#define MAX_CUSTOM_PRIMITIVE_DATA_COUNT 16
+#define MAX_SCENE_INSTANCE_COUNT (1u << 24)
+#define MAX_PRIMITIVE_NODE_COUNT  (1u << 16)
 
 struct AABB
 {
@@ -23,7 +26,7 @@ struct AABB
 struct BoundingBoxSphere
 {
     AABB bound_box;
-    float radius;
+    float4 sphere;
 };
 
 struct Instance
@@ -50,6 +53,9 @@ struct Primitive
     uint padding; //data padding
     
     BBox bbox; //object space primitive bounding box
+    
+    //lod hierarchy traversal, geometry DAG node
+    BUFFER_REF(Nodes_in) nodes;
     
     //streaming component
     //provides memory address of a resident group.
@@ -124,10 +130,22 @@ struct GPUBindlessInfo
     uint persistent_memory_used_bits_bf_index;
     uint traversal_info_bf_index;
     uint traversal_info_size;
-    uint render_cluster_info_bf_index;
+    uint render_cluster_info_bf_index; //cluster 
     uint render_cluster_info_size;
     uint extent_payload_bf_index0;
     uint extent_payload_bf_index1;
+    
+    void Init()
+    {
+        persistent_memory_bf_index = INVALID_INSTANCE_DATA_OFFSET;
+        persistent_memory_used_bits_bf_index = INVALID_INSTANCE_DATA_OFFSET;
+        traversal_info_bf_index = INVALID_INSTANCE_DATA_OFFSET;
+        traversal_info_size = INVALID_INSTANCE_DATA_OFFSET;
+        render_cluster_info_bf_index = INVALID_INSTANCE_DATA_OFFSET; 
+        render_cluster_info_size = INVALID_INSTANCE_DATA_OFFSET;
+        extent_payload_bf_index0 = INVALID_INSTANCE_DATA_OFFSET;
+        extent_payload_bf_index1 = INVALID_INSTANCE_DATA_OFFSET;
+    }
 };
 
 //static const GPUScene gpu_scene = { }; //todo initialize this
@@ -145,9 +163,6 @@ inline RWByteAddressBuffer GetGPUScenePersistentMemoryUsedBits(GPUBindlessInfo i
     return GPU_SCENE_BUFFER_RW(index.persistent_memory_used_bits_bf_index);
 }
 
-
-#include "DataDecode.hlsli"
-
 Primitive LoadPrimitive(uint primitiveID)
 {
     Primitive primitive = (Primitive) 0;
@@ -156,15 +171,22 @@ Primitive LoadPrimitive(uint primitiveID)
     return primitive;
 }
 
+//how to save instance?? SOA or ??
 Instance LoadInstance(uint instanceID)
 {
     Instance instance = (Instance) 0;
-    instance.primitiveID = asuint(LoadPrimitiveSceneRawData)
+    instance.primitiveID = asuint(LoadPrimitiveSceneRawData());
     
     return instance;
 }
 
 InstancePayloadOffsets GetInstancePayloadOffsets(uint )
+{
+    InstancePayloadOffsets offsets = (InstancePayloadOffsets) 0;
+    //todo
+    return offsets;
+}
+
 
 #endif //_GPUSCENE_INC_
 

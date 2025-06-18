@@ -94,6 +94,9 @@ float IGN(float2 p, int frame)
 //http://www.jcgt.org/published/0009/03/02/
 //(N → N): pcg3d, pcg4d is recommend by above paper
 //also:https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/ && https://rene.ruhr/gfx/gpuhash/
+//https://aras-p.info/blog/2025/06/13/Voronoi-Hashing-and-OSL/
+//modern cpu/gpu multiply is more cheaper，so can use pcg etc “Hash functions from several decades ago 
+//were built on assumption that multiplication is very expensive, which is very much not the case anymore.”
 uint3 pcg3d(uint3 v)
 {
     v = v * 1664525u + 1013904223u;
@@ -193,6 +196,368 @@ float4 Pow5(float4 x)
     float4 xx = x * x;
     return xx * xx * x;
 }
+
+// ======================================================================
+// Float Vector Comparisons
+// ======================================================================
+
+// lessThan
+bool2 lessThan(float2 a, float2 b)
+{
+    return bool2(a.x < b.x, a.y < b.y);
+}
+bool3 lessThan(float3 a, float3 b)
+{
+    return bool3(a.x < b.x, a.y < b.y, a.z < b.z);
+}
+bool4 lessThan(float4 a, float4 b)
+{
+    return bool4(a.x < b.x, a.y < b.y, a.z < b.z, a.w < b.w);
+}
+
+// greaterThan
+bool2 greaterThan(float2 a, float2 b)
+{
+    return bool2(a.x > b.x, a.y > b.y);
+}
+bool3 greaterThan(float3 a, float3 b)
+{
+    return bool3(a.x > b.x, a.y > b.y, a.z > b.z);
+}
+bool4 greaterThan(float4 a, float4 b)
+{
+    return bool4(a.x > b.x, a.y > b.y, a.z > b.z, a.w > b.w);
+}
+
+// equal
+bool2 equal(float2 a, float2 b)
+{
+    return bool2(a.x == b.x, a.y == b.y);
+}
+bool3 equal(float3 a, float3 b)
+{
+    return bool3(a.x == b.x, a.y == b.y, a.z == b.z);
+}
+bool4 equal(float4 a, float4 b)
+{
+    return bool4(a.x == b.x, a.y == b.y, a.z == b.z, a.w == b.w);
+}
+
+// notEqual
+bool2 notEqual(float2 a, float2 b)
+{
+    return bool2(a.x != b.x, a.y != b.y);
+}
+bool3 notEqual(float3 a, float3 b)
+{
+    return bool3(a.x != b.x, a.y != b.y, a.z != b.z);
+}
+bool4 notEqual(float4 a, float4 b)
+{
+    return bool4(a.x != b.x, a.y != b.y, a.z != b.z, a.w != b.w);
+}
+
+// lessThanEqual
+bool2 lessThanEqual(float2 a, float2 b)
+{
+    return bool2(a.x <= b.x, a.y <= b.y);
+}
+bool3 lessThanEqual(float3 a, float3 b)
+{
+    return bool3(a.x <= b.x, a.y <= b.y, a.z <= b.z);
+}
+bool4 lessThanEqual(float4 a, float4 b)
+{
+    return bool4(a.x <= b.x, a.y <= b.y, a.z <= b.z, a.w <= b.w);
+}
+
+// greaterThanEqual
+bool2 greaterThanEqual(float2 a, float2 b)
+{
+    return bool2(a.x >= b.x, a.y >= b.y);
+}
+bool3 greaterThanEqual(float3 a, float3 b)
+{
+    return bool3(a.x >= b.x, a.y >= b.y, a.z >= b.z);
+}
+bool4 greaterThanEqual(float4 a, float4 b)
+{
+    return bool4(a.x >= b.x, a.y >= b.y, a.z >= b.z, a.w >= b.w);
+}
+
+// ======================================================================
+// Signed Integer Vector Comparisons (int)
+// ======================================================================
+
+// lessThan
+bool2 lessThan(int2 a, int2 b)
+{
+    return bool2(a.x < b.x, a.y < b.y);
+}
+bool3 lessThan(int3 a, int3 b)
+{
+    return bool3(a.x < b.x, a.y < b.y, a.z < b.z);
+}
+bool4 lessThan(int4 a, int4 b)
+{
+    return bool4(a.x < b.x, a.y < b.y, a.z < b.z, a.w < b.w);
+}
+
+// greaterThan
+bool2 greaterThan(int2 a, int2 b)
+{
+    return bool2(a.x > b.x, a.y > b.y);
+}
+bool3 greaterThan(int3 a, int3 b)
+{
+    return bool3(a.x > b.x, a.y > b.y, a.z > b.z);
+}
+bool4 greaterThan(int4 a, int4 b)
+{
+    return bool4(a.x > b.x, a.y > b.y, a.z > b.z, a.w > b.w);
+}
+
+// equal
+bool2 equal(int2 a, int2 b)
+{
+    return bool2(a.x == b.x, a.y == b.y);
+}
+bool3 equal(int3 a, int3 b)
+{
+    return bool3(a.x == b.x, a.y == b.y, a.z == b.z);
+}
+bool4 equal(int4 a, int4 b)
+{
+    return bool4(a.x == b.x, a.y == b.y, a.z == b.z, a.w == b.w);
+}
+
+// notEqual
+bool2 notEqual(int2 a, int2 b)
+{
+    return bool2(a.x != b.x, a.y != b.y);
+}
+bool3 notEqual(int3 a, int3 b)
+{
+    return bool3(a.x != b.x, a.y != b.y, a.z != b.z);
+}
+bool4 notEqual(int4 a, int4 b)
+{
+    return bool4(a.x != b.x, a.y != b.y, a.z != b.z, a.w != b.w);
+}
+
+// lessThanEqual
+bool2 lessThanEqual(int2 a, int2 b)
+{
+    return bool2(a.x <= b.x, a.y <= b.y);
+}
+bool3 lessThanEqual(int3 a, int3 b)
+{
+    return bool3(a.x <= b.x, a.y <= b.y, a.z <= b.z);
+}
+bool4 lessThanEqual(int4 a, int4 b)
+{
+    return bool4(a.x <= b.x, a.y <= b.y, a.z <= b.z, a.w <= b.w);
+}
+
+// greaterThanEqual
+bool2 greaterThanEqual(int2 a, int2 b)
+{
+    return bool2(a.x >= b.x, a.y >= b.y);
+}
+bool3 greaterThanEqual(int3 a, int3 b)
+{
+    return bool3(a.x >= b.x, a.y >= b.y, a.z >= b.z);
+}
+bool4 greaterThanEqual(int4 a, int4 b)
+{
+    return bool4(a.x >= b.x, a.y >= b.y, a.z >= b.z, a.w >= b.w);
+}
+
+// ======================================================================
+// Unsigned Integer Vector Comparisons (uint)
+// ======================================================================
+
+// lessThan
+bool2 lessThan(uint2 a, uint2 b)
+{
+    return bool2(a.x < b.x, a.y < b.y);
+}
+bool3 lessThan(uint3 a, uint3 b)
+{
+    return bool3(a.x < b.x, a.y < b.y, a.z < b.z);
+}
+bool4 lessThan(uint4 a, uint4 b)
+{
+    return bool4(a.x < b.x, a.y < b.y, a.z < b.z, a.w < b.w);
+}
+
+// greaterThan
+bool2 greaterThan(uint2 a, uint2 b)
+{
+    return bool2(a.x > b.x, a.y > b.y);
+}
+bool3 greaterThan(uint3 a, uint3 b)
+{
+    return bool3(a.x > b.x, a.y > b.y, a.z > b.z);
+}
+bool4 greaterThan(uint4 a, uint4 b)
+{
+    return bool4(a.x > b.x, a.y > b.y, a.z > b.z, a.w > b.w);
+}
+
+// equal
+bool2 equal(uint2 a, uint2 b)
+{
+    return bool2(a.x == b.x, a.y == b.y);
+}
+bool3 equal(uint3 a, uint3 b)
+{
+    return bool3(a.x == b.x, a.y == b.y, a.z == b.z);
+}
+bool4 equal(uint4 a, uint4 b)
+{
+    return bool4(a.x == b.x, a.y == b.y, a.z == b.z, a.w == b.w);
+}
+
+// notEqual
+bool2 notEqual(uint2 a, uint2 b)
+{
+    return bool2(a.x != b.x, a.y != b.y);
+}
+bool3 notEqual(uint3 a, uint3 b)
+{
+    return bool3(a.x != b.x, a.y != b.y, a.z != b.z);
+}
+bool4 notEqual(uint4 a, uint4 b)
+{
+    return bool4(a.x != b.x, a.y != b.y, a.z != b.z, a.w != b.w);
+}
+
+// lessThanEqual
+bool2 lessThanEqual(uint2 a, uint2 b)
+{
+    return bool2(a.x <= b.x, a.y <= b.y);
+}
+bool3 lessThanEqual(uint3 a, uint3 b)
+{
+    return bool3(a.x <= b.x, a.y <= b.y, a.z <= b.z);
+}
+bool4 lessThanEqual(uint4 a, uint4 b)
+{
+    return bool4(a.x <= b.x, a.y <= b.y, a.z <= b.z, a.w <= b.w);
+}
+
+// greaterThanEqual
+bool2 greaterThanEqual(uint2 a, uint2 b)
+{
+    return bool2(a.x >= b.x, a.y >= b.y);
+}
+bool3 greaterThanEqual(uint3 a, uint3 b)
+{
+    return bool3(a.x >= b.x, a.y >= b.y, a.z >= b.z);
+}
+bool4 greaterThanEqual(uint4 a, uint4 b)
+{
+    return bool4(a.x >= b.x, a.y >= b.y, a.z >= b.z, a.w >= b.w);
+}
+
+// ======================================================================
+// Scalar Implementations (All Types)
+// ======================================================================
+
+// Float
+bool lessThan(float a, float b)
+{
+    return a < b;
+}
+bool greaterThan(float a, float b)
+{
+    return a > b;
+}
+bool equal(float a, float b)
+{
+    return a == b;
+}
+bool notEqual(float a, float b)
+{
+    return a != b;
+}
+bool lessThanEqual(float a, float b)
+{
+    return a <= b;
+}
+bool greaterThanEqual(float a, float b)
+{
+    return a >= b;
+}
+
+// Int
+bool lessThan(int a, int b)
+{
+    return a < b;
+}
+bool greaterThan(int a, int b)
+{
+    return a > b;
+}
+bool equal(int a, int b)
+{
+    return a == b;
+}
+bool notEqual(int a, int b)
+{
+    return a != b;
+}
+bool lessThanEqual(int a, int b)
+{
+    return a <= b;
+}
+bool greaterThanEqual(int a, int b)
+{
+    return a >= b;
+}
+
+// Uint
+bool lessThan(uint a, uint b)
+{
+    return a < b;
+}
+bool greaterThan(uint a, uint b)
+{
+    return a > b;
+}
+bool equal(uint a, uint b)
+{
+    return a == b;
+}
+bool notEqual(uint a, uint b)
+{
+    return a != b;
+}
+bool lessThanEqual(uint a, uint b)
+{
+    return a <= b;
+}
+bool greaterThanEqual(uint a, uint b)
+{
+    return a >= b;
+}
+
+#include "Platform.hlsli"
+
+#if !COMPILER_SUPPORT_MINMAX3
+template<typename T>
+inline T max3(T x, T y, T z)
+{
+    return max(max(x, y), z);
+}
+
+template<typename T>
+inline T min3(T x, T y, T z)
+{
+    return min(min(x, y), z);
+}
+#endif
 
 //find the n-th nonzero bit for uint
 uint FindNthSetBit(uint mask, uint n)

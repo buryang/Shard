@@ -74,14 +74,74 @@ uint FloatToInteger(float value, float scale)
 
 }
 
-#define RGBA_FLOAT_TO_INTEGER10_SCALE 1023
+/**
+* optimize code according to "https://www.elopezr.com/the-art-of-packing-data/"
+* for platform has special packfing instructions(shader model 6.6),using it
+*/
+#define RGBA_FLOAT_TO_UNORM8_SCALE 255
+#define RGBA_FLOAT_TO_UNORM10_SCALE 1023
+#define RGBA_FLOAT_TO_UNORM16_SCALE 65535
+#define RGBA_FLOAT_TO_SNORM8_SCALE 127
 
 /*color space pack/unpack*/
+uint PackFloat4ToRGBA8Unorm(float4 value)
+{
+    uint4 uvalue = uint4(value * RGBA_FLOAT_TO_UNORM8_SCALE + 0.5);
+#if PACKING_INTRINSICS_ENABLED
+    return pack_u8(uvalue);
+#else
+    return (uvalue.a << 24) | (uvalue.b << 16) | (uvalue.g << 8) | uvalue.r;
+#endif
+}
+
+float4 UnpackRGBA8UnormToFloat4(uint packed)
+{
+#if PACKING_INTRINSICS_ENABLED
+    return float4(unpack_u8u32(packed)) / RGBA_FLOAT_TO_UNORM8_SCALE;
+#else
+    uint ri = packed & 0xff;
+    uint gi = (packed >> 8) & 0xff;
+    uint bi = (packed >> 16) & oxff;
+    uint ai = packed >> 24;
+    return float4(ri, gi, bi, ai) / RGBA_FLOAT_TO_INTEGER8_SCALE;
+#endif
+}
+
+/**
+*the minimum value means -1.0f (e.g. the 5-bit value 10000 maps to -1.0f). In addition, the second-minimum 
+*number maps to -1.0f (e.g. the 5-bit value 10001 maps to -1.0f). There are thus two integer representations
+*for -1.0f. There is a single representation for 0.0f, and a single representation for 1.0f
+*/
+
+//assume input is in the -1, 1 range, for both packing and unpacking. Clamp accordingly if the input is unknown
+uint PackFloat4ToRGBA8Snorm(float4 value)
+{
+    int4 ivalue = int4(round(value * RGBA_FLOAT_TO_SNORM8_SCALE));
+#if PACKING_INTRINSICS_ENABLED
+    return (uint) pack_s8(ivalue);
+#else
+    return (uint) ((ivalue.a << 24) | (ivalue.b << 16) | (ivalue.g << 8) | ivalue.r);
+#endif
+}
+ 
+float4 UnpackRGBA8SnormToFloat4(uint packed)
+{
+#if PACKING_INTRINSICS_ENABLED
+    return float4(unpack_s8u32(packed)) / RGBA_FLOAT_TO_SNORM8_SCALE;
+#else
+    int ri = (int) (packed << 24) >> 24;
+    int gi = (int) (packed << 16) >> 24;
+    int bi = (int) (packed << 8) >> 24;
+    int ai = (int) (packed << 0) >> 24;
+    return float4(ri, gi, bi, ai) / RGBA_FLOAT_TO_SNORM8_SCALE;
+#endif
+}
+
 uint PackFloat4ToR10G10B10A2Unorm(float4 unpacked)
 {
-    uint packed = FloatToInteger(unpacked.x, RGBA_FLOAT_TO_INTEGER10_SCALE);
-    packed |= FloatToInteger(unpacked.y, RGBA_FLOAT_TO_INTEGER10_SCALE) << 10;
-    packed |= FloatToInteger(unpacked.z, RGBA_FLOAT_TO_INTEGER10_SCALE) << 20;
+    uint packed = FloatToInteger(unpacked.x, RGBA_FLOAT_TO_UNORM10_SCALE);
+    packed |= FloatToInteger(unpacked.y, RGBA_FLOAT_TO_UNORM10_SCALE) << 10;
+    packed |= FloatToInteger(unpacked.z, RGBA_FLOAT_TO_UNORM10_SCALE) << 20;
     packed |= FloatToInteger(unpacked.w, 3) << 30;
     return packed;
 }
@@ -89,9 +149,9 @@ uint PackFloat4ToR10G10B10A2Unorm(float4 unpacked)
 float4 UnpackR10G10B10A2ToFloat4(uint packed)
 {
     float4 unpacked;
-    unpacked.x = float(packed & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
-    unpacked.y = float((packed >> 10) & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
-    unpacked.z = float((packed >> 20) & 0x3ffu) / RGBA_FLOAT_TO_INTEGER10_SCALE;
+    unpacked.x = float(packed & 0x3ffu) / RGBA_FLOAT_TO_UNORM10_SCALE;
+    unpacked.y = float((packed >> 10) & 0x3ffu) / RGBA_FLOAT_TO_UNORM10_SCALE;
+    unpacked.z = float((packed >> 20) & 0x3ffu) / RGBA_FLOAT_TO_UNORM10_SCALE;
     unpacked.w = float((packed >> 30) & 0x3u) / 3;
     return unpacked;
 }

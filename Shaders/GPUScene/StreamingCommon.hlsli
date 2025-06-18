@@ -23,12 +23,29 @@
 #define STREAM_ALLOCATOR_FREEGAPS_INSERT_WORKGROUP 64
 #define STREAM_ALLOCATOR_SETUP_INSERTION_WORKGROUP 64
 
+#define STREAM_MAX_ACTIVE_TASKS_COUNT 3
+#define STREAM_INVALID_TASK_INDEX 0xffffffffu
+
 //update flags bitmask define 
 #define STREAMING_UPDATE_OFFSET_MASK    0xfffffffcu
 #define STREAMING_UPDATE_LEAF_MASK      0x00000001u
 #define STREAMING_UPDATE_RESET_MASK     0x00000002u
 
 #define STREAMING_STATS_READBACK 1
+
+struct StreamingConfig
+{
+    uint max_per_frame_load_requests_count;
+    uint max_per_frame_unload_requests_count;
+    
+    uint max_groups_count;
+    uint max_clusters_count;
+    
+    //persistent allocator config
+    uint clas_allocator_sector_size_shift;
+    uint clas_allocator_granularity_shift;
+    //todo
+};
 
 struct AllocatorRange
 {

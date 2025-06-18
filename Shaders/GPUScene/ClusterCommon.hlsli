@@ -24,6 +24,14 @@
 
 #define MATERIAL_ID_BITS_SHIFT 14
 #define MATERIAL_ID_MAX_NUM (1 << MATERIAL_ID_BITS_SHIFT)
+#define MATERIAL_SLOW_PATH_FLAG (1u << 31) //todo
+
+
+#define NODE_MAX_CHILD_COUNT 4
+#define GROUP_MAX_CLUSTER_COUNT 8
+
+
+#define INVALID_DATA_OFFSET 0xffffffffu
 
 
 struct BBoxSphere 
@@ -40,19 +48,39 @@ struct Cluster
     uint lod_level;
     uint group_child_index;
     uint groupID;
+    uint packed_flags; //todo
     
     BBoxSphere bounding_box;
     
-    BUFFER_REF(float3_in) positions;
-    BUFFER_REF(float3_in) normals;
-    BUFFER_REF(uint8_in) local_triangles;
+    float lod_error;
+    float edge_length;
+    
+    
+    //todo delete packed cluster
+    //encoded attributes should not be float3
+    //BUFFER_REF(float3_in) positions;
+    //BUFFER_REF(float3_in) normals;
+    //BUFFER_REF(uint8_in) local_triangles;
+    
+    //material table, slow path/3 materials fast path
+    
 };
 
+//like unreal engine visibleClustersssssss
+struct VisibleCluster
+{
+    uint packed_flags;
+    uint viewID; //view ID for multi view taversal
+    uint groupID; //group the cluster in
+    uint instanceID; //object instance ID
+    uint clusterID; //todo clusterID array to save cluster address?
+};
 
 //A group contains multiple clusters that are the result of
 //a common mesh decimation operation. Clusters within a group
 //are watertight to each other. Groups are always streamed in
 //completely, which simplifies the streaming management.
+//Real-Time Ray Tracing of Micro-Poly Geometry with Hierarchical Level of Detail
 
 struct TraversalMetric
 {
@@ -63,6 +91,29 @@ struct TraversalMetric
     float bounding_sphereZ;
     float bounding_sphere_radius;
     float max_quadric_error;
+};
+
+#define NODE_PACKED_IS_GROUP_SHIFT 0
+#define NODE_PACKED_IS_GROUP_BITS 1
+
+#define NODE_PACKED_CHILD_OFFSET 1
+#define NODE_PACKED_CHILD_BITS 26
+#define NODE_PACKED_CHILD_COUNT_MINUS_ONE_OFFSET 27
+#define NODE_PACKED_CHILD_COUNT_MINUS_ONE_BITS 5
+
+#define NODE_PACKED_GROUP_INDEX_OFFSET 1
+#define NODE_PACKED_GROUP_INDEX_BITS 23
+#define NODE_PACKED_GROUP_INDEX_CLUSTER_COUNT_MINUS_ONE_OFFSET 24
+#define NODE_PACKED_GROUP_INDEX_CLUSTER_COUNT_MINUS_ONE_BITS 8
+
+#define MAX_NODE_HIERACHY_CHILDREN_COUNT (1u << 6)
+
+//one node map to one cluster
+struct Node
+{
+    BBoxSphere bounding_box;
+    uint child_group_reference; //child node/cluster reference
+    uint is_leaf_loaded; //is_leaf/loaded
 };
 
 //DAG node
@@ -181,6 +232,16 @@ struct TessellatedStatReadBack
     uint _cluster_triangleID_packed;
     uint instanceID;
     uint _instanceID_packed;
+};
+
+//triangle index remap
+struct TriRemapEntry
+{
+    uint input_triangle_index;
+    
+    uint index0;
+    uint index1;
+    uint index2; //
 };
 
 #endif

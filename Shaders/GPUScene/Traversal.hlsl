@@ -1,14 +1,18 @@
 #include "../CommonUtils.hlsli"
 #include "../WorkDistributionUtils.hlsli"
 #include "ClusterCommon.hlsli"
+#include "GPUSceneCommon.hlsli"
+#include "DataTanscode.hlsli"
 
-#define NODE_PACKED_IS_GROUP 0 : 1
+#define NODE_PACKED_IS_GROUP 0 : 1 //to do ... defined another place (cluster common Node)
 #define NODE_PACKED_GROUP_INDEX 1 : 23
 #define NODE_PACKED_CHILD_OFFSET 1 : 26
 #define NODE_PACKED_CHILD_COUNT_MINUS_ONE 27 : 5
 
 #define TRAVERSAL_INIT_WORKGROUP 128
 #define TRAVERSAL_RUN_WORKGROUP 64
+#define TRAVERSAL_SORTING_ENABLED 1
+
 
 struct ClusterInfo
 {
@@ -26,6 +30,12 @@ inline void UnpackTraversalInfo(uint2 packed_info, out TraversalInfo info)
 {
     info.instanceID = packed_info.x;
     info.packed_node = packed_info.y;
+}
+
+inline uint2 PackTraversalInfo(in TraversalInfo info)
+{
+    uint2 packed = 0u;
+    
 }
 
 uint SetupTask(inout TraversalInfo traveral_info, uint read_index, uint pass_index)
@@ -95,15 +105,75 @@ void ProcessAllSubTask(inout TraversalInfo traversal_info, bool thread_runnable,
 
 }
 
-//initialization entry function, seed root's of visible instance
-void CSnitMain()
+//presort calculate object/viewer distance
+void CSPreSortMain(uint3 dispatch_threadID : SV_DispatchThreadID)
 {
+    uint instanceID = dispatch_threadID.x;
+    if(instanceID > )
+        return;
+    
+    Instance instance = xx;
+    Primitive geometry = yy;
+    
+    float4x4 world_to_local = inverse();
+    
+    float4 world_position = xx;
+    
+    //store distance for sort
+    xx[instanceID] = instanceID;
+    xx_key[instanceID] = distance(world_position, viewer.xyz);
+}
+
+
+//initialization entry function, seed root's of visible instance
+void CSInitMain(uint3 dispatch_threadID : SV_DispatchThreadID)
+{
+    uint instanceID = dispatch_threadID.x;
+    uint instance_load = min(xx, instanceID);
+    const bool is_valid = instanceID == instance_load;
+    
+#if TRAVERSAL_SORTING_ENABLED
+    instance_load = ...;
+    instanceID = instance_load;
+#endif
+    
+    //streaming priority should related to camera positon£¬or instance sorted order
+    Instance instance = xx;
+    Primitive geometry = yy;
+    
+    //todo primitive culling work and push root node into queue
+    
+    uint4 vote_nodes = WaveActiveCountBits(is_valid);
+    
+    uint nodes_offset = 0u;
+    if (WaveIsFirstLane())
+    {
+        InterlockedAdd(xx, vote_nodes, nodes_offset);
+    }
+    
+    nodes_offset = WaveReadLaneFirst(nodes_offset);
+    nodes_offset += WavePrefixCountBits(is_valid);
+    
+    //push node work to queue
+    if (nodes_offset < xx && is_valid)
+    {
+        uint packed_node = geometry.nodes[0]; //todo root node
+        TraversalInfo traversal_info;
+        traversal_info.instanceID = instanceID; //with instanceID
+        traversal_info.packed_node = xx;
+        xx = PackTraversalInfo(traversal_info);
+        //todo
+    }
+    
     
 }
 
 
+
+
 //refresh running entry function, all renderable clusters are output
 //with render_cluster_infos, and its counter
+[numthreads(TRAVERSAL_RUN_WORKGROUP, 1, 1)]
 void CSRunMain()
 {
     uint thread_read_index = ~0u;

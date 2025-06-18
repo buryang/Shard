@@ -2,6 +2,7 @@
 #define _COMPUTE_SHADER_UTILS_INC_
 
 #include "CommonUtils.hlsli"
+#include "ShaderAssert.hlsli"
 
 /******************************************************************************
 \brief help function for compute shaders, simulation cmask/tile operation etc
@@ -228,5 +229,18 @@ uint ZMaskToZPlaneCount(uint zmask)
 void CalculateCmaskIndexAndShift(uint2 tile_coord, out uint cmask_index, out uint cmask_shift)
 {
     
+}
+
+
+//memory copy utils
+void MemoryCopy(ByteAddressBuffer src, uint64 src_offset, out RWByteAddressBuffer dst, uint64 dst_offset, uint64 size, uint3 thread_dispatchID : SV_DispatchThreadID) //uint3??
+{
+    //assume dst_offset£¬src_offset, size align to uint4
+    uint dword_offset = thread_dispatchID.x << 4; 
+    if (dword_offset < size)
+    {
+        const uint4 data = src.Load4(src_offset + dword_offset);
+        dst.Store4(dst_offset + dword_offset, data);
+    }
 }
 #endif //_COMPUTE_SHADER_UTILS_INC_

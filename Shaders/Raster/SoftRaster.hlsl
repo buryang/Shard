@@ -5,11 +5,19 @@
 #ifdef SCENE_STREAMING_ENABLE
 #include "../GPUScene/StreamingCommon.hlsli"
 #endif
+#include "RasterCommon.hlsli"
 
 struct ClusterInfo
 {
     uint instanceID;
     uint clusterID;//
+};
+
+/*triangle range to raster in a cluaster*/
+struct RasterTriangleRange
+{
+    uint begin;
+    uint end;
 };
 
 groupshared uint group_base_vertex_index;
@@ -88,10 +96,11 @@ void DeduplicateVertIndex(uint3 vert_indexes, uint group_thread_index, bool is_t
     unique_verts_num = countbits(used_vertex_mask);
 }
 
-//main entry for raster
-void ClusterRaster(uint cluster_index, uint group_thread_index : SV_GroupIndex)
+//main entry for raster, for loading all cluster vertex into LDS, so one thread group deal with one cluster
+void ClusterRaster(ViewInfo view, uint visible_cluster_index, uint group_thread_index : SV_GroupIndex)
 {
     
+    //todo
 }
 
 void main()

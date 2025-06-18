@@ -43,7 +43,15 @@
 #endif 
 #define FASTOPT [fastopt]
 
-#define WAVE_INTRINSICS_ENABLED 
+//whether platform has wave intrinsics
+#define WAVE_INTRINSICS_ENABLED  1
+#define PACKING_INTRINSICS_ENABLED 1
+
+#define QUAD_INTRINSICS_ENABLED 1
+//whether platform support hitile lookup
+#define HITILE_LOOKUP_INTRINSICS_ENABLED    1
+
+#define COMPILER_SUPPORT_MINMAX3 0
 
 #define WorkDistributionQueue RWByteAddressBuffer
 #define WorkDistributionStateQueue RWByteAddressBuffer
@@ -52,7 +60,7 @@
 
 //simulate some ds_swizzle_b32 operations
 #ifndef COMPILER_WITH_SWIZZLE_GCN
-#ifdef WAVE_INTRINSICS_ENABLED
+#if WAVE_INTRINSICS_ENABLED
 float WaveLaneBroadcast(float x, uint lane_index)
 {
     return WaveReadLaneAt(x, lane_index);
@@ -91,6 +99,29 @@ float WaveLaneSwizzleGCN(float x, const uint and_mask, const uint or_mask, const
 #endif
 #else
 #error "only support platform with wave intrinsics, you can use LDS/sync to realize it"
+#endif
+
+#if QUAD_INTRINSICS_ENABLED
+//https://microsoft.github.io/DirectX-Specs/d3d/HLSL_SM_6_7_QuadAny_QuadAll.html
+bool QuadActiveAnyTrue(bool expr)
+{
+    const uint uint_expr = (uint) expr;
+    uint result = uint_expr;
+    result |= QuadReadAcrossX(uint_expr);
+    result |= QuadReadAcrossY(uint_expr);
+    result |= QuadReadAcrossDiagonal(uint_expr);
+    return result != 0u;
+}
+
+bool QuadActiveAllTrue(bool expr)
+{
+    return expr && QuadReadAcrossX(expr) && QuadReadAcrossY(expr) && QuadReadAcrossDiagonal(expr);
+}
+#else
+#endif
+
+#if HITILE_LOOKUP_INTRINSICS_ENABLED
+#else
 #endif
 
 //to do platform related
