@@ -1,6 +1,0 @@
-D:\Exp\Source\MetaInit\x64\Debug\UnitTest.exe
-D:\Exp\Source\MetaInit\x64\Debug\UnitTest.vcxproj.CopyComplete
-D:\Exp\Source\MetaInit\x64\Debug\fmtd.dll
-D:\Exp\Source\MetaInit\x64\Debug\glog.dll
-D:\Exp\Source\MetaInit\x64\Debug\gflags_debug.dll
-D:\Exp\Source\MetaInit\x64\Debug\gmockd.dll
