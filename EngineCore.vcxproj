@@ -22,6 +22,7 @@
     <ClCompile Include="Graphics\Core\EngineGlobalParams.cpp" />
     <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
     <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
+    <ClCompile Include="Scene\Primitive.cpp" />
     <ClCompile Include="System\Render\Effect\Base\EffectBasePass.cpp" />
     <ClCompile Include="System\Render\Effect\DebugView\EffectDebugView.cpp" />
     <ClCompile Include="System\Render\Effect\DebugView\EffectImguiView.cpp" />
@@ -82,6 +83,7 @@
     <ClCompile Include="System\Render\RuntimeWorkProcessor.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="System\Render\SceneProxy\SceneProxy.cpp" />
+    <ClCompile Include="System\Render\SceneProxy\SceneStreaming.cpp" />
     <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
@@ -174,6 +176,7 @@
     <ClInclude Include="System\Render\Runtime\RumtimePrimitiveCPUCulling.h" />
     <ClInclude Include="System\Render\Runtime\RuntimeMeshBatchGenerator.h" />
     <ClInclude Include="System\Render\SceneProxy\SceneProxy.h" />
+    <ClInclude Include="System\Render\SceneProxy\SceneStreaming.h" />
     <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
     <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
     <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
@@ -199,17 +202,24 @@
     <None Include="Shaders\BSDF.hlsli" />
     <None Include="Shaders\BVHCommon.hlsli" />
     <None Include="Shaders\CommonUtils.hlsli" />
+    <None Include="Shaders\ComputeShaderUtils.hlsli" />
     <None Include="Shaders\DebugView\DebugViewCommon.hlsli" />
     <None Include="Shaders\Fonts\FontsShaderCommon.hlsli" />
     <None Include="Shaders\GPUScene\ClusterCommon.hlsli" />
     <None Include="Shaders\GPUScene\Culling.hlsli" />
-    <None Include="Shaders\GPUScene\StreamCommon.hlsli" />
+    <None Include="Shaders\GPUScene\DataDecode.hlsli" />
+    <None Include="Shaders\GPUScene\GPUSceneCommon.hlsli" />
+    <None Include="Shaders\GPUScene\StreamingCommon.hlsli" />
+    <None Include="Shaders\ParallelSort.hlsli" />
     <None Include="Shaders\Lighting\LTC.hlsli" />
+    <None Include="Shaders\Lighting\ZBin.hlsli" />
     <None Include="Shaders\Material.hlsli" />
     <None Include="Shaders\Math.hlsli" />
-    <None Include="Shaders\PersistentMem\Common.hlsli" />
+    <None Include="Shaders\Platform.hlsli" />
     <None Include="Shaders\ShaderAssert.hlsli" />
     <None Include="Shaders\ShaderPrintf.hlsli" />
+    <None Include="Shaders\SoftRaster\RasterCommon.hlsli" />
+    <None Include="Shaders\WorkDistributionUtils.hlsli" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
@@ -276,7 +286,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\PersistentMem\CSMemoryFree.hlsl">
+    <FxCompile Include="Shaders\GPUMem\MemoryArena.hlsli">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
@@ -286,7 +296,37 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Shaders\PersistentMem\CSMemoryMalloc.hlsl">
+    <FxCompile Include="Shaders\GPUMem\MemoryCBT.hlsli">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\SoftRaster\HZBCulling.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\SoftRaster\Raster.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\SoftRaster\ShadeBinning.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
@@ -365,12 +405,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;D:\Exp\Source\MetaInit\Graphics;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;D:\Exp\Source\MetaInit</IncludePath>
+    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;D:\Exp\Source\MetaInit\Graphics;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;D:\Exp\Source\MetaInit\ThirdParty\nv_cluster_lod_builder\include;D:\Exp\Source\MetaInit</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);D:\VulkanSDK\1.2.162.0\Lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;D:\Exp\Source\MetaInit\Graphics;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;D:\Exp\Source\MetaInit</IncludePath>
+    <IncludePath>$(IncludePath);D:\VulkanSDK\1.2.162.0\Include;D:\Exp\Source\MetaInit\Graphics;D:\Exp\Source\MetaInit\ThirdParty;D:\Exp\Source\MetaInit\ThirdParty\SDL\include;D:\Exp\Source\MetaInit\ThirdParty\nv_cluster_lod_builder\include;D:\Exp\Source\MetaInit</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);D:\VulkanSDK\1.2.162.0\Lib;$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -424,6 +464,10 @@
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>volk.lib;glog.lib;folly.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>6.2</ShaderModel>
+      <AdditionalOptions>-HV 2021 -spirv -fvk-use-dx-layout %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -450,6 +494,10 @@
       <Command>
       </Command>
     </PostBuildEvent>
+    <FxCompile>
+      <ShaderModel>6.2</ShaderModel>
+      <AdditionalOptions>-HV 2021 -spirv -fvk-use-dx-layout %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

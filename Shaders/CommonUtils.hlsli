@@ -42,21 +42,24 @@ inline uint BitsMask(uint bits, uint shift)
     return ((1u << bits) - 1) << shift;
 }
 
-inline uint InsertBits(uint mask, uint preserve, uint enable)
+//insert low bitCount bits of insert at an offset in base
+inline uint BitfieldInsert(uint mask, uint preserve, uint enable)
 {
-    return (preserve & mask) | (enable & ~mask);
+    return bfi_b32(enable, preserve, mask);
+    //return (preserve & mask) | (enable & ~mask);
 }
 
-inline uint UnpackBits(uint packed, uint pos, uint bits)
+inline uint BitfieldExtract(uint packed, uint pos, uint bits)
 {
-    return (packed >> pos) & ((1 << bits) - 1);
+    return bfe_u32(packed, pos, bits);
+    //return (packed >> pos) & ((1 << bits) - 1);
 }
 
 uint3 UnpackBitsToUint3(uint packed, int3 component_bits)
 {
-    return uint3(UnpackBits(packed, 0, component_bits.x),
-                UnpackBits(packed, component_bits.x, component_bits.y),
-                UnpackBits(packed, component_bits.y + component_bits.x, component_bits.z));
+    return uint3(BitfieldExtract(packed, 0, component_bits.x),
+                BitfieldExtract(packed, component_bits.x, component_bits.y),
+                BitfieldExtract(packed, component_bits.y + component_bits.x, component_bits.z));
 }
 
 /*shuffle bits from low to high*/
@@ -139,6 +142,7 @@ float4 UnpackRGBA8SnormToFloat4(uint packed)
 
 uint PackFloat4ToR10G10B10A2Unorm(float4 unpacked)
 {
+    //todo rewrite using bitfieldinsert
     uint packed = FloatToInteger(unpacked.x, RGBA_FLOAT_TO_UNORM10_SCALE);
     packed |= FloatToInteger(unpacked.y, RGBA_FLOAT_TO_UNORM10_SCALE) << 10;
     packed |= FloatToInteger(unpacked.z, RGBA_FLOAT_TO_UNORM10_SCALE) << 20;
@@ -148,6 +152,7 @@ uint PackFloat4ToR10G10B10A2Unorm(float4 unpacked)
 
 float4 UnpackR10G10B10A2ToFloat4(uint packed)
 {
+    //todo rewrite using bitfieldextract
     float4 unpacked;
     unpacked.x = float(packed & 0x3ffu) / RGBA_FLOAT_TO_UNORM10_SCALE;
     unpacked.y = float((packed >> 10) & 0x3ffu) / RGBA_FLOAT_TO_UNORM10_SCALE;

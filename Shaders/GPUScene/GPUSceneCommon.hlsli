@@ -19,8 +19,8 @@
 
 struct AABB
 {
-    float3 center;
-    float3 extent;
+    float3 min;
+    float3 max;
 };
 
 struct BoundingBoxSphere

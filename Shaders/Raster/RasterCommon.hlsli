@@ -128,5 +128,7 @@ InstanceDynamicData CalcInstanceDynamicData(ViewInfo view, Instance instance)
     
 }
 
+//todo realize raster triangle according to follow url
+//https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-rules
 
 #endif

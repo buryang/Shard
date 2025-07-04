@@ -56,6 +56,9 @@ namespace Shard::HAL {
         //hwrt
         eBuildBLAS,
         eBuildTLAS,
+
+        //dispatch bundle(for pso indirect switch)
+        eDispatchBundle,
     };
 
     enum class EContextQueueType {
@@ -105,8 +108,8 @@ namespace Shard::HAL {
     };
 
     struct HALSetViewPointPacket final : public THALCommandPacketTyped<ECommandType::eSetViewPoint> {
-        vec3    min_dims_;
-        vec3    max_dims_;
+        float3    min_dims_;
+        float3    max_dims_;
     };
 
     struct HALSetScissorPacket final : public THALCommandPacketTyped<ECommandType::eSetScissorRect> {
@@ -203,7 +206,7 @@ namespace Shard::HAL {
 
     struct HALDispatchPacket final : public THALCommandPacketTyped<ECommandType::eDispatch, EContextQueueType::eAll>{
         HALShader*  shader_{ nullptr };
-        vec3    thread_grp_size_;
+        float3    thread_grp_size_;
     };
 
     struct HALDispatchIndirectPacket final : public THALCommandPacketTyped<ECommandType::eDispatchIndirect, EContextQueueType::eAll>{
@@ -300,6 +303,18 @@ namespace Shard::HAL {
         size_type    user_data_size_{ 0u };
     };
 
+    /**
+     * We start with a descriptor heap containing all descriptors needed by all shading dispatches, akin to what is done for ray tracing.
+     * We record Xbox GPU packets for each shading dispatch into a GPU buffer.
+     */
+    struct HALDispatchIndirectBundlePacket final : public THALCommandPacketTyped<ECommandType::eDispatchBundle> {
+        //Root signature
+        //Pipeline state object
+        //Descriptor virtual addresses
+        //And root constants(to get the shading bin ID into an SGPR)
+
+    };
+
 #ifdef DEVELOP_DEBUG_TOOLS
     struct HALResetQueryPoolPacket final : public THALCommandPacketTyped<ECommandType::eResetQueryPool> {
         HALQueryPool*   query_pool_{ nullptr };
@@ -318,5 +333,5 @@ namespace Shard::HAL {
         uint32_t    query_index_{ 0u };
     };
 #endif
- 
+
 }

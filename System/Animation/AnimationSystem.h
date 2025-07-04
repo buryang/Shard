@@ -28,7 +28,7 @@ namespace Shard::System::Animation
 
     struct ECSAnimationComponent
     {
-        vec2    duration_{ 0.f, 0.f }; //animation start&end
+        float2    duration_{ 0.f, 0.f }; //animation start&end
         float    time_; //whole time
         float    speed_{ 0.f };
         float    last_update_time_{ 0.f };

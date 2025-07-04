@@ -156,7 +156,7 @@ namespace Shard::HAL {
         bool    stencil_test_enable_{ false };
         EStencilOp    front_op_;
         EStencilOp    back_op_;
-        vec2    depth_bounds_;
+        float2    depth_bounds_;
         static HashType ComputeHash(const HALDepthStencilStateInitializer& initializer);
     };
 

@@ -138,7 +138,7 @@ namespace Shard::Scene
 
                 if (values.find("baseColorFactor") != values.end())
                 {
-                    material_helper.base_color_factor_ = vec4(glm::make_vec3(values["baseColorFactor"].ColorFactor().data()), 1.0f);
+                    material_helper.base_color_factor_ = vec4(glm::make_float3(values["baseColorFactor"].ColorFactor().data()), 1.0f);
                 }
 
             }
@@ -183,7 +183,7 @@ namespace Shard::Scene
 
                 if (values.find("emissiveFactor") != values.end())
                 {
-                    material_helper.emissive_factor_ = vec4(glm::make_vec3(values["emissiveFactor"].ColorFactor().data()), 1.0f);
+                    material_helper.emissive_factor_ = vec4(glm::make_float3(values["emissiveFactor"].ColorFactor().data()), 1.0f);
                 }
             }
             helper.AddMaterials(std::move(material_helper));
@@ -305,7 +305,7 @@ namespace Shard::Scene
                     {
                         for (auto v = 0; v < attrib_acc.count; ++v)
                         {
-                            vec2 uv;
+                            float2 uv;
                             vert_extract(attrib_data, v, byte_stride, &uv[0], attrib_comp_count);
                             mesh_helper.AddTexCoord(uv);
                         }
@@ -314,7 +314,7 @@ namespace Shard::Scene
                     {
                         for (auto v = 0; v < attrib_acc.count; ++v)
                         {
-                            vec3 color;
+                            float3 color;
                             vert_extract(attrib_data, v, byte_stride, &color[0], attrib_comp_count);
                         }
                         //todo
@@ -327,7 +327,7 @@ namespace Shard::Scene
                     {
                         for (auto v = 0; v < attrib_acc.count; ++v)
                         {
-                            vec3 normal;
+                            float3 normal;
                             vert_extract(attrib_data, v, byte_stride, &normal[0], attrib_comp_count);
                             mesh_helper.AddNormal(normal);
                         }
@@ -351,16 +351,16 @@ namespace Shard::Scene
         {
             //with spearate trans/rot/scale
             //https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/gltfTutorial_004_ScenesNodes.md
-            vec3 trans_vec{ 0.f }, scale_vec{ 1.0f };
+            float3 trans_vec{ 0.f }, scale_vec{ 1.0f };
             if (node.translation.size() == 3)
             {
-                trans_vec = glm::make_vec3(node.translation.data());
+                trans_vec = glm::make_float3(node.translation.data());
             }
             auto trans = glm::translate(glm::mat4(1.0f), trans_vec);
 
             if (node.scale.size() == 3)
             {
-                scale_vec = glm::make_vec3(node.scale.data());
+                scale_vec = glm::make_float3(node.scale.data());
             }
             auto scale = glm::scale(glm::mat4(1.0f), scale_vec);
             mat4 rot{ 1.0f };

@@ -18,9 +18,9 @@ namespace Shard::System::Camera
         EType    type_{ EType::ePerspective };
 
 
-        vec3    center_{ 0.f, 0.f, 0.f };
-        vec3    eye_{ 0.f, 0.f, 1.f };
-        vec3    up_{ 0.f, 1.f, 0.f };
+        float3    center_{ 0.f, 0.f, 0.f };
+        float3    eye_{ 0.f, 0.f, 1.f };
+        float3    up_{ 0.f, 1.f, 0.f };
 
         //world to camera transform matrix
         mat4    view_;

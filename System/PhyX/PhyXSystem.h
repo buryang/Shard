@@ -17,8 +17,8 @@ namespace Shard::System::PhysX
         };
 
         EFlags    flags_{ EFlags::eNone };
-        vec3    sun_color_{ 0.f, 0.f, 0.f };
-        vec3    sun_dir_{ 0.f, 1.f, 0.f };
+        float3    sun_color_{ 0.f, 0.f, 0.f };
+        float3    sun_dir_{ 0.f, 1.f, 0.f };
         //other field
     };
 
@@ -36,8 +36,8 @@ namespace Shard::System::PhysX
 
     struct ECSRigidBodyPhysXComponent
     {
-        vec3    velocity_;
-        vec3    angular_velocity_;
+        float3    velocity_;
+        float3    angular_velocity_;
         float    mass_;
         enum
         {
@@ -51,7 +51,7 @@ namespace Shard::System::PhysX
         {
             struct
             {
-                vec3    half_;
+                float3    half_;
             }box_;
             struct
             {

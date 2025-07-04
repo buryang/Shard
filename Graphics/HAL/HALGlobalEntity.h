@@ -41,6 +41,9 @@ namespace Shard::HAL
     REGIST_PARAM_TYPE(BOOL, HAL_EXECUTE_BYPSS, false); //whether generate immediate command buffer
     REGIST_PARAM_TYPE(BOOL, HAL_EXECUTE_PARALLEL, false); //whether generate command in parallel mode
 
+    //whether enable VRS shading
+    REGIST_PARAM_TYPE(BOOL, HAL_SHADING_VRS, false); 
+
     //whether use resource pool to recyle resource
     REGIST_PARAM_TYPE(BOOL, HAL_RESOURCE_POOL_ENABLE, false);
     REGIST_PARAM_TYPE(UINT, HAL_RESOURCE_POOL_FRAME_GAP, 6);

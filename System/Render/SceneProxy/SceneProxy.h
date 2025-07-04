@@ -7,8 +7,10 @@
 #include "Core/EngineGlobalParams.h"
 #include "Utils/CommonUtils.h"
 #include "HAL/HALCommandIR.h"
+//#include "Renderer/GPUMem/GPUPersistentMemoryAllocator.h"
 #include "Scene/Scene.h"
 #include "../GPUUploadSystem.h"
+#include "SceneStreaming.h"
 
 namespace Shard::Renderer
 {
@@ -77,34 +79,6 @@ namespace Shard::Renderer
         //Vector<> clas_geometries_;
     };
 
-
-    struct Cluster
-    {
-        uint32_t triangle_count_minus1;
-        uint32_t vertex_count_minus1;
-        uint32_t lod_level;
-        uint32_t group_child_index;
-        uint32_t groupID;
-    };
-
-    struct Group
-    {
-
-    };
-
-    struct Node
-    {
-        Scene::AABB bound_box_;
-
-    };
-
-    struct TessellationTable
-    {
-        HAL::HALBuffer* vertices{ nullptr };
-        HAL::HALBuffer* triangles{ nullptr };
-
-    };
-
     class GPUSceneProxy
     {
     public:
@@ -149,46 +123,42 @@ namespace Shard::Renderer
         /*                                                  */
         /****************************************************************************************/
         GPUSceneStreaming stream_;
-        TessellationTable tessellation_tbl_;
-        /*persisitent memory hold clusters*/
-        HAL::HALBuffer* persistent_memory_{ nullptr };
-        HAL::HALBuffer* persistent_memory_used_bits_{ nullptr };
 
-        /*buffer for clas scratch buffer, free range and bin*/
-        HAL::HALBuffer* temporary_buffer_{ nullptr };
+        struct GPUData
+        {
+            /*persisitent memory hold clusters*/
+            HAL::HALBuffer* persistent_memory_{ nullptr };
+            HAL::HALBuffer* persistent_memory_used_bits_{ nullptr };
 
-        /*instance traversal buffers*/
-        HAL::HALBuffer* traversal_info_buffer_{ nullptr };
-        /*traversal result, cluster need to load to render*/
-        HAL::HALBuffer* render_cluster_info_buffer_{ nullptr };
+            HAL::HALBuffer* vertices{ nullptr };
+            HAL::HALBuffer* triangles{ nullptr };
 
+            /*buffer for clas scratch buffer, free range and bin*/
+            HAL::HALBuffer* temporary_buffer_{ nullptr };
+
+            /*instance traversal buffers*/
+            HAL::HALBuffer* traversal_info_buffer_{ nullptr };
+            /*traversal result, cluster need to load to render*/
+            HAL::HALBuffer* render_cluster_info_buffer_{ nullptr };
 #if aaaa //raytracing member
 #endif
-
+        };
+        
+        //bindless buffer resource index and resource size
+        struct GPUDataBindlessInfo
+        {
+            uint32_t persistent_memory_index_{ 0u };
+            uint32_t persistent_memory_used_bits_index_{ 0u };
+            uint32_t traversal_info_buffer_{ 0u };
+            uint32_t traversal_info_size_{ 0u };
+            uint32_t render_cluster_info_index_{ 0u };
+            uint32_t render_cluster_info_size_{ 0u };
+            uint32_t extent_payload_index0_{ 0u };
+            uint32_t extent_payload_index1_{ 0u };
+        };
+        GPUData gpu_buffers_;
+        GPUDataBindlessInfo bindless_index_;
 
     };
 
-    struct GPUStreamingStats
-    {
-
-    };
-
-    class GPUSceneStreaming
-    {
-    public:
-        void Init();
-        void UnInit();
-        void Reset();
-        void PreRender(HAL::HALCommandContext& cmd_buffer);
-        void PostRender(HAL::HALCommandContext& cmd_buffer);
-
-        /** pre traversal scene*/
-        void PreTraversal(HAL::HALCommandContext& cmd_buffer); //build nvidia clas accerlerate 
-        void PostTraveral(HAL::HALCommandContext& cmd_buffer); //unload noused 
-    private:
-        size_type   persistent_geometry_size_{ 0u };
-        size_type   operation_size_{ 0u };
-        size_type   clas_operation_size_{ 0u };
-        GPUStreamingStats   streaming_stat_;
-    };
 }

@@ -1,4 +1,4 @@
-#ifndef _PLATFORM_INC_
+﻿#ifndef _PLATFORM_INC_
 #define _PLATFOTM_INC_
 
 //todo platform defines
@@ -46,17 +46,76 @@
 //whether platform has wave intrinsics
 #define WAVE_INTRINSICS_ENABLED  1
 #define PACKING_INTRINSICS_ENABLED 1
-
 #define QUAD_INTRINSICS_ENABLED 1
+#define BITFIELD_INTRINSICS_ENABLED 0
 //whether platform support hitile lookup
 #define HITILE_LOOKUP_INTRINSICS_ENABLED    1
 
 #define COMPILER_SUPPORT_MINMAX3 0
 
+#if 1//AMD 
+#define THREAD_WARP_SIZE 64
+#else //NVIDIA
+#define THREAD_WARP_SIZE 32
+#endif
+
 #define WorkDistributionQueue RWByteAddressBuffer
 #define WorkDistributionStateQueue RWByteAddressBuffer
 #define RWCoherentByteAddressBuffer globallycoherent RWByteAddressBuffer
 #define RWCoherentStructuredBuffer(structure) globallycoherent RWStructuredBuffer<structure>
+
+
+#if !BITFIELD_INTRINSICS_ENABLED
+//emulate of the low-level RDNA bfe/bfi intrinsics
+uint bfe_u32(uint value, uint offset, uint bits)
+{
+    uint mask = (1U << bits) - 1U;
+    uint shift_value = value >> offset;
+    return shift_value & bits;
+}
+ 
+uint bfi_b32(uint value, uint preserve_mask, uint insert_mask)
+{
+    return (value & preserve_mask) | (~value & insert_mask);
+    //todo for nvidia turing/ampere+ (lop3_lut((s0 << (s3 & 31)) | (s1 >> (32 - (s3 & 31))), s2, 0))
+}
+#endif 
+
+/*
+*consecutive threads in a warp access(arrange as warp order) ​​strided memory addresses​​, 
+*reducing memory coalescing efficiency.(e.g., Thread 0 → addr[0], Thread 1 → addr[8], 
+*Thread 2 → addr[16], ...) while in unwarped(arrange in lane order) layout consecutive 
+*threads access ​​contiguous memory addresses​​: (e.g., Thread 0 (lane0/warp0) → addr[0], 
+*Thread 1 (lane0/warp1) → addr[1], Thread 2 (lane0/warp2) → addr[2], ...)
+*using unwarped index to ​​optimize global memory access/avoid bank conflict/data reshape
+*/
+
+uint GetUnwarpedThreadIndex(uint thread_index, uint thread_group_size, uint warp_size = 32)
+{
+    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
+    uint lane_id = thread_index % warp_size;
+    uint warp_id = thread_index / warp_size;
+    return lane_id * warp_num + warp_id;
+}
+
+/*
+*bank conflicts are avoidable in most CUDA computations if care is taken when accessing __shared__
+*memory arrays. We can avoid most bank conflicts in scan by adding a variable amount of padding to 
+*each shared memory array index we compute. Specifically, we add to the index the value of the index 
+*divided by the number of shared memory banks in CUDA bank-conflict free solve as:
+#define NUM_BANKS 16
+#define LOG_NUM_BANKS 4
+#define CONFLICT_FREE_OFFSET(n)((n) >> NUM_BANKS + (n) >> (2 * LOG_NUM_BANKS))
+*/
+#if 0
+uint GetWarpedThreadIndex(uint unwarped_thread_index, uint thread_group_size, uint warp_size = 32)
+{
+    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
+    uint lane_id = unwarped_thread_index / warp_num;
+    uint warp_id = unwarped_thread_index % warp_num;
+    return warp_id * warp_size + lane_id;
+}
+#endif
 
 //simulate some ds_swizzle_b32 operations
 #ifndef COMPILER_WITH_SWIZZLE_GCN

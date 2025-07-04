@@ -150,8 +150,8 @@ namespace Shard::System
 
         struct MouseState
         {
-            vec2    mouse_pos_{ 0, 0 };
-            vec2    mouse_pos_deta_{ 0, 0 };
+            float2    mouse_pos_{ 0, 0 };
+            float2    mouse_pos_deta_{ 0, 0 };
             float    mouse_wheel_deta_{ 0.f };//wheel delta
             BitSet<Utils::EnumToInteger(EButton::eMouseNum)>    pressed_;
             BitSet<Utils::EnumToInteger(EButton::eMouseNum)>    flip_;
@@ -168,8 +168,8 @@ namespace Shard::System
 
         struct ControllerState
         {
-            vec2    thumbstick_left_{ 0, 0 };
-            vec2    thumbstick_right_{ 0, 0 };
+            float2    thumbstick_left_{ 0, 0 };
+            float2    thumbstick_right_{ 0, 0 };
             float    trigger_left_{ 0 };
             float    trigger_right_{ 0 };
         };

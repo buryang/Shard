@@ -42,7 +42,7 @@ namespace Shard::Utils
 	{
 		uint32_t    fps_;
 		uint32_t    bits_per_pixel_;
-		vec2        resolution_;
+		float2        resolution_;
 	};
 
 	const MonitorSetting& GetMonitorSetting();

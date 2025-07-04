@@ -7,20 +7,20 @@
 namespace Shard::System::DebugView
 {
     SET_PARAM_TYPE_VAL(BOOL, DEBUG_VIEW_ENABLE_IMGUI, false);
-    void DebugViewContext::DrawLine(vec3 line_start, vec3 line_end, vec4 color, float thickness)
+    void DebugViewContext::DrawLine(float3 line_start, float3 line_end, vec4 color, float thickness)
     {
         new(line_batcher_) LineViewCommand{ .start_pos_ = line_start, .end_pos_ = line_end, .color_ = color };
     }
 
-    void DebugViewContext::DrawPoint(vec3 position, vec4 color, float size)
+    void DebugViewContext::DrawPoint(float3 position, vec4 color, float size)
     {
         new(point_batcher_) PointViewCommand{ .pos_ = position, .color_ = color, .thickness_ = size };
     }
 
-    void DebugViewContext::DrawCircle(vec3 center, uint32_t segments, vec4 quat, vec4 color, float radius, float thickness)
+    void DebugViewContext::DrawCircle(float3 center, uint32_t segments, vec4 quat, vec4 color, float radius, float thickness)
     {
         const float sector_angle = 2 * M_PI / segments;
-        vec3 line_start{ 0.f, }, line_end{ radius * cosf(sector_angle), radius * sinf(sector_angle), 0.f }; ////todo z-coord
+        float3 line_start{ 0.f, }, line_end{ radius * cosf(sector_angle), radius * sinf(sector_angle), 0.f }; ////todo z-coord
         for (auto n = 0; n < segments; ++n)
         {
             DrawLine(line_start, line_end, color, thickness);
@@ -29,9 +29,9 @@ namespace Shard::System::DebugView
         }
     }
 
-    void DebugViewContext::DrawBox(vec3 center, vec3 size, vec4 quat, vec4 color, float thickness)
+    void DebugViewContext::DrawBox(float3 center, float3 size, vec4 quat, vec4 color, float thickness)
     {
-        Array<vec3, 8> box_coords;
+        Array<float3, 8> box_coords;
         //todo calc coordinates
 
         for (auto n = 0; n < 5; n += 4)
@@ -48,13 +48,13 @@ namespace Shard::System::DebugView
         }
     }
 
-    void DebugViewContext::DrawSphere(vec3 center, uint32_t x_segments, uint32_t y_segments, vec4 color, float radius, float thickness)
+    void DebugViewContext::DrawSphere(float3 center, uint32_t x_segments, uint32_t y_segments, vec4 color, float radius, float thickness)
     {
     }
 
     void DebugViewContext::DrawFrustum(const mat4 frustum_to_world, vec4 color, float thickness)
     {
-        Array<vec3, 8> frustum_coords;
+        Array<float3, 8> frustum_coords;
         frustum_coords[0] = frustum_to_world * vec4{ -1, 1, 0, 1 };
         frustum_coords[1] = frustum_to_world * vec4{ 1, 1, 0, 1 };
         frustum_coords[2] = frustum_to_world * vec4{ 1, -1, 0, 1 };

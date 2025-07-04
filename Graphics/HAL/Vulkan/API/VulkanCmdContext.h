@@ -87,13 +87,13 @@ namespace Shard
         void Begin();
         void End();
         //compute pipeline must be bound to a command buffer before any dispatch commands are recorded
-        void Dispatch(vec3 group_size);
+        void Dispatch(float3 group_size);
         void DispatchIndirect(VulkanBuffer& buffer, const VkDeviceSize offset);
         void Draw(uint32_t first_instance, uint32_t instance_count, uint32_t first_vertex, uint32_t vertex_count);
         void DrawIndirect(const  VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
         void DrawIndexed(uint32_t first_instance, uint32_t instance_count, uint32_t vertex_offset, uint32_t first_index, uint32_t index_count);
         void DrawIndexedIndirect(const  VulkanBuffer& buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
-        void TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims);
+        void TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::ufloat3& dims);
         void Clear(VulkanBuffer& buffer, uint32_t value, VkDeviceSize offset, VkDeviceSize size=VK_WHOLE_SIZE);
         void Clear(VulkanImage& image, VkClearValue value, const VkImageSubresourceRange& region);
         void Copy(VulkanBuffer& dst, uint32_t dst_offset,  VulkanBuffer& src, uint32_t src_offset, uint32_t size);

@@ -14,8 +14,8 @@ namespace Shard::System::DebugView
 {
     struct LineViewCommand
     {
-        vec3    start_pos_;
-        vec3    end_pos_;
+        float3    start_pos_;
+        float3    end_pos_;
         vec4    color_;
         float    thickness_;
         float    delta_time_;//?? esoterica
@@ -23,7 +23,7 @@ namespace Shard::System::DebugView
 
     struct PointViewCommand
     {
-        vec3    pos_;
+        float3    pos_;
         vec4    color_;
         float    thickness_;
     };
@@ -32,11 +32,11 @@ namespace Shard::System::DebugView
     {
     public:
         DebugViewContext() = default;
-        void DrawLine(vec3 line_start, vec3 line_end, vec4 color, float thickness);
-        void DrawPoint(vec3 position, vec4 color, float thickness);
-        void DrawCircle(vec3 center, uint32_t segments, vec4 quat, vec4 color, float radius, float thickness);
-        void DrawBox(vec3 center, vec3 size, vec4 quat, vec4 color, float thickness);
-        void DrawSphere(vec3 center, uint32_t x_segments, uint32_t y_segments, vec4 color, float radius, float thickness);
+        void DrawLine(float3 line_start, float3 line_end, vec4 color, float thickness);
+        void DrawPoint(float3 position, vec4 color, float thickness);
+        void DrawCircle(float3 center, uint32_t segments, vec4 quat, vec4 color, float radius, float thickness);
+        void DrawBox(float3 center, float3 size, vec4 quat, vec4 color, float thickness);
+        void DrawSphere(float3 center, uint32_t x_segments, uint32_t y_segments, vec4 color, float radius, float thickness);
         void DrawCapsule(vec4 color, float half_height, float radius, float thickness);
         void DrawCylinder(vec4 color, float half_height, float radius, float thickness);
         void DrawFrustum(const mat4 frustum_matrix, vec4 color, float thickness);

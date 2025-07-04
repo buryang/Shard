@@ -75,7 +75,7 @@ namespace Shard::Effect
     struct GlyphBitmap
     {
         HashType    hash_;
-        ivec2    size_{0u, 0u}; //bitmap size
+        ifloat2    size_{0u, 0u}; //bitmap size
         //#if
         Vector<uint8_t>    data_;
         GlyphBitmap() = default;
@@ -84,8 +84,8 @@ namespace Shard::Effect
     struct GlyphAtlas
     {
         HashType    hash_;
-        ivec2    pos_;
-        ivec2    size_;
+        ifloat2    pos_;
+        ifloat2    size_;
     };
 
     struct FontStyleInfo
@@ -108,8 +108,8 @@ namespace Shard::Effect
     //cursor: point to current input position
     struct Cursor
     {
-        vec2    pos_;
-        vec2    size_;
+        float2    pos_;
+        float2    size_;
     };
 
     struct TextDrawParams
@@ -117,7 +117,7 @@ namespace Shard::Effect
         String    style_name_;
         EAlignmentOp    h_align_op_{ EAlignmentOp::eLeftAlign };
         EAlignmentOp    v_align_op_{ EAlignmentOp::eTopAlign };
-        vec2    pos_{ 0, 0 };
+        float2    pos_{ 0, 0 };
         uint32_t    size_{ 32u };
         uint32_t    paddingX_{ 0u };//padding for charactor horizontal
         uint32_t    paddingY_{ 0u };//padding for charactor vertical

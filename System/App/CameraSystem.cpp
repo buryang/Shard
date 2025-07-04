@@ -65,8 +65,8 @@ namespace Shard::System::Camera {
     {
         const auto& mouse_state = Input::InputSystem::Instance().GetMouseState();
         //get mouse delta movement
-        if (mouse_state.mouse_pos_deta_ != vec2{0.f, 0.f}) {
-            const auto rotation = glm::diagonal3x3(vec3{ mouse_state.mouse_pos_deta_.x, mouse_state.mouse_pos_deta_.y, 1.f }); 
+        if (mouse_state.mouse_pos_deta_ != float2{0.f, 0.f}) {
+            const auto rotation = glm::diagonal3x3(float3{ mouse_state.mouse_pos_deta_.x, mouse_state.mouse_pos_deta_.y, 1.f }); 
             camera_->Update(rotation);
         }
     }

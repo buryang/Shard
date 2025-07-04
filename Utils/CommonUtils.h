@@ -109,23 +109,23 @@ inline enum_type operator~(enum_type val) { return static_cast<enum_type>(~Utils
 
 namespace Shard {
 
-    using float2 = glm::vec2;
-    using float3 = glm::vec3;
+    using float2 = glm::float2;
+    using float3 = glm::float3;
     using float4 = glm::vec4;
 
     using float3x3 = glm::mat3;
     using float4x4 = glm::mat4;
 
-    using int2 = glm::ivec2;
-    using int3 = glm::ivec3;
+    using int2 = glm::ifloat2;
+    using int3 = glm::ifloat3;
     using int4 = glm::ivec4;
 
-    using uint2 = glm::uvec2;
-    using uint3 = glm::uvec3;
+    using uint2 = glm::ufloat2;
+    using uint3 = glm::ufloat3;
     using uint4 = glm::uvec4;
 
-    using bool2 = glm::bvec2;
-    using bool3 = glm::bvec3;
+    using bool2 = glm::bfloat2;
+    using bool3 = glm::bfloat3;
     using bool4 = glm::bvec4;
 
     using glm::quat;

@@ -195,7 +195,7 @@ namespace Shard
         state_ = VulkanCmdBuffer::EState::eExecutable;
     }
 
-    void VulkanCmdBuffer::Dispatch(vec3 group_size)
+    void VulkanCmdBuffer::Dispatch(float3 group_size)
     {
         vkCmdDispatch(handle_, group_size.x, group_size.y, group_size.z);
     }
@@ -228,7 +228,7 @@ namespace Shard
         vkCmdDrawIndexedIndirect(handle_, buffer.Get(), static_cast<VkDeviceSize>(offset), draw_count, stride);
     }
 
-    void VulkanCmdBuffer::TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::uvec3& dims)
+    void VulkanCmdBuffer::TraceRay(Map<uint32_t, VulkanRayTraceBindTable>& ray_binds, const glm::ufloat3& dims)
     {
         /*
         vkCmdTraceRaysKHR(buffer_, ray_binds[static_cast<uint32_t>(VulkanRayTraceBindTable::Type::RGEN)],

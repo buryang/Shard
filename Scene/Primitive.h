@@ -1,5 +1,6 @@
 #pragma once
 #include "Utils/CommonUtils.h"
+#include "Utils/Hash.h"
 #include "folly/DiscriminatedPtr.h"
 #include "Graphics/Render/RenderResources.h"
 #include "Material.h"
@@ -56,9 +57,9 @@ namespace Shard::Scene
             uint32_t    indices_count_{ 0u };
         };
 
-        Attribute<vec3>        positions_;
-        Attribute<vec3>        normals_;
-        Attribute<vec2>        tex_coords_;
+        Attribute<float3>        positions_;
+        Attribute<float3>        normals_;
+        Attribute<float3>        tex_coords_;
         Attribute<uint32_t> indices_;
         uint32_t            face_num_;
         uint32_t            vertex_num_;
@@ -87,21 +88,21 @@ namespace Shard::Scene
             return T();
         }
 
-        void AddPosition(vec3 pos) { positions_.data_.emplace_back(pos); }
-        const vec3 GetPosition(uint32_t face, uint32_t vert)const { return Get(positions_, face, vert); }
-        void AddNormal(vec3 normal) { normals_.data_.emplace_back(normal); }
-        const vec3 GetNormal(uint32_t face, uint32_t vert)const { return Get(normals_, face, vert); }
-        void AddTexCoord(vec2 uv) { tex_coords_.data_.emplace_back(uv); }
-        const vec2 GetTexCoord(uint32_t face, uint32_t vert)const { return Get(tex_coords_, face, vert); }
+        void AddPosition(float3 pos) { positions_.data_.emplace_back(pos); }
+        const float3 GetPosition(uint32_t face, uint32_t vert)const { return Get(positions_, face, vert); }
+        void AddNormal(float3 normal) { normals_.data_.emplace_back(normal); }
+        const float3 GetNormal(uint32_t face, uint32_t vert)const { return Get(normals_, face, vert); }
+        void AddTexCoord(float2 uv) { tex_coords_.data_.emplace_back(uv); }
+        const float2 GetTexCoord(uint32_t face, uint32_t vert)const { return Get(tex_coords_, face, vert); }
         void AddIndice(uint32_t index) { indices_.data_.emplace_back(index); }
 
         struct Vertex
         {
-            vec3    pos_;
-            vec3    normal_;
-            vec3    tangent_;
-            vec3    bitangent_;
-            vec2    tex_coord_;
+            float3    pos_;
+            float3    normal_;
+            float3    tangent_;
+            float3    bitangent_;
+            float2    tex_coord_;
         };
 
         //https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/
@@ -133,8 +134,8 @@ namespace Shard::Scene
     {
         Vector<TerrainSection>  sections_;
         AABB    local_bounding_;
-        //vec2    resolution_;
-        vec2    size_; //size in world 
+        //float2    resolution_;
+        float2    size_; //size in world 
         float   bump_scale_{ 1.f };
 
 
@@ -149,8 +150,8 @@ namespace Shard::Scene
 
     struct Cone
     {
-        vec3    pos_;
-        vec3    normal_;
+        float3    pos_;
+        float3    normal_;
     };
 
     struct HalfEdge
@@ -166,8 +167,8 @@ namespace Shard::Scene
     //todo:plane to 4D vector Grassmann Algebra
     struct Plane
     {
-        vec3    normal_;
-        vec3    tangent_;
+        float3    normal_;
+        float3    tangent_;
     };
 
     struct SubMeshIndexInfo32 //copy from unity 
@@ -182,6 +183,7 @@ namespace Shard::Scene
     };
 
     //mesh cluster/lod 
+    /*
     struct MeshCluster
     {
         static constexpr uint32_t    MAX_CLUSTER_LOD = 8u;
@@ -192,6 +194,59 @@ namespace Shard::Scene
         Cone    bcone_;
         //todo
     };
+    */
+    namespace NVClusterLOD
+    {
+        struct Cluster
+        {
+            uint32_t triangle_count_minus1_;
+            uint32_t vertex_count_minus1_;
+            uint32_t lod_level_;
+            uint32_t group_child_index_;
+            uint32_t groupID_;
+            //material ID, according to cbt paper, use vertex position as UV to sample from texture&height field
+            //uint32_t materialID_;
+        };
+
+        struct TraversalMetric
+        {
+            //scalar by design, avoid hiccups with packing
+            //order must match `nvclusterlod::Node`
+            float bounding_sphereX_;
+            float bounding_sphereY_;
+            float bounding_sphereZ_;
+            float bounding_sphere_radius_;
+            float max_quadric_error_;
+        };
+
+        struct Group
+        {
+            uint32_t geimetryID_;
+            uint32_t groupID_;
+
+            uint32_t residentID_;
+            uint32_t cluster_residentID_;
+
+            //when this group is first loaded, this is where the
+            //temporary clas builds start
+            uint32_t streaming_new_build_offset_;
+
+            uint16_t lod_level_;
+            uint16_t cluster_count_;
+
+            //todo Meta: Bounds, LOD info, Material tables, etc.
+            //The resident pages are stored in one big ByteAddressBuffer on the GPU.
+        };
+
+        struct Node
+        {
+            Scene::AABB bound_box_;
+
+        };
+
+        static_assert(alignof(Cluster) && alignof(Group) && alignof(Node) && "should align as hlsl code");
+
+    }
 
     struct SkinBone
     {
@@ -308,52 +363,57 @@ namespace Shard::Scene
 
     struct Curve
     {
-        SmallVector<vec3>    ctrl_points_;
+        SmallVector<float3>    ctrl_points_;
         SmallVector<float>    segments_;
     };
 
     struct Rect
     {
-        vec2    xy_{ 0.f, 0.f };
-        vec2    wh_{ 1.f, 1.f };
+        float2    xy_{ 0.f, 0.f };
+        float2    wh_{ 1.f, 1.f };
     };
 
     struct Sphere
     {
-        vec3    xyz_{ 0.f, 0.f, 0.f };
+        float3    xyz_{ 0.f, 0.f, 0.f };
         float    radius_;
     };
 
     struct Cylinder
     {
-        vec3    xyz_;
-        vec3    axis_;
+        float3    xyz_;
+        float3    axis_;
         float    half_height_;
         float    radius_;
     };
 
     struct Capsule
     {
-        vec3    xyz_;
-        vec3    axis_;
+        float3    xyz_;
+        float3    axis_;
         float    half_height_;
         float    radius_;
     };
 
     struct OBB
     {
-        vec3    xyz_;
-        vec3    size_;
-        vec3    axisX_;
-        vec3    axisY_;
-        vec3    axisZ_;
+        float3    lo_;
+        float3    hi_;
+        float3    axisX_;
+        float3    axisY_;
+        float3    axisZ_;
     };
 
     struct AABB
     {
-        vec3    xyz_;
-        vec3    size_;
+        float3    lo_;
+        float3    hi_;
     };
+
+    /*get corner of the AABB bounding box*/
+    static inline float3 GetCorner(const AABB& aabb, uint32_t index) {
+        return glm::mix(aabb.lo_, aabb.hi_, float3(index & 0x1, index & 0x2, index & 0x4));
+    }
     
     enum class ELightType:uint8_t
     {
@@ -389,9 +449,9 @@ namespace Shard::Scene
     //unreal engine light light
     struct ECSLightComponent
     {
-        vec3    pos_;
-        vec3    direction_;
-        vec3    tangent_;
+        float3    pos_;
+        float3    direction_;
+        float3    tangent_;
         vec4    color_;
         float   fall_off_exp_;
         float   specular_scale_;
@@ -409,8 +469,8 @@ namespace Shard::Scene
 
         EType    type_;
         //intrisics
-        vec3    pos_{ 0.0f };
-        vec2    center_{ 0.0f };
+        float3    pos_{ 0.0f };
+        float2    center_{ 0.0f };
         float    fov_;
         float    skew_;
         float    znear_;
@@ -419,7 +479,7 @@ namespace Shard::Scene
         float    ymag_;
 
         //extrinsics
-        mat4    affine_{ 1.0f };
+        float4x4    affine_{ 1.0f };
     };
 
     /*
@@ -454,7 +514,7 @@ namespace Shard::Scene
     struct Image
     {
         Vector<uint8_t> raw_;
-        uvec3            size_;
+        ufloat3            size_;
         uint32_t        mip_levels_{ 1 };
         uint32_t        array_layers_{ 1 };
         EImageType        type_{ EImageType::TEXTURE_2D };
@@ -508,8 +568,8 @@ namespace Shard::Scene
         float alpha_cutoff_ = 1.0f;
         float metal_factor_ = 1.0f;
         float roughness_factor_ = 1.0f;
-        vec4 base_color_factor_{ 1.0f };
-        vec4 emissive_factor_{ 1.0f };
+        float4 base_color_factor_{ 1.0f };
+        float4 emissive_factor_{ 1.0f };
 
         //texture data structure
         TexturePtr base_color_texture_;
@@ -577,9 +637,17 @@ namespace Shard::Scene
     class MINIT_API PrimitiveMeshFactory
     {
     public:
+        using HashType = SpookyV2Hash32;
+        explicit PrimitiveMeshFactory(const String& name) :name_(name) {
+            hash_.FromString(name);
+        }
+        FORCE_INLINE HashType HashName() const { return hash_; }
         virtual uint32_t GetVertexStreamCount() const = 0;
         virtual void GetVertexStream(uint32_t stream_index) const = 0;
         virtual ~PrimitiveMeshFactory() = 0;
+    protected:
+        String  name_;
+        HashType hash_;
     };
 
 

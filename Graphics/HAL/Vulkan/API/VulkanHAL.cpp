@@ -58,6 +58,12 @@ namespace Shard
         indexing_features.shaderInputAttachmentArrayNonUniformIndexing = false;//
     }
 
+    static inline void MakeFragmentVRSFeature(VkPhysicalDeviceFragmentShadingRateFeaturesKHR& vrs_features) {
+        memset(&vrs_features, 0, sizeof(vrs_features));
+        vrs_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+        vrs_features.pipelineFragmentShadingRate = VK_TRUE;
+    }
+
     static inline void MakeDeviceCreateInfo(VkDeviceCreateInfo& device_info, VkDeviceCreateFlags flags, const Span<VkDeviceQueueCreateInfo>& queue_infos, const Span<const char*>& ext_infos)
     {
         memset(&device_info, 0u, sizeof(device_info));
@@ -298,6 +304,12 @@ namespace Shard
                 if (GET_PARAM_TYPE(BOOL, HAL_RESOURCE_BINDLESS)) {
                     VSChainPushFront(device_feature, indexing_features);
                 }
+                VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_rate_features{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR };
+                VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_props{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR };
+                if (GET_PARAM_TYPE(BOOL, HAL_SHADING_VRS) {
+                    shading_rate_features.pNext = shading_rate_props;
+                    VSChainPushFront(device_feature, shading_rate_features);
+                }
                 //todo add other feature check
                 vkGetPhysicalDeviceFeatures2(device, &device_features);
                 if (GET_PARAM_TYPE(BOOL, HAL_RESOURCE_BINDLESS)) {
@@ -310,6 +322,15 @@ namespace Shard
                         LOG(ERROR) << "vulkan index after bind is not supported while using bindless";
                         return false;
                     }
+                }
+
+                if (GET_PARAM_TYPE(BOOL, HAL_SHADING_VRS) {
+                    if (!shading_rate_features.pipelineFragmentShadingRate ||
+                        !shading_rate_features.primitiveFragmentShadingRate ||
+                        !shading_rate_features.attachmentFragmentShadingRate) {
+                        LOG(ERROR) << "vulkan vrs shading is not supported";
+                    }
+                    return false;
                 }
             }
             
@@ -439,6 +460,11 @@ namespace Shard
         if (GET_PARAM_TYPE_VAL(BOOL, HAL_RESOURCE_BINDLESS)) {
             MakeBindlessDeviceDescriptorIndexingFeatures(indexing_features);
             VSChainPushFront(&device_info, &indexing_features);
+        }
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR shading_features;
+        if (GET_PARAM_TYPE_VAL(BOOL, HAL_SHADING_VRS)) {
+            MakeFragmentVRSFeature(shading_features);
+            VSChainPushFront(&device_info, &shading_features);
         }
 #if defined(DEVELOP_DEBUG_TOOLS) && VK_EXT_host_query_reset
         {

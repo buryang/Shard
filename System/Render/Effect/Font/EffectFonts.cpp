@@ -22,8 +22,8 @@ namespace Shard::Effect
 
     struct QuadVertex
     {
-        vec2    pos_;
-        vec2    uv_;
+        float2    pos_;
+        float2    uv_;
     };
 
     struct DrawFreeTypeInfo
@@ -38,7 +38,7 @@ namespace Shard::Effect
     //shader const buffer
     struct FontConstBuffer
     {
-        vec2    sdf_minmax_;
+        float2    sdf_minmax_;
         uint32_t    color_;
         int    buffer_index_;
         int    buffer_offset_;
@@ -145,9 +145,9 @@ namespace Shard::Effect
                 //push down last word to next line
                 const auto word_offset = info.quad_vertex_[info.last_word_vertex_begin_].pos_.x + whitespace_size;
                 for (auto n = info.last_word_vertex_begin_; n <= info.quad_vertex_.size(); ++n) {
-                    info.quad_vertex_[n].pos_ += vec2{ -word_offset, linebreak_size };
+                    info.quad_vertex_[n].pos_ += float2{ -word_offset, linebreak_size };
                 }
-                info.cursor_.pos_ += vec2{ -word_offset, linebreak_size };
+                info.cursor_.pos_ += float2{ -word_offset, linebreak_size };
                 info.cursor_.size_.x = std::max(info.cursor_.size_.x, info.cursor_.pos_.x);
                 info.cursor_.size_.y = std::max(info.cursor_.size_.y, info.cursor_.pos_.y + linebreak_size);
             }
@@ -230,8 +230,8 @@ namespace Shard::Effect
 
                     const auto& glyph_atlas = glyphs_atlasLUT_[char_hash];
                     info.quad_vertex_.emplace_back(QuadVertex{ {quad_left, quad_top}, {glyph_atlas.pos_} }); //left-top
-                    info.quad_vertex_.emplace_back(QuadVertex{ {quad_right, quad_top},{glyph_atlas.pos_ + ivec2{glyph_atlas.size_.x, 0u } } }); //right-top
-                    info.quad_vertex_.emplace_back(QuadVertex{ {quad_left, quad_bottom},{glyph_atlas.pos_ + ivec2{0u, glyph_atlas.size_.y }} }); //left-bottom
+                    info.quad_vertex_.emplace_back(QuadVertex{ {quad_right, quad_top},{glyph_atlas.pos_ + ifloat2{glyph_atlas.size_.x, 0u } } }); //right-top
+                    info.quad_vertex_.emplace_back(QuadVertex{ {quad_left, quad_bottom},{glyph_atlas.pos_ + ifloat2{0u, glyph_atlas.size_.y }} }); //left-bottom
                     info.quad_vertex_.emplace_back(QuadVertex{ {quad_right, quad_bottom},{glyph_atlas.pos_ + glyph_atlas.size_ } }); //right-bottom
                     info.cursor_.pos_.x += advance * font_scale + draw_params.paddingX_;
 
@@ -351,7 +351,7 @@ namespace Shard::Effect
                     const auto rid = iter->id;
                     auto& gly_atlas = glyphs_atlasLUT_[rid];
                     const auto& gly_bitmap = glyphs_neededLUT_[rid];
-                    gly_atlas.pos_ = ivec2{ iter->x, iter->y };
+                    gly_atlas.pos_ = ifloat2{ iter->x, iter->y };
                     
                     if (GET_PARAM_TYPE_VAL(UINT, FONT_DRAW_ALGO) & Utils::EnumToInteger(EDrawAlgo::eSDF))
                     {

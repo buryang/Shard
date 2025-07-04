@@ -152,7 +152,7 @@ namespace Shard
 
             struct ECSSpatialSE3Component
             {
-                vec3    lie_vec_;
+                float3    lie_vec_;
             };
 
             using ECSLocalSpatitalTransformComponent = ECSSpatialTransformComponent; //local-to-world
@@ -160,8 +160,8 @@ namespace Shard
 
             struct ECSSpatialBoundBoxComponent
             {
-                vec3    original_;
-                vec3    extents_;
+                float3    original_;
+                float3    extents_;
             };
 
             using ECSLocalSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;

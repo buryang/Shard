@@ -36,8 +36,8 @@
 
 struct BBoxSphere 
 {
-    float3 low;
-    float3 high;
+    float3 min;
+    float3 max;
     float4 sphere; //xyz-center w-radius
 };
 
