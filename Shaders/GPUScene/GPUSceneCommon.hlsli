@@ -11,6 +11,7 @@
 #include "StreamingCommon.hlsli"
 #endif
 #include "ClusterCommon.hlsli"
+#include "ViewCommon.hlsli"
 #include "DataTranscode.hlsli"
 
 #define MAX_CUSTOM_PRIMITIVE_DATA_COUNT 16
@@ -90,6 +91,8 @@ struct GPUScene
 #if USE_GPUSCENE_STREAMING
     SceneStreaming streaming; //todo seperate this or included here
 #endif
+    
+    SceneViews views;
     
     void Init()
     {

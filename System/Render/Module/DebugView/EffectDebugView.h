@@ -6,6 +6,7 @@
 #include "Graphics/Render/RenderGraphBuilder.h"
 #include "Graphics/HAL/HALShaderLibrary.h"
 #include "Graphics/HAL/HALCommand.h"
+#include "System/Render/Module/Base/EffectBaseModule.h"
 
 namespace Shard::Effect
 {
@@ -28,7 +29,7 @@ namespace Shard::Effect
         static Array<HAL::HALPipelineStateObject*, MAX_DEBUG_PRIMIVE_TYPE>    debug_pso_;
     };
 
-    class MINIT_API EffectDrawDebugView
+    class MINIT_API EffectDrawDebugView : public EffectDrawBase
     {
     public:
         static void Init();

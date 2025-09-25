@@ -181,7 +181,7 @@ float3 LinearToSRGB(float3 rgb)
 
 float3 SRGBToLinear(float3 rgb)
 {
-    float3 lin_rgb = lerp(rgb / 12.92f, pow((rgb + 0.055f) / 1.055f, float3(2.4)), step(float3(0.04045f), rgb));
+    float3 lin_rgb = lerp(rgb / 12.92f, pow((rgb + 0.055f) / 1.055f, float3(2.4f)), step(float3(0.04045f), rgb));
     return saturate(lin_rgb);
 }
 
@@ -288,4 +288,6 @@ inline uint ExtractMSB(uint x)
 
 //https://www.yosoygames.com.ar/wp/2018/03/vertex-formats-part-1-compression/
 //https://rene.ruhr/gfx/adoption/ sample disk from square
+
+
 #endif //_COMMON_UTILS_INC_

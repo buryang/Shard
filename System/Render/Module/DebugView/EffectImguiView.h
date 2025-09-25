@@ -6,7 +6,7 @@
 #if 1//def defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
 namespace Shard::Effect
 {
-    class MINIT_API EffectDrawImguiView
+    class MINIT_API EffectDrawImguiView : public EffectDrawBase
     {
     public:
         static void Init();

@@ -2,7 +2,6 @@
 #define _DATA_TRANSCODE_INC_
 
 #include "ClusterCommon.hlsli"
-#include "TraversalCommon.hlsli"
 /**
 * realize vertex/index compression like Dense Geometry Format(DGF) etc.
 * unreal engine nanite has two representation(memory/disk), memory represent main

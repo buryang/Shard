@@ -1,4 +1,4 @@
-#ifndef _COMPUTE_SHADER_UTILS_INC_
+﻿#ifndef _COMPUTE_SHADER_UTILS_INC_
 #define _COMPUTE_SHADER_UTILS_INC_
 
 #include "CommonUtils.hlsli"
@@ -95,11 +95,12 @@ uint2 SwizzleThreadIndex(uint thread_index)
 #endif 
 }
 
+
 //[numthread(8,8,1)]
-void FastClear(uint2 groupID : SV_GroupID, uint thread_index : SV_GroupIndex, uint4 view_rect, out RWByteAddressBuffer out_cmask, out Texture2D<uint> out_visualized)
+void FastClear(uint3 groupID : SV_GroupID, uint thread_index : SV_GroupIndex, uint4 view_rect, out RWByteAddressBuffer out_cmask, out Texture2D<uint> out_visualized)
 {
     const uint2 pixel_local_pos = SwizzleThreadIndex(thread_index & 0xffu);
-    const uint2 pixel_pos = ((groupID << 3) | pixel_local_pos) + view_rect.xy;
+    const uint2 pixel_pos = ((groupID.xy << 3) | pixel_local_pos) + view_rect.xy;
     
     if (any(pixel_pos.xy) >= view_rect.zw)
         return;
@@ -109,6 +110,44 @@ void FastClear(uint2 groupID : SV_GroupID, uint thread_index : SV_GroupIndex, ui
     const uint2 tile_coord = pixel_pos / 8u;
     const uint sub_tile_index = ((pixel_pos.y & 4) >> 1) + ((pixel_pos.x & 4) >> 2);
     //todo
+}
+
+inline void ClearPixel(uint2 pixel_pos)
+{
+
+}
+
+#define CLEAR_TILE_SIZE 4u //4×4 tile = 64 bytes (if RGBA32F) = ​​Perfect cache line​. AMD RDNA prefers larger tiles
+//[numthreads(8, 8, 1)]
+void TiledClear(uint3 dispatch_threadID : SV_DispatchThreadID, uint4 view_rect)
+{
+    const uint2 tiled_start = uint2(max(dispatch_threadID.x * CLEAR_TILE_SIZE, view_rect.x), max(dispatch_threadID.y * CLEAR_TILE_SIZE, view_rect.y));
+    const uint2 tiled_end = uint2(min(tiled_start.x + CLEAR_TILE_SIZE, view_rect.z), min(tiled_start.y + CLEAR_TILE_SIZE, view_rect.w));
+
+    UNROLL
+    for (uint x = tiled_start.x; x < tiled_end.x; ++x)
+    {
+        UNROLL
+        for (uint y = tiled_start.y; y < tiled_end.y; ++y)
+        {
+            ClearPixel(uint2(x, y));
+        }
+
+    }
+}
+
+//4-Pixel Horizontal Clearing​ for SM 6.0+, 128-bit vectorization op
+//[numthreads(64, 1, 1)]
+void FourPixelClear(uint3 dispatch_threadID : SV_DispatchThreadID, uint4 view_rect)
+{   
+    if (any(uint2(dispatch_threadID.x * 4, dispatch_threadID.y) >= view_rect.zw))
+        return;
+    
+    //vector op ?? rwbytebuffer store4?
+    ClearPixel(uint2(dispatch_threadID.x * 4, dispatch_threadID.y));
+    ClearPixel(uint2(dispatch_threadID.x * 4 + 1, dispatch_threadID.y));
+    ClearPixel(uint2(dispatch_threadID.x * 4 + 2, dispatch_threadID.y));
+    ClearPixel(uint2(dispatch_threadID.x * 4 + 2, dispatch_threadID.y));
 }
 
 /************************************************************************************************************/
@@ -235,12 +274,69 @@ void CalculateCmaskIndexAndShift(uint2 tile_coord, out uint cmask_index, out uin
 //memory copy utils
 void MemoryCopy(ByteAddressBuffer src, uint64 src_offset, out RWByteAddressBuffer dst, uint64 dst_offset, uint64 size, uint3 thread_dispatchID : SV_DispatchThreadID) //uint3??
 {
-    //assume dst_offset��src_offset, size align to uint4
+    //assume dst_offset，src_offset, size align to uint4
     uint dword_offset = thread_dispatchID.x << 4; 
     if (dword_offset < size)
     {
         const uint4 data = src.Load4(src_offset + dword_offset);
         dst.Store4(dst_offset + dword_offset, data);
     }
+}
+
+/************************************************************************************************************/
+/* group/thread unwarp helper functions, help to avoid bank conflict for LDS and reduce uncoalesced access  */
+/****************************************************************************************************/
+
+/*
+*consecutive threads in a warp access(arrange as warp order) ​​strided memory addresses​​, 
+*reducing memory coalescing efficiency.(e.g., Thread 0 → addr[0], Thread 1 → addr[8], 
+*Thread 2 → addr[16], ...) while in unwarped(arrange in lane order) layout consecutive 
+*threads access ​​contiguous memory addresses​​: (e.g., Thread 0 (lane0/warp0) → addr[0], 
+*Thread 1 (lane0/warp1) → addr[1], Thread 2 (lane0/warp2) → addr[2], ...)
+*using unwarped index to ​​optimize global memory access/avoid bank conflict/data reshape
+*/
+
+uint GetUnwarpedThreadIndex(uint thread_index, uint thread_group_size, uint warp_size = 32)
+{
+    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
+    uint lane_id = thread_index % warp_size;
+    uint warp_id = thread_index / warp_size;
+    return lane_id * warp_num + warp_id;
+}
+
+/*
+*bank conflicts are avoidable in most CUDA computations if care is taken when accessing __shared__
+*memory arrays. We can avoid most bank conflicts in scan by adding a variable amount of padding to 
+*each shared memory array index we compute. Specifically, we add to the index the value of the index 
+*divided by the number of shared memory banks in CUDA bank-conflict free solve as:
+#define NUM_BANKS 16
+#define LOG_NUM_BANKS 4
+#define CONFLICT_FREE_OFFSET(n)((n) >> NUM_BANKS + (n) >> (2 * LOG_NUM_BANKS))
+*/
+#if 0
+uint GetWarpedThreadIndex(uint unwarped_thread_index, uint thread_group_size, uint warp_size = 32)
+{
+    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
+    uint lane_id = unwarped_thread_index / warp_num;
+    uint warp_id = unwarped_thread_index % warp_num;
+    return warp_id * warp_size + lane_id;
+}
+#endif
+
+/*unwarp group id to get a linear index*/
+uint GetLinearUnwarpedGroupID(uint3 groupID /*SV_GroupID*/, uint group_stride）
+{
+    return groupID.x + (group.z * group_stride + groupID.y) * group_stride;
+}
+
+uint2 GetSwizzleTiledUnwarpedGroupID(uint3 groupID /*SV_GroupID*/, uint2 group_stride)
+{
+    return uint2(0u, 0u); //todo
+}
+
+inline uint GetWaveIndex(uint thread_index)
+{
+    const uint lane_count = WaveGetLaneCount();
+    return (thread_index + lane_count - 1) / lane_count;
 }
 #endif //_COMPUTE_SHADER_UTILS_INC_

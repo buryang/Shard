@@ -1,13 +1,27 @@
 ﻿#ifndef _PLATFORM_INC_
 #define _PLATFOTM_INC_
 
-//todo platform defines
-#define SM6_PROFILE 1
-#ifndef SM5_PROFILE
-#define SM5_PROFILE 0
+#if defined(__DXC__) && defined(__spirv__) //dxc inner define for spir-v
+#define VULKAN_BACKEND
 #endif
 
-#ifdef __spirv__ //for DXC compile to spir-v
+//todo DXIL backend
+
+#ifdef __DXC__ //for dxc compile
+#define SM_MAJOR __SHADER_TARGET_MAJOR
+#define SM_MINOR __SHADER_TARGET_MINOR
+#endif 
+
+#ifndef SM_MAJOR 
+#define SM_MAJOR 6 //default enable shader model 6
+#define SM_MINOR 0
+#endif
+
+#if SM_MAJOR < 5
+#error "shader model 5 or higher is required"
+#endif
+
+#ifdef VULKAN_BACKEND //for DXC compile to spir-v
 #define VK_PUSH_CONSTANT [[vk::push_constant]]
 #define VK_BINDING(BIND, SET) [[vk::binding(BIND, SET)]]
 #define VK_LOCATION(INDEX) [[vk::location(INDEX)]]
@@ -24,9 +38,14 @@
 #define VK_INPUT_AATTACHMENT(ATTACH)
 #endif
 
+//numeric attributes
+#if SM_MAJOR >= 6 && SM_MINOR >= 2 
+#pragma require Native16Bit
+#endif
+
 //Pre-SM5 GPUs (e.g., DirectX 10/11-era hardware) have stricter constraints on register usage and 
 //control flow. Forcing [unroll] could lead to register spills or bloated code, harming performance
-#if SM6_PROFILE || SM5_PROFILE || COMPILER_SUPPORTS_ATTRIBUTES
+#if SM_MAJOR >= 5 || COMPILER_SUPPORTS_ATTRIBUTES
 #define UNROLL [unroll]
 #define UNROLL_N(N) [unroll(N)]
 #define LOOP [loop]
@@ -41,19 +60,37 @@
 #define FLATTEN
 #define ALLOW_UAV_CONDITION 
 #endif 
+
 #define FASTOPT [fastopt]
 
 //whether platform has wave intrinsics
+#if SM_MAJOR >= 6
 #define WAVE_INTRINSICS_ENABLED  1
 #define PACKING_INTRINSICS_ENABLED 1
 #define QUAD_INTRINSICS_ENABLED 1
 #define BITFIELD_INTRINSICS_ENABLED 0
+#define TEXEL_GATHER_ENABLED 1 //raw texture gather supported in shaer model 6.7
+#define ATOMICS_CAS_64BIT_ENABLED 1 //supported in shader model 6.6
 //whether platform support hitile lookup
-#define HITILE_LOOKUP_INTRINSICS_ENABLED    1
+#define HITILE_LOOKUP_INTRINSICS_ENABLED 1
+#define VERTEX_SHADER_ATOMIC_UINT_ENABLED 1 //supported in shader model 6.6
+#define VERTEX_SHADER_SRVS_ENABLED 1 
+#else
+#define WAVE_INTRINSICS_ENABLED  0
+#define PACKING_INTRINSICS_ENABLED 0
+#define QUAD_INTRINSICS_ENABLED 0
+#define BITFIELD_INTRINSICS_ENABLED 1
+#define TEXEL_GATHER_ENABLED 0
+#define ATOMICS_CAS_64BIT_ENABLED 0
+//whether platform support hitile lookup
+#define HITILE_LOOKUP_INTRINSICS_ENABLED 0
+#define VERTEX_SHADER_ATOMIC_UINT_ENABLED 0
+#define VERTEX_SHADER_SRVS_ENABLED 1 
+#endif
 
 #define COMPILER_SUPPORT_MINMAX3 0
 
-#if 1//AMD 
+#ifdef GPU_VENOR_AMD //defined(__AMDGCN__) || defined(__MESA__)
 #define THREAD_WARP_SIZE 64
 #else //NVIDIA
 #define THREAD_WARP_SIZE 32
@@ -80,42 +117,6 @@ uint bfi_b32(uint value, uint preserve_mask, uint insert_mask)
     //todo for nvidia turing/ampere+ (lop3_lut((s0 << (s3 & 31)) | (s1 >> (32 - (s3 & 31))), s2, 0))
 }
 #endif 
-
-/*
-*consecutive threads in a warp access(arrange as warp order) ​​strided memory addresses​​, 
-*reducing memory coalescing efficiency.(e.g., Thread 0 → addr[0], Thread 1 → addr[8], 
-*Thread 2 → addr[16], ...) while in unwarped(arrange in lane order) layout consecutive 
-*threads access ​​contiguous memory addresses​​: (e.g., Thread 0 (lane0/warp0) → addr[0], 
-*Thread 1 (lane0/warp1) → addr[1], Thread 2 (lane0/warp2) → addr[2], ...)
-*using unwarped index to ​​optimize global memory access/avoid bank conflict/data reshape
-*/
-
-uint GetUnwarpedThreadIndex(uint thread_index, uint thread_group_size, uint warp_size = 32)
-{
-    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
-    uint lane_id = thread_index % warp_size;
-    uint warp_id = thread_index / warp_size;
-    return lane_id * warp_num + warp_id;
-}
-
-/*
-*bank conflicts are avoidable in most CUDA computations if care is taken when accessing __shared__
-*memory arrays. We can avoid most bank conflicts in scan by adding a variable amount of padding to 
-*each shared memory array index we compute. Specifically, we add to the index the value of the index 
-*divided by the number of shared memory banks in CUDA bank-conflict free solve as:
-#define NUM_BANKS 16
-#define LOG_NUM_BANKS 4
-#define CONFLICT_FREE_OFFSET(n)((n) >> NUM_BANKS + (n) >> (2 * LOG_NUM_BANKS))
-*/
-#if 0
-uint GetWarpedThreadIndex(uint unwarped_thread_index, uint thread_group_size, uint warp_size = 32)
-{
-    uint warp_num = (thread_group_size + warp_size - 1) / warp_size;
-    uint lane_id = unwarped_thread_index / warp_num;
-    uint warp_id = unwarped_thread_index % warp_num;
-    return warp_id * warp_size + lane_id;
-}
-#endif
 
 //simulate some ds_swizzle_b32 operations
 #ifndef COMPILER_WITH_SWIZZLE_GCN

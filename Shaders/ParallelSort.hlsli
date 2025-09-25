@@ -54,7 +54,7 @@ inline uint CondFlipBitsUint(uint u, bool flip)
     return flip ? u ^ 0xffffffffu : u;
 }
 
-//todo realize radix sort etc.
+//realize radix sort, papers related
 //https://gpuopen.com/learn/boosting_gpu_radix_sort
 //https://gpuopen.com/download/Introduction_to_GPU_Radix_Sort.pdf
 //https://research.nvidia.com/publication/2016-03_single-pass-parallel-prefix-scan-decoupled-look-back

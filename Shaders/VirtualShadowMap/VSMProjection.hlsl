@@ -1,4 +1,4 @@
-#include "../GPUScene/Culling.hlsli"
+#include "VSMCommon.hlsli"
 
 [numthreads(1, 1, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )

@@ -34,10 +34,12 @@
 #define INVALID_DATA_OFFSET 0xffffffffu
 
 
+//center-extent format bounding box is better for little object
+//and merge error is smaller, transform/traversal is better
 struct BBoxSphere 
 {
-    float3 min;
-    float3 max;
+    float3 center;
+    float3 extent;
     float4 sphere; //xyz-center w-radius
 };
 

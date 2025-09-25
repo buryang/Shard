@@ -1,0 +1,5 @@
+#ifndef _CULLING_COMMON_INC_
+#define _CULLING_COMMON_INC_
+
+
+#endif //_CULLING_COMMON_INC_

@@ -13,7 +13,6 @@
 #define TRAVERSAL_RUN_WORKGROUP 64
 #define TRAVERSAL_SORTING_ENABLED 1
 
-
 struct ClusterInfo
 {
     uint instanceID;
@@ -48,12 +47,15 @@ uint SetupTask(inout TraversalInfo traveral_info, uint read_index, uint pass_ind
     }
     else
     {
-        sub_count = UNPACK_BITS(traveral_info.packed_node, );
+        sub_count = UNPACK_BITS(traveral_info.packed_node, NODE_PACKED_);
     }
     
     return sub_count + 1;
 }
 
+    
+    if (has_task)
+    {
 #define MAX_TRAVERSAL_TASK_IN_WAVE 64
 
 groupshared uint s_tasks[MAX_TRAVERSAL_TASK_IN_WAVE];
@@ -77,9 +79,6 @@ void ProcessAllSubTask(inout TraversalInfo traversal_info, bool thread_runnable,
     bool has_task = total_threads > 0;
     uint task_count = WaveActiveCountBits(has_task);
     uint task_offset = WavePrefixCountBits(has_task);
-    
-    if (has_task)
-    {
         s_tasks[]
     }
     

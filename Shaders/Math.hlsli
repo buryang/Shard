@@ -51,6 +51,17 @@ float2 SinCosApprox(float unit_angle)
     return normalize(float2(abs(abs(3 - 4 * unit_angle) - 2) - 1, 1 - abs(unit_angle * 4 - 2)));
 }
 
+//higher precision rcp function
+inline float RcpRefined(float val)
+{
+#if 1
+    float r = rcp(val);
+    return r * (2.0f - val * r); // One Newton-Raphson iteration
+#else
+    return 1.0f / (val + M_EPSILON);
+#endif 
+}
+
 /*------------noise function---------------*/
 //https://www.shadertoy.com/view/4djSRW
 //https://github.com/everyoneishappy/happy.fxh.git
@@ -81,6 +92,7 @@ float Hash13(float3 p3)
  from "Next Generation Post Processing inCall of Duty Advanced Warfare":
  Experimenting and optimizing a noise generator, we found a noise function that we could classify 
  as being half way between dithered and random, and that we called Interleaved Gradient Noise
+ also: https://blog.demofox.org/2022/01/01/interleaved-gradient-noise-a-different-kind-of-low-discrepancy-sequence/
 */
 float IGN(float2 p, int frame)
 {
@@ -89,7 +101,22 @@ float IGN(float2 p, int frame)
 }
 //----blue noise--------
 //you can get free blue noise from here:http://momentsingraphics.de/BlueNoise.html
-//sample blue noise should use nearest filter  
+//blue noise usually sample one pre-generated texture at runtime, sample blue noise should use nearest filter 
+Texture3D<float3> blue_noise_texture;
+SamplerState blue_noise_sampler;
+float BlueNoise1D(float2 p, int frame)
+{
+    float3 warp_location = float3(p, frame);
+    uint3 texture_coord = uint3(warp_location.x, , 0);
+    return blue_noise_texture.Sample(blue_noise_sampler, texture_coord).x;
+}
+
+float2 BlueNoise2D(float2 p, int frame)
+{
+    float3 warp_location = float3(p, frame);
+    uint3 texture_coord = uint3(warp_location.x, , 0);
+    return blue_noise_texture.Sample(blue_noise_sampler, warp_location).xy;
+}
 
 //http://www.jcgt.org/published/0009/03/02/
 //(N → N): pcg3d, pcg4d is recommend by above paper
@@ -124,10 +151,13 @@ uint4 pcg4d(uint4 v)
     v.w += v.y * v.z;
     return v;
 }
+
+//https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
 //https://nullprogram.com/blog/2018/07/31/
 //https://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
 //https://www.youtube.com/watch?v=SePDzis8HqY
 //https://blog.demofox.org/2024/09/02/summing-blue-noise-octaves-like-perlin-noise/
+//dot noise https://mini.gmshaders.com/p/dot-noise
 
 float Pow3(float x)
 {
