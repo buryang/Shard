@@ -1315,7 +1315,7 @@ void CSChainedScanDigitBinning(uint thread_index : SV_GroupIndex)
 
 //determines if two sort keys should be swapped in the list.  NullItem is
 //either 0 or 0xffffffff.  XOR with the NullItem will either invert the bits
-//(effectively a negation) or leave the bits alone.  When the the NullItem is
+//(FXRively a negation) or leave the bits alone.  When the the NullItem is
 //0, we are sorting descending, so when lhs < rhs, they should swap.  For an
 //ascending sort, ~lhs < ~rhs should swap.
 inline bool IsSwapNeeded(uint lhs, uint rhs, uint null_item)

@@ -61,6 +61,8 @@
 #define ALLOW_UAV_CONDITION 
 #endif 
 
+#define LIKELY [likely]
+#define UNLIKELY [unlikely]
 #define FASTOPT [fastopt]
 
 //whether platform has wave intrinsics

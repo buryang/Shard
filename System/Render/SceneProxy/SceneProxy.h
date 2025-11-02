@@ -70,13 +70,33 @@ namespace Shard::Renderer
         void UnInit();
         /*whether scene supported CLAS scene*/
         bool IsCLASSupported()const;
+        //check whether special primitive existed
+        bool IsHairPrimitveExsited()const;
+        bool IsFoliagePrimitveExsited()const;
+        bool IsVolumePrimitveExsited()const;
+
         size_type GetCLASGeometryCount()const;
         void Tick(float delta_time);
+
+        template<typename primitive_func>
+        void EnumeratePrimitives(primitive_func&& func)
+        {
+            //todo
+        }
+
+        template<typename light_func>
+        void EnumerateLights(light_func&& func)
+        {
+            //todo
+        }
     private:
         GPUSceneProxy* gpu_scene_{ nullptr };
         //todo
         //Vector<> geometries_;
         //Vector<> clas_geometries_;
+        bool with_hair_primitves_;
+        bool with_foliage_primitves_;
+        bool with_volume_primitves_;
     };
 
     class GPUSceneProxy
@@ -91,6 +111,10 @@ namespace Shard::Renderer
         FORCE_INLINE auto GetPrimitivesNum() const { return 0u; }
         /*extract shader parameters*/
         void GetSceneShaderParameters(); //todo like unreal engine FGPUSceneResourceParameters GetShaderParameters(FRDGBuilder& GraphBuilder) const;
+        HAL::HALBuffer* GetPrimitiveBufferCPU() const { return primitive_stage_buffer_; }
+        HAL::HALBuffer* GetInstanceBufferCPU() const { return instance_stage_buffer_; }
+        HAL::HALBuffer* GetPrimitiveBufferGPU() const { return primitive_device_buffer_; }
+        HAL::HALBuffer* GetInstanceBufferGPU() const { return instance_device_buffer_; }
     private:
         GPUDataUploader* GetPrimitiveSparseUploader();
         GPUDataUploader* GetInstanceUploader();
@@ -130,8 +154,8 @@ namespace Shard::Renderer
             HAL::HALBuffer* persistent_memory_{ nullptr };
             HAL::HALBuffer* persistent_memory_used_bits_{ nullptr };
 
-            HAL::HALBuffer* vertices{ nullptr };
-            HAL::HALBuffer* triangles{ nullptr };
+            HAL::HALBuffer* vertices_{ nullptr };
+            HAL::HALBuffer* triangles_{ nullptr };
 
             /*buffer for clas scratch buffer, free range and bin*/
             HAL::HALBuffer* temporary_buffer_{ nullptr };
@@ -140,7 +164,7 @@ namespace Shard::Renderer
             HAL::HALBuffer* traversal_info_buffer_{ nullptr };
             /*traversal result, cluster need to load to render*/
             HAL::HALBuffer* render_cluster_info_buffer_{ nullptr };
-#if aaaa //raytracing member
+#if 0 //raytracing member
 #endif
         };
         

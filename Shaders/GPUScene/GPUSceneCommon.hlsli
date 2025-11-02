@@ -39,6 +39,7 @@ struct Instance
     float3x3 prev_world_to_local;
     AABB bounding_box;
     uint flags;
+    uint4 custom_payload;
 };
 
 struct Primitive

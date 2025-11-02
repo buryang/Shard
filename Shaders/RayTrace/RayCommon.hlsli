@@ -39,7 +39,7 @@ bool IntersectBoxOrientedWithNormal(float3 ray_origin, float3 ray_dir, float3 bo
         ray_origin *= box_to_world;
     }
     float inv_box_half = rcp(box_half);
-    //The specific GLSL¡¡implementation given adjusts the order of operations in some non-obvious ways in
+    //The specific GLSLï¿½ï¿½implementation given adjusts the order of operations in some non-obvious ways in
     //order to reduce the peakregister count.
     float winding = can_start_in_box && (max3(abs(ray_origin) * inv_box_half) < 1.0) ? -1f : 1f;
     float3 sign = -sign(ray_dir);
@@ -106,6 +106,33 @@ bool IntersectDisk(float3 ray_origin, float3 ray_dir, float3 disk_center, float3
     }
     return false;
 }
+
+//rnd is 2D random sample in [0, 1]^2
+//convert uniform 2D sample to a cosine-weighted direction on the unit hemisphere around normal
+inline float3 WarpRnd2DToCosineHemisphereSample(float2 rnd, float3 normal)
+{
+    float phi = 2.0f * M_PI * rnd.x; //azimuthal angle
+    float cos_theta = sqrt(rnd.y); //cosine-weighted theta
+    float sin_theta = sqrt(1.0f - rnd.y); //sin(theta) = sqrt(1 - cos^2(theta))
+
+    //spherical to cartessian coordinates (local space, assuming +z is up)
+    float3 direction = float3(sin_theta * cos(phi), sin_theta * sin(phi), cos_theta);
+
+    //create an orthonormal basis (T, B, N) around normal 
+    float3 up = abs(normal.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0); //avoid singularity
+    float3 tangent = normalize(cross(up, normal)); 
+    float3 bitangent = cross(normal, tangent);
+
+    //transform to world space
+    return direction.x * tangent + direction.y * bitangent + direction.z * normal;
+}
+
+inline float MaxRayMarchDistance(float roughness)
+{
+    float r = pow(1.f - roughness, 2) + 0.1f;
+    return lerp(1000.0f, 10.0f, r); //todo 
+}
+
 
 struct Ray
 {

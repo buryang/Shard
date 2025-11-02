@@ -62,6 +62,13 @@ inline float RcpRefined(float val)
 #endif 
 }
 
+//higher precision rsqrt function
+inline float RsqrtRefined(float val)
+{
+    float r = rsqrt(val);
+    return 0.5f * r * (3.0f - val * r * r); // One Newton-Raphson iteration
+}
+
 /*------------noise function---------------*/
 //https://www.shadertoy.com/view/4djSRW
 //https://github.com/everyoneishappy/happy.fxh.git
@@ -726,6 +733,10 @@ float2 OctSignNotZero(float2 v)
     return float2((v.x >= 0.f) ? +1.f : -1.f, (v.y >= 0.f) ? +1.f : -1.f);
 }
 
+//https://shaderbits.com/blog/octahedral-impostors
+//https://gpuopen.com/learn/fetching-from-cubes-and-octahedrons/
+//the unreal engine 4 imposter implementation uses a similar mapping
+//to place virtual cameras on an octahedron surrounding the object
 float2 OctMapping(float3 v)
 {
     //project the sphere onto the octahedron, and then onto the xy plane
@@ -753,6 +764,7 @@ float2 OctMappingPrecise(float3 v, uint bits)
     //note that at +/- 1, this will exit the square... but that
     //will be a worse encoding and never win.
     
+    UNROLL
     for (uint i = 0; i <= 1; ++i)
     {
         for (uint j = 0; j <= 1; ++j)
@@ -760,7 +772,7 @@ float2 OctMappingPrecise(float3 v, uint bits)
             if(i||j)
             {
                 //Offset the bit pattern (which is stored in floating
-                //point!) to effectively change the rounding mode
+                //point!) to FXRively change the rounding mode
                 //(when i or j is 0: floor, when it is one: ceiling)
                 float2 candidate = float2(i, j) * (1 / M) + s;
                 float cosine = dot(OctInverseMapping(candidate), v);

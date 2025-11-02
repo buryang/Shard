@@ -4,6 +4,8 @@
 #include "CommonUtils.hlsli"
 #include "ShaderAssert.hlsli"
 
+#define CS_THREAD_GROUP_DEFAULT_SIIZE_X 128u
+
 /******************************************************************************
 \brief help function for compute shaders, simulation cmask/tile operation etc
 *******************************************************************************/

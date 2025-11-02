@@ -1,6 +1,8 @@
 #ifndef _VT_PAGE_COMMON_INC_
 #define _VT_PAGE_COMMON_INC_
 
+#include "../ComputeShaderUtils.hlsli"
+
 //single page size 
 #define VT_LOG2_PAGE_SIZE 7u //128x128
 #define VT_PAGE_SIZE (1u << VT_LOG2_PAGE_SIZE)
@@ -16,6 +18,10 @@
 //page table layout in 2D texture atlas( level0, then remain mip levels next to it in axis-y)  
 #define VT_PAGE_TABLE_TEXTURE2D_SIZEX VT_PAGE_LEVEL0_POOL_DIMS
 #define VT_PAGE_TABLE_TEXTURE2D_SIZEY (VT_PAGE_LEVEL0_POOL_DIMS + VT_PAGE_LEVEL0_POOL_DIMS / 2u)
+
+#ifndef VT_COMPUTE_THREAD_GROUP_SIZE_X
+#define VT_COMPUTE_THREAD_GROUP_SIZE_X CS_THREAD_GROUP_DEFAULT_SIIZE_X
+#endif
 
 struct VTPhysXPageMetaData
 {

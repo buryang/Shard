@@ -90,7 +90,7 @@ float I_LTCLine(float3x3 invM, float3 center, float3 axis, float halfLength)
 
     // Check whether the light is entirely below the surface.
     // We must test twice, since a linear transformation
-    // may bring the light above the surface (a side-effect).
+    // may bring the light above the surface (a side-FXR).
     quit = quit || (center.z + halfLength * abs(axis.z) <= 0);
 
     // Transform into the diffuse configuration.

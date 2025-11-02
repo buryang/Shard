@@ -2,6 +2,7 @@
 #define _BSDF_INC_
 
 #include "CommonUtils.hlsli"
+#include "Math.hlsli"
 
 //https://github.com/google/filament/blob/main/shaders/src/brdf.fs
 //https://github.com/thefranke/dirtchamber/blob/master/shader/brdf.hlsl
@@ -144,7 +145,7 @@ float FresnelConductor(float VoH, float eta, float kappa)
     float a2plusb2 = sqrt(t0 * t0 + 4.0f * eta2 * kappa2);
     float t1 = a2plusb2 + VoH2;
     float temp = 0.5f * (a2plusb2 + t0);
-    [likely]
+    LIKELY
     if (temp > 0.f)
     {
         float a = sqrt(temp);
@@ -161,7 +162,7 @@ float FresnelConductor(float VoH, float eta, float kappa)
     }
 }
 
-#define NB_POINTS 1000
+#define NB_POINTS 1000u
 
 static float g_fresnel_curves_LUT[NB_POINTS][4] =
 {
@@ -1230,7 +1231,7 @@ float3 BRDF_GetSpecularAnisotropic(BRDFState brdf_aniso)
 
 float Fd_Lambert()
 {
-    return 1.0 / M_PI;
+    return 1.0f / M_PI;
 }
 
 float Fd_Burley(float roughness, float NoV, float NoL, float LoH)
