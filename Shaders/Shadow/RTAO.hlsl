@@ -21,7 +21,7 @@ struct SpatialHashRTAOParams
     uint stash_index_rw_bf_index;
     uint frame_index; //todo other parameters
 #ifdef SPATIAL_HASHING_RTAO_STAT
-    uint stat_output_rw_bf_index;
+    uint stat_output_rw_bf_index;  //uint[3]: main tbl hits/stash hits/inserts
 #endif
     //screen resolution
     uint2 screen_resolution;
@@ -84,7 +84,7 @@ uint FindOrInsertCell( float3 world_position, float3 normal, float cell_size, ou
         if(slot == RTAO_INVALID_INDEX)
         {
             UNROLL(4)
-            for(uint i = 0; i < RTAO_STASH_SIZE; i += 64) //wave size
+            for(uint i = 0; i < RTAO_STASH_SIZE; i += WaveGetLaneCount()) //wave size 64
             {
                 uint index = i + WaveGetLaneIndex();
                 if(index >= RTAO_STASH_SIZE) break;
@@ -105,8 +105,15 @@ uint FindOrInsertCell( float3 world_position, float3 normal, float cell_size, ou
         {
             //try to observe empty slot
             uint ignored;
-            if(hash_tbl1[h1] == 0) {}
-
+            InterlockedCompareExchange(hash_tbl1[h1], 0u, checksum, ignored);
+            if(ignored == 0u) {
+                return h1;
+            }
+            InterlockedCompareExchange(hash_tbl2[h2], 0u, checksum, ignored);
+            if(ignored == 0u) {
+                hash_tbl2[h2] = checksum;
+                return h2;
+            }
 
             //kickout (at last 7 times)
             if(slot == RTAO_INVALID_INDEX)
@@ -121,14 +128,16 @@ uint FindOrInsertCell( float3 world_position, float3 normal, float cell_size, ou
                     uint victim;
                     if(cur_tbl == 0u)
                     {
+                        //todo move payload as well
                         InterlockedExchange(hash_tbl1[cur_pos], cur_checksum, victim);
                     }
                     else
                     {
+                        //todo move payload as well
                         InterlockedExchange(hash_tbl2[cur_pos], cur_checksum, victim);
                     }
 
-                    if(victim == 0)
+                    if(victim == 0u)
                     {
                         slot = cur_pos; 
                         kicked_out = true;
@@ -173,9 +182,13 @@ uint FindOrInsertCell( float3 world_position, float3 normal, float cell_size, ou
 }
 
 
-float3 ScreenPosToWorldPos(uint2 screen_position, float depth)
+float3 ScreenPosToWorldPos(uint2 screen_position, float depth, uint2 screen_resolution, float4x4 inv_proj, float4x4 inv_view)
 {
-
+    float4 clip = float4((float2(screen_position) + 0.5f) / float2(screen_resolution) * 2.0f - 1.0f, depth * 2.0f - 1.0f, 1.0f);
+    float4 view = mul(clip, inv_proj); // clip->view
+    view /= view.w;
+    float4 world = mul(view, inv_view); //view->world
+    return world.xyz;    
 }
 
 float ComputeCellSize(float d, float f, float Ry, float sp, float smin)
@@ -204,7 +217,7 @@ void CSRTAO(uint3 dispatchID : SV_DispatchThreadID, uint3 groupID : SV_GroupID, 
     uint2 screen_pos = dispatchID.xy;
     if(any(screen_pos >= screen_resolution)) return;
     float depth = SampleBindlessTexture2D(depth_tex2d_index, sampler_index, (float2(screen_pos) + 0.5f) / float2(screen_resolution)).r;
-    float3 world_pos = ScreenPosToWorldPos(screen_pos, depth);
+    float3 world_pos = ScreenPosToWorldPos(screen_pos, depth, screen_resolution, inv_projection, inv_view);
 
     //todo read normal map if any from gbuffer
     float3 normal = ComputeNormalFromDepth(screen_pos, depth);
@@ -212,7 +225,7 @@ void CSRTAO(uint3 dispatchID : SV_DispatchThreadID, uint3 groupID : SV_GroupID, 
     //calculate cell size according to orginal post
     float dist = length(world_pos - camera_position);
     float cell_size = ComputeCellSize(); //max(0.02f, pow(2.0, round(log2(dist*0.5f))));
-    //jitter world postion for reduce the denoising need
+    //jitter world postion for reducing the denoising need
     //float2 rand2 = saturate(float2(rand01(rngState), rand01(rngState)));
     //rand2 = 2 * (rand2 - 0.5);
     //worldPos += jitter_scale * cell_size * (rand2.x * tangent + rand2.y * bitangent);
@@ -229,7 +242,7 @@ void CSRTAO(uint3 dispatchID : SV_DispatchThreadID, uint3 groupID : SV_GroupID, 
         float ao = TraceAO(ao_origin, normal, ao_max_distance);
 
         //combine sample in wave
-        uint payload = (uint(ao * 255.0f) << 16u) | 1u; //occlusion + sample count
+        uint payload = (uint(ao * 255.0f) << 16u) | 0x1u; //occlusion + sample count
 
         //reduce within wave
         for(uint offset = 32u; offset > 0u; offset >>= 1u)

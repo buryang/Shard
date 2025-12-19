@@ -1,8 +1,25 @@
 #ifndef _LTC_INC_
 #define _LTC_INC_
+
+/* realization of "Real-Time Polygonal-Light Shading with Linearly Transformed Cosines", Heitz et al. 2016 */
+
 //https://zero-radiance.github.io/post/line-lights/
 //https://www.eurogamer.net/digitalfoundry-2025-assassins-creed-shadows-tech-qa-rtgi-shader-compilation-taa-and-more
-#include "../CommonUtils.hlsli"
+//https://github.com/Facepunch/sbox-public/blob/8b1d58d524c37fe287bef1674db4f4fa72f095f5/game/addons/base/Assets/shaders/common/classes/LTC.hlsl
+
+#include "LightUtils.hlsli"
+#include "../Math.hlsli"
+
+
+enum LTC_LightShape
+{
+    eInvalid = 0,
+    eLine = 1,      //line light
+    eSphere = 2,    //sphere light
+    eCapsule = 3,
+    eRectangle = 4,
+    eNum,
+};
 
 // This function assumes that inputs are well-behaved, e.i.
 // that the line does not pass through the origin and
@@ -115,6 +132,21 @@ float I_LTCLine(float3x3 invM, float3 center, float3 axis, float halfLength)
     }
 
     return result;
+}
+
+float3 I_LTCCapsule()
+{
+
+}
+
+float3 I_LTCSphere()
+{
+
+}
+
+float3 I_LTCRetangle()
+{
+
 }
 
 #endif //_LTC_INC_ 

@@ -1,7 +1,7 @@
 #ifndef _ZBIN_INC_
 #define _ZBIN_INC_
 
-#include "../CommonUtils.hlsli"
+#include "LightUtils.hlsli"
 
 /**
 * 2017 siggrpah improved culling for tiled and clusted rendering
@@ -14,7 +14,7 @@
 #define TILE_FLAT_BIT_ARRAY_MAX_SIZE 128
 #define TILE_FLAT_BIT_WORD_SIZE 32 //32 bits 
 #define TILE_FLAT_ARRAY_MAX_BYTES uint(TILE_FLAT_BIT_ARRAY_MAX_SIZE*TILE_FLAT_BIT_WORD_SIZE/8u)
-#define TILE_PIXEL_SIZE 16 //tile pixel size£¿
+#define TILE_PIXEL_SIZE 16 //tile pixel sizeï¿½ï¿½
 
 StructuredBuffer<uint> zbin_masks; //sorted light entities mask
 StructuredBuffer<uint> entity_masks_tile;

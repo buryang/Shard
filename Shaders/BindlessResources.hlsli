@@ -53,6 +53,7 @@ SamplerState bindless_immutable_samplers[] : register(t0, SAMPLER_SPACE);
 #define GetBindlessROVTexture2D(index) bindless_rov_texture2Ds[NonUniformResourceIndex(index)]
 #define GetBindlessByteBufferUniform(index) bindless_byte_buffers[index]
 #define GetBindlessRWByteBufferUniform(index) bindless_rwbyte_buffers[index]
+#define SampleBindlessTexture2D(tex_index, samp_index, uv) bindless_textures2Ds[NonUniformResourceIndex(tex_index)].Sample(bindless_immutable_samplers[NonUniformResourceIndex(samp_index)], uv)
 
 #if USE_GLOBALLY_CORHERENT
 /**

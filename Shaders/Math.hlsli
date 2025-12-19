@@ -44,6 +44,14 @@ float Atan2Approx(float y, float x)
     return (y > 0) - sign(y) * (x / abs(x) + abs(y)) * 0.25f + 0.25f);
 }
 
+//fast approximation of arctangent 
+float ArcTanApprox(float x)
+{
+    float y = x * (abs(x) * ( (M_PI * 0.5f) * abs(x) - 0.00507668f) + .420691f) /
+              (abs(x) * (abs(x) * (.633387806077409f + abs(x)) + .671041944493641f) + .21519262713177476f);
+    return y;
+}
+
 //&param unit angle 0-1 for -PI...PI
 //&return approximates float2(sin(uint_angle * PI * 2 -PI), cos(uint_angle*PI * 2 - PI))
 float2 SinCosApprox(float unit_angle)
@@ -95,6 +103,20 @@ float Hash13(float3 p3)
     return frac((p3.x + p3.y) * p3.z);
 }
 
+/* split mix: is a fast, splittable pseudorandom number generator (PRNG)
+* often used to seed stronger PRNGs (like XORShift or PCG) or 
+* as a quick hash for non-adversarial data.
+*/
+uint64_t SplitMix64(uint64_t x)
+{
+    x += 0x9E3779B97F4A7C15ULL; //Golden ratio-derived constant
+    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
+    x ^= (x >> 31);
+    return x;
+}
+
+
 /*---IGN(interleaved gradient noise) noise----------
  from "Next Generation Post Processing inCall of Duty Advanced Warfare":
  Experimenting and optimizing a noise generator, we found a noise function that we could classify 
@@ -109,6 +131,7 @@ float IGN(float2 p, int frame)
 //----blue noise--------
 //you can get free blue noise from here:http://momentsingraphics.de/BlueNoise.html
 //blue noise usually sample one pre-generated texture at runtime, sample blue noise should use nearest filter 
+//further reading: https://blog.demofox.org/2020/07/14/blue-noise-textures-for-dithering-and-randomization/
 Texture3D<float3> blue_noise_texture;
 SamplerState blue_noise_sampler;
 float BlueNoise1D(float2 p, int frame)
