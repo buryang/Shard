@@ -117,6 +117,8 @@ namespace Shard
         class MINIT_API WorldScene : public Utils::ECSAdmin<int> //todo
         {
         public:
+            friend class Renderer::SceneProxy;
+
             enum class EWorldType
             {
                 eStage,

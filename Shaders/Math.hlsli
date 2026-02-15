@@ -59,6 +59,18 @@ float2 SinCosApprox(float unit_angle)
     return normalize(float2(abs(abs(3 - 4 * unit_angle) - 2) - 1, 1 - abs(unit_angle * 4 - 2)));
 }
 
+//4th order approximation of acos for x
+float AcosApprox4(float x)
+{
+    float x1 = abs(x);
+    float x2 = x1 * x1;
+    float x3 = x2 * x1;
+    float s = -0.2121144*x1 + 1.5707288;
+    s += 0.0742610*x2 - 0.0187293*x3;
+    s *= sqrt(1.0 - x1);
+    return x < 0.0 ? M_PI - s : s;
+}
+
 //higher precision rcp function
 inline float RcpRefined(float val)
 {
@@ -101,6 +113,32 @@ float Hash13(float3 p3)
     p3 = frac(p3 * .1031f);
     p3 += dot(p3, p3.zyx + 31.32f);
     return frac((p3.x + p3.y) * p3.z);
+}
+
+//http://burtleburtle.net/bob/hash/integer.html
+//https://gist.github.com/badboy/6267743
+//the follow function used by spatial-hash
+uint HashJenkins32(uint a)
+{
+    a = (a + 0x7ed55d16) + (a << 12);
+    a = (a ^ 0xc761c23c) ^ (a >> 19);
+    a = (a + 0x165667b1) + (a << 5);
+    a = (a + 0xd3a2646c) ^ (a << 9);
+    a = (a + 0xfd7046c5) + (a << 3);
+    a = (a ^ 0xb55a4f09) ^ (a >> 16);
+
+    return a;
+}
+
+uint Hash64Shift32(uint64_t key)
+{
+    key = (~key) + (key << 18); // key = (key << 18) - key - 1;
+    key = key ^ (key >>> 31);
+    key = key * 21; // key = (key + (key << 2)) + (key << 4);
+    key = key ^ (key >>> 11);
+    key = key + (key << 6);
+    key = key ^ (key >>> 22);
+    return (int) key;
 }
 
 /* split mix: is a fast, splittable pseudorandom number generator (PRNG)
@@ -653,7 +691,6 @@ uint FindNthSetBit(uint2 mask, uint n)
     
     return index + FindNthSetBit(mask32, n);   
 }
-
 //"Building an Orthonormal Basis from a 3D Unit Vector Without Normalization"
 void GetHemiOrthoBasisFrisvad(float3 n, inout float3 b1, inout float3 b2)
 {
@@ -672,6 +709,16 @@ void GetHemiOrthoBasisFrisvad(float3 n, inout float3 b1, inout float3 b2)
     }
 }
 
+//liu method, ”Building an Orthonormal Basis, Revisited“， the paper claims this is the most robust & performance method
+//this method of constructing a basis from a vec3 is also used by `glam::Vec3::any_orthonormal_pair'
+void GetHemiOrthoBasisLiu(float3 n, inout float3 b1, inout float3 b2)
+{
+    float sign = n.z >= 0.f ? 1.f : -1.f;
+    const float a = -1.f / (sign + n.z);
+    const float b = n.x * n.y * a;
+    b1 = float3(1.f + sign * n.x * n.x * a, sign * b, -sign * n.x);
+    b2 = float3(b, sign + n.y * n.y * a, -n.y);
+}
 
 //montecarlo sampling related functions
 //fast equal-area mapping of sphere

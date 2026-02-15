@@ -9,97 +9,7 @@
 
 namespace Shard::Renderer::FXR //FXR stands for Full eXperience Renderer
 {
-
-    struct ViewVisibleLightInfo
-    {
-        uint32_t lightID_;
-        uint32_t is_in_view_frustum_ : 1;
-        uint32_t is_in_draw_range_ : 1;
-    };
-
-    //todo
-    class ViewLocalAllocator final
-    {
-    public:
-        ViewLocalAllocator(size_type size) : capacity_(size)
-        {
-            bulk_ptr_ = GetRendererAllocator().allocate(size, 1u);
-        }
-        ~ViewLocalAllocator()
-        {
-            if (nullptr != bulk_ptr_) {
-                GetRendererAllocator().deallocate(bulk_ptr_, capacity_);
-            }
-        }
-
-        [[nodiscard]] void* allocate(size_type size, size_type n);
-        void deallocate(void* ptr, size_type n);
-        const size_type max_size() { return capacity_; }
-    protected:
-        DISALLOW_ASSIGN_AND_COPY(ViewLocalAllocator);
-        void* bulk_ptr_{ nullptr };
-        size_type capacity_{ 0u };
-        size_type offset_{ 0u };
-    };
-
-    using ViewInstanceMask = BitVector<ViewLocalAllocator>;
-
-    /*
-    * \brief view render related resource shared by all FXR modules   
-    */
-    struct ViewRender
-    {
-        //view matrix
-        float4x4    view_matrix_;
-        float4x4    prev_view_matrix_;
-        float4x4    inv_view_matrix_;
-
-        float4x4    proj_matrix_;
-        float4x4    inv_proj_matrix_;
-
-        Render::BufferHandle    view_uniform_buffer_;
-        //fxr module shared render target
-        Render::TextureHandle    render_target_;
-
-        //render frame index
-        uint64_t    frame_index_;
-
-        //render related flags
-        uint32_t    flags_;
-
-        //visible lights( for example spot/point/texture light in view frustum)
-        //directional lights are always visible
-        RenderArray<ViewVisibleLightInfo>   visible_lights_;
-
-        /*allocator to allocate view related resource */
-        ViewLocalAllocator  allocator_;
-
-        //view related instance visiblity mask
-        ViewInstanceMask    instance_mask_;
-
-        //LOD selection view proxy, for stereo/VR need only using left view for LOD selection
-        //to avoid inconsistent between views, default set to the view render itself
-        const ViewRender* lod_proxy_view_{ nullptr }; 
-        float lod_distance_factor_{ 1.f };
-
-    };
-
-    inline float4x4 GetViewMatrix(const ViewRender& view_render)
-    {
-        return view_render.view_matrix_;
-    }
-
-    inline float4x4 GetInvViewMatrix(const ViewRender& view_render)
-    {
-        return view_render.prev_view_matrix_;
-    }
-
-    //check whether delegate LOD selection to another view
-    inline const ViewRender& GetLODViewProxy(const ViewRender& view_render)
-    {
-        assert(view_render.lod_proxy_view_ != nullptr);
-        return *view_render.lod_proxy_view_;
-    }
+    using ViewRender = ECSViewRenderRelevant;
 
     /*render stage phase, each fxr module should do different works for each stage*/
     enum class ERenderPhase : uint8_t
@@ -154,10 +64,10 @@ namespace Shard::Renderer::FXR //FXR stands for Full eXperience Renderer
                 };
             (expander(typeid(AfterClass), ...);
         }
-    }; 
+    };
 #endif
 
-	/** abstract interface for vfx/other rendering module for input view*/
+    /** abstract interface for vfx/other rendering module for input view*/
     class MINIT_API FXRDrawBase
     {
         //declare prev/next module rely here(if needed) like this
@@ -167,12 +77,44 @@ namespace Shard::Renderer::FXR //FXR stands for Full eXperience Renderer
         struct ViewRenderState
         {
             //dummy render state for each view
-            //i wanna realize that allocate state from view's allocator
-            //all fxr module state should be allocated from view's allocator
+            //regist for each module
         };
-		//all render jobs logic should execute while rendering 
-    	virtual void Draw(Render::RenderGraph& builder, Span<ViewRender>& views, ERenderPhase phase) = 0;
+        //all render jobs logic should execute while rendering 
+        virtual void Draw(Render::RenderGraph& builder, Span<ViewRender>& views, ERenderPhase phase) = 0;
         //sometime we include fxr module in pipeline, but it's frozen so pre-draw/draw will not work as normal or not work
+
+#if 0  //features are group of similar objects and their shared rendering jobgs;
+        /* realize render feature extract entry point*/
+        virtual JobHandle OnFrameBeginExtract();
+        virtual JobHandle ExtractPerFrame();
+        virtual JobHandle ExtractPerView();
+        virtual JobHandle FinalizeExtractPerView();
+        virtual JobHandle OnFrameFinalizeExtract();
+
+        /*entry point for preparing*/
+        virtual JobHandle OnFrameBeginPrepare();
+        virtual JobHandle PreparePerFrame();
+        virtual JobHandle PreparePerView();
+        virtual JobHandle FinalizePreparePerView();
+        virtual JobHandle OnFrameFinalizePrepare();
+
+        /*entry point for submit*/
+        virtual JobHandle OnSubmitNodeBlockBegin();
+        virtual JobHandle SubmitNode();
+        virtual JobHandle OnSubmitNodeBlockEnd();
+#endif
+        //fxr module view state related utils
+        template<class ViewRenderState, class ...Args>
+        void RegistViewState(Args&& ...args) {
+            xx.RegisterComponent((std::forward<Args...>(args));
+        }
+
+        //allocate view state for each view entity
+        template<class ViewRenderState, class ...Args>
+        ViewRenderState& AllocateViewState(Utils::Entity view_entity, Args&&... args) {
+            return xx.GetComponentRepos<ViewRenderState>().Spawn(view_entity, (std::forward<Args...>(args)); //todo component repo functions
+        }
+
         void Frozen(bool frozen) { is_frozen_ = !!frozen; }
         bool IsFrozen()const { return is_frozen_; }
         float Priority() const { return priority_; }

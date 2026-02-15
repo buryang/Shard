@@ -39,8 +39,8 @@ namespace Shard {
         eRG32Float,
         eRGB32Float,
         eRGBA32Float,
-        eR11G11B10Float,
-        eRGB9E5Float,
+        eR11G11B10Float, //32bit hdr, better precision for RG
+        eRGB9E5Float, //32bit hdr, shared exponent for RGB, especially for radiance store
         eR8Int,
         eR8Uint,
         eR16Int,
@@ -97,6 +97,10 @@ namespace Shard {
         //better-than-average quality compression with less artifacts for standard RGB source data.4x4 tile
         eBC7Unorm,
         eBC7UnormSrgb,
+
+        //mobile suitable texture compression
+        eASTC4x4, 
+        eASTC12x12, //todo other astc sizes
         eNum,
     };
 

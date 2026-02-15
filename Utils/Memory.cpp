@@ -51,11 +51,15 @@ namespace Shard::Utils
     }
     void StackAllocatorImpl::deallocate(void* ptr, size_type n)
     {
-        offset_ = std::uintptr_t(ptr) - std::uintptr_t(memory_);
+        offset_ = reinterpret_cast<char*>(ptr) - reinterpret_cast<char*>(memory_);
     }
     void StackAllocatorImpl::Reset()
     {
         offset_ = 0u;
+    }
+    void StackAllocatorImpl::ReWind(void* marker)
+    {
+        offset_ = reinterpret_cast<char*>(marker) - reinterpret_cast<char*>(memory_);
     }
     StackAllocatorImpl::~StackAllocatorImpl()
     {

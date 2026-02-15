@@ -170,7 +170,7 @@ namespace Shard::HAL::Vulkan {
     }
 #endif
 
-    HALResourceBindlessHeap* HALGlobalEntityVulkan::GetResourceBindlessHeap()
+    HALResourceBindlessHeap* HALGlobalEntityVulkan::GetResourceBindlessHeap(EHALResourceGroup resource_group)
     {
         //init heap in global entity's init function 
         if (GET_PARAM_TYPE_VAL(BOOL, BINDLESS_TABLE_ENABLE)) {

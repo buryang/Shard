@@ -1,11 +1,13 @@
 #pragma once
 /*for some usually usaged ecs component and system*/
 #include "Utils/SimpleEntitySystem.h"
+
 namespace Shard
 {
     namespace Utils {
 
         //for component that freq add/delete to save time
+        template<typename Tag>
         struct ECSEnableComponent
         {
             mutable bool enable_{ false };
@@ -14,20 +16,25 @@ namespace Shard
             FORCE_INLINE void Disable() { enable_ = false; }
         };
 
-        //empty tag component
-        template<typename Tag>
-        struct ECSTagComponent
-        {
-
-        };
-
         template<typename T>
-        struct ECSEnableTemplateComponent : ECSEnableComponent
+        struct ECSEnableTemplateComponent : ECSEnableComponent<T>
         {
             T    value_;
             operator T& () { return value_; }
         };
-        
+
+        /*no dense data marker, a component has no dense data*/
+        struct NoDenseDataPayload {};
+        //empty tag component
+        //usage : using ECSDummyTag = ECSTagComponent<struct Dumy_>;
+        template<typename Tag>
+        struct ECSTagComponent final : NoDenseDataPayload
+        {
+        };
+
+        //wildcard for generating query 
+        using ECSWildcard = ECSTagComponent<struct Wildcard>;
+
         struct ECSNameComponent
         {
             enum
@@ -37,15 +44,31 @@ namespace Shard
             Tchar name_[MAX_NAME_LENGTH];
         };
 
+        template<typename Relation, typename Target>
+        struct ECSRelationUnionComponent
+        {
+            union {
+                struct {
+                    uint32_t target_;
+                    uint32_t relation_ : 31;
+                    uint32_t pair_flags_ : 1;
+
+                };
+                uint64_t packed_;
+            }
+        };
+
+
+        //https://ajmmertens.medium.com/building-games-in-ecs-with-entity-relationships-657275ba2c6c
         struct ECSRelationShipComponent
         {
             size_type    children_{ 0u };
             //parent
             Entity    parent_{ Entity::Null };
             //prev sibling 
-            Entity    prev_{ Entity::Null };
+            Entity    prev_sibling_{ Entity::Null };
             //next sibling
-            Entity    next_{ Entity::Null };
+            Entity    next_sibiling_{ Entity::Null };
             //first child
             Entity    first_child_{ Entity::Null };
             FORCE_INLINE Entity Parent()const { return parent_; }
@@ -133,90 +156,9 @@ namespace Shard
             Handle  handle_;
         };
 
-        namespace Spatial {
-            struct ECSSpatialTransformComponent
-            {
-                mat4    rotate_trans_scale_;
-            };
 
-            struct ECSpatialQuaternionComponent
-            {
-                vec4    quatern_;
-            };
+        //state/state machine related primitives
 
-            struct ECSSpatialDualQuaternionComponent
-            {
-                vec4    real_; 
-                vec4    imag_;
-            };
-
-            struct ECSSpatialSE3Component
-            {
-                float3    lie_vec_;
-            };
-
-            using ECSLocalSpatitalTransformComponent = ECSSpatialTransformComponent; //local-to-world
-            using ECSWorldSpatialTransformComponent = ECSSpatialTransformComponent; //inverse
-
-            struct ECSSpatialBoundBoxComponent
-            {
-                float3    original_;
-                float3    extents_;
-            };
-
-            using ECSLocalSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
-            using ECSWorldSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
-        }
-
-        struct ECSStaticMeshComponent
-        {
-            enum class EMobility :uint8_t
-            {
-                eStatic,
-                eDynamic,
-            };
-        };
-
-        struct ECSMeshLODGroupComponent
-        {
-            uint32_t    lod_{ 0u };
-        };
-
-        struct ECSGlobalEnvironmentMapComponent
-        {
-
-        };
-
-        struct ECSLocalEnvironmentMapComponent
-        {
-
-        };
-
-        struct ECSRenderAbleComponent
-        {
-
-        };
-
-        //render sprite componenet
-        template<typename T>
-        struct ECSRenderSpriteComponent : ECSRenderAbleComponent
-        {
-            union
-            {
-                struct
-                {
-                    uint32_t    dirty_ : 1;
-                    uint32_t    static_ : 1;
-                    uint32_t    visible_ : 1;
-                };
-                uint32_t    packet_bits_{ 0u };
-            }property_;
-            T    data_;
-            //todo 
-            ECSRenderSpriteComponent(T data) :data_(data) {
-
-            }
-        };
         
     }
 }

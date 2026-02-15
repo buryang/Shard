@@ -4,9 +4,9 @@
 
 #if 1 //def DEVELOP_DEBUG_TOOLS
 
-namespace Shard::Effect
+namespace Shard::Renderer::FXR
 {
-    class EffectDrawDebugView;
+    class FXRDrawDebugView;
     class DebugViewRender;
 }
 
@@ -44,7 +44,7 @@ namespace Shard::System::DebugView
         void Reset();
         DebugViewContext& operator+=(DebugViewContext&& rhs);
     private:
-        friend class Effect::DebugViewRender;
+        friend class FXR::DebugViewRender;
         SmallVector<LineViewCommand>    line_batcher_;
         SmallVector<PointViewCommand>    point_batcher_;
     };
@@ -63,7 +63,7 @@ namespace Shard::System::DebugView
         }
 #endif
     private:
-        friend class Shard::Effect::EffectDrawDebugView;
+        friend class Shard::Renderer::FXR::FXRDrawDebugView;
         FORCE_INLINE DebugViewContext& GetDebugViewContext() {
             return debug_context_;
         }

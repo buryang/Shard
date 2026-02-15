@@ -22,6 +22,8 @@
 #endif
 #define ALIGN_AS(align)    alignas(align) 
 #define ALIGN_CACHELINE alignas(std::hardware_destructive_interference_size)
+//align for bindless structure
+#define ALIGN_BINDLESS alignas(16)
 
 #define FALL_THROUGH [[fallthrough]]
 
@@ -31,6 +33,7 @@
 #define GLM_FORCE_CTOR_INIT
 #include "glm/glm.hpp"
 #include "glm/ext.hpp"
+#include "glm/gtx/norm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "eastl/vector.h"
@@ -78,6 +81,10 @@
 
 #pragma warning(pop)
 
+
+#define SHARD_VERSION_MAJOR 0u
+#define SHARD_VERSION_MINOR 1u
+
 #define DISALLOW_COPY_AND_ASSIGN(class_name) \
 class_name(const class_name&)=delete; \
 class_name& operator=(const class_name&)=delete; \
@@ -105,29 +112,38 @@ inline enum_type operator|(enum_type lhs, enum_type rhs){ return Utils::LogicOrF
 inline enum_type operator&(enum_type lhs, enum_type rhs){ return Utils::LogicAndFlags(lhs, rhs);}\
 inline enum_type operator~(enum_type val) { return static_cast<enum_type>(~Utils::EnumToInteger(val)); }
 
+#define DECLARE_ENUM_COMPARISON_OPS(enum_type) \
+inline bool operator==(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) == static_cast<std::underlying_type_t<enum_type>>(rhs); } \
+inline bool operator!=(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) != static_cast<std::underlying_type_t<enum_type>>(rhs); } \
+inline bool operator<(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) < static_cast<std::underlying_type_t<enum_type>>(rhs); } \
+inline bool operator>(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) > static_cast<std::underlying_type_t<enum_type>>(rhs); } \
+inline bool operator<=(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) <= static_cast<std::underlying_type_t<enum_type>>(rhs); } \
+inline bool operator>=(enum_type lhs, enum_type rhs) { return static_cast<std::underlying_type_t<enum_type>>(lhs) >= static_cast<std::underlying_type_t<enum_type>>(rhs); }
+
 #define REBIND_ALLOCATOR(Allocator, NewType) std::allocator_traits<(Allocator)>::rebind_traits<NewType>;
 
 namespace Shard {
 
-    using float2 = glm::float2;
-    using float3 = glm::float3;
+    using float2 = glm::vec2;
+    using float3 = glm::vec3;
     using float4 = glm::vec4;
 
     using float3x3 = glm::mat3;
     using float4x4 = glm::mat4;
 
-    using int2 = glm::ifloat2;
-    using int3 = glm::ifloat3;
+    using int2 = glm::ivec2;
+    using int3 = glm::ivec3;
     using int4 = glm::ivec4;
 
-    using uint2 = glm::ufloat2;
-    using uint3 = glm::ufloat3;
+    using uint2 = glm::uvec2;
+    using uint3 = glm::uvec3;
     using uint4 = glm::uvec4;
 
-    using bool2 = glm::bfloat2;
-    using bool3 = glm::bfloat3;
+    using bool2 = glm::bvec2;
+    using bool3 = glm::bvec3;
     using bool4 = glm::bvec4;
 
+    //quaternion
     using glm::quat;
 
     using size_type = std::size_t;
@@ -142,7 +158,9 @@ namespace Shard {
     template<typename Key, typename Val, uint32_t reverse_size, bool overflow=false>
     using FixedMap = eastl::fixed_hash_map < Key, Val, reverse_size, overflow> ;
     
-    //todo robin_hood map
+    //robin_hood map as default hash map
+    template<typename Key, typename Val>
+    using HashMap = robin_hood::unordered_flat_map<Key, Val>;
 
     template<typename Val>
     using Set = eastl::set<Val>;
@@ -199,6 +217,14 @@ namespace Shard {
         using Members = folly::PolyMembers<&T::Tick>;
     };
     using TickAble = folly::Poly<TickAbleInterface>;
+
+
+    //const math numbers
+    static constexpr float M_EPSILON = 1.2e-7f;
+    static constexpr float M_LN2 = 0.69314718f;
+    static constexpr float M_PI = 3.14159265359f;
+    static constexpr float M_INV_PI = 0.3183098861f;
+    static constexpr float M_E = 2.71828182845f;
 }
 
 namespace Shard::Utils {
@@ -259,6 +285,13 @@ namespace Shard::Utils {
 
     FORCE_INLINE constexpr bool IsPowOf2(Integer auto num) {
         return num && (num & (num - 1)) == 0;
+    }
+
+	//roundup integer to next power of 2
+	FORCE_INLINE constexpr auto RoundUpToPowOf2(Integer auto num)
+    {
+		const auto bits = BitScanMSB(num);
+		return bits == UINT8_MAX ? 1u : 1u << (bits + 1u);
     }
 
     FORCE_INLINE constexpr uint8_t CountBits(Integer auto mask) {
@@ -366,7 +399,7 @@ namespace Shard::Utils {
             }
         }
         bool IsEnabled() {
-            return sign_.load(std::memory_order_acq_rel) != (std::uintptr_t)0;
+            return sign_.load(std::memory_order_acq_rel) != static_cast<std::uintptr_t>(0u);
         }
     private:
         std::atomic<std::uintptr_t>& sign_;

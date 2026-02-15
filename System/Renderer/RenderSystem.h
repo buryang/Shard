@@ -8,6 +8,7 @@
 #include "Runtime/RuntimeCommandIR.h"
 #include "SceneProxy/SceneProxy.h"
 #include "SceneProxy/SceneView.h"
+#include "RenderCommon.h"
 #include "RenderPipeline.h"
 
 
@@ -34,6 +35,7 @@ namespace Shard::Renderer
         /*do the mesh regist like unity, todo*/
         uint32_t RegisterMesh();
         uint32_t RegisterMaterial();
+
         Runtime::DrawMeshBatchGeneratorInterface* GetBatchGenerator(uint32_t id);
         ~RenderSystem();
     private:
@@ -85,6 +87,9 @@ namespace Shard::Renderer
         
         //light update context
         //todo different viewinfo like unreal
+        
+        //scene draw command buffer ping-pong
+        //sync render/hal/display jobs
 
     };
 }

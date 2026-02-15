@@ -13,6 +13,8 @@ namespace Shard
             uint32_t Index()const { return index_; }
             uint32_t Generation()const { return generation_; }
             explicit operator uint32_t()const { return Index(); }
+            /*clone function for extract resource shallow copy*/
+            auto Clone() { return (*this)++; } 
             auto operator++(int) {
                 Handle temp(*this);
                 ++(*this);
@@ -105,6 +107,12 @@ namespace Shard
                 }
                 Type* operator->() {
                     return manager_.Get(*this);
+                }
+                //todo fixit
+                ~ResourceHandle() { 
+                    if (manager_ && IsValid(*this)) {
+                        manager_->Free(*this);
+                    }
                 }
             private:
                 ResourceManager& manager_;

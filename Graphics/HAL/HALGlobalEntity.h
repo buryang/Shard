@@ -32,6 +32,16 @@ namespace Shard::HAL
         eNum,
     };
 
+	/**group all resource bindless heap by life-time*/
+	enum class EHALResourceGroup : uint8_t
+	{
+		eStatic,
+		eFrame,
+		ePass,
+		eOther,
+		eNum,
+	};
+
     ///global entity parameters
     REGIST_PARAM_TYPE(UINT, HAL_ENTITY_BACKEND, EHALBackEnd::eVulkan);
     REGIST_PARAM_TYPE(UINT, HAL_FEATURE_LEVEL, EHALFeatureLevel::eSM5);
@@ -69,8 +79,15 @@ namespace Shard::HAL
         * \brief get/create memory residency manager
         */
         virtual HALMemoryResidencyManager* GetOrCreateMemoryResidencyManager();
-        //bindless heap interface
-        virtual HALResourceBindlessHeap* GetResourceBindlessHeap();
+        //bindless heap interface, group different resources by group
+        /**
+         * group resource updates by frame or render pass to minimize state changes.
+		 * use a versioning system to track which resources need updating.
+		 * avoid updating the entire descriptor heap/set unless absolutely necessary.
+         * @param resource_group 
+         * @return 
+         */
+        virtual HALResourceBindlessHeap* GetResourceBindlessHeap(EHALResourceGroup resource_group);
 #if defined(DEVELOP_DEBUG_TOOLS)&&defined(ENABLE_IMGUI)
         virtual HALImGuiLayerWrapper* GetImGuiLayerWrapper() { return nullptr; }
 #endif

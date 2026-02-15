@@ -1,4 +1,4 @@
-#include "FXRBaseModule.h"
+#include "FXRRenderBase.h"
 
 namespace Shard::Renderer::FXR
 {

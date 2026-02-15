@@ -6,6 +6,14 @@
 
 namespace Shard::Renderer
 {
+
+    struct ECSExtractView
+    {
+        //todo each camera/light has a ECSextract view component
+        //ach of these view entities has its ownVisibleEntities component 
+        //(or the render-world equivalent like RenderVisibleEntities in some contexts).
+        //This is a per - view list that contains references(Entity IDs) to the main - world entities that are visible
+    };
     
     /* camerate/viewer projection type */
     enum class EProjectionMode : uint8_t {

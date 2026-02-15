@@ -103,6 +103,33 @@ namespace Shard::Render
         ShaderPlatform    platform_;
         //other related parameters macros
         SmallVector<String> macros_;
+
+		void Init(const ShaderPlatform& platform)
+		{
+			platform_ = platform;
+			//init macros with backend default macros
+			if (platform_.backend_ == EHALBackend::eVulkan)
+			{
+				//defaultly support bindless 
+				AppendMacros("-spirv");
+				AppendMacros("-fspv-target-env=vulkan1.2");
+				AppendMacros("-fspv-extension=SPV_EXT_descriptor_indexing");
+				AppendMacros("-fspv-extension=SPV_KHR_shader_draw_parameters");
+			}
+
+			if (platform_.shader_model_ >= EShaderModel::eSM_6_0) {
+				AppendMacros(" -HV 2021");
+			}
+
+#if !_DEBUG
+			AppendMacros("-o3"); //default maximum optimization
+#endif
+		}
+
+		void AppendMacros(const auto& macro)
+		{
+			macros_.emplace_back(macro);
+		}
     };
 
     struct ShaderCompileJobIn

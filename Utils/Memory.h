@@ -92,6 +92,7 @@ namespace Shard
             void* allocate(size_type size, size_type n);
             void deallocate(void* ptr, size_type n);
             void Reset();
+            void ReWind(void* marker); //undo to specific point
             ~StackAllocatorImpl();
         private:
             size_type    capactity_{ 0u };
@@ -261,6 +262,10 @@ namespace Shard
             private:
                 BinaryTree  tree_;
             };
+        }
+
+        namespace TLSF {
+            //now only realize GPU memory tlsf allocator version
         }
 
         //memory pool allocator from apex.ai
@@ -498,7 +503,7 @@ namespace Shard
 
         }
 
-        //one stateless allocator. static prealloc pool
+        //one stateless allocator. static pre-allocated pool
         template<typename T, size_type id = 0u>
         class StaticPoolAllocator
         {
@@ -536,9 +541,11 @@ namespace Shard
 #ifdef USE_UNIFORM_POOL
             POOL_JOBSYSTEM_ID       = POOL_DEFAULT_ID,
             POOL_HAL_ID             = POOL_DEFAULT_ID,
+            POOL_RENDER_SYSTEM_ID      = POOL_DEFAULT_ID,
 #else
             POOL_JOBSYSTEM_ID       = 0x1,
             POOL_HAL_ID             = 0x2,
+            POOL_RENDER_SYSTEM_ID   = 0x3, 
 #endif
             POOL_NUM,
             //to avoid conflict; you'd better  use 

@@ -10,10 +10,11 @@
 #include "Utils/Memory.h"
 #include "Utils/SimpleEntitySystem.h"
 #include "HAL/HALCommandIR.h"
+#include "HAL/HALResources.h"
 #include "Graphics/Render/RenderShader.h"
-//#include "Renderer/GPUMem/GPUPersistentMemoryAllocator.h"
 #include "Scene/Scene.h"
-#include "../GPUUploadSystem.h"
+#include "../PrepareSystem.h"
+#include "../RenderCommon.h"
 #include "SceneStreaming.h"
 #include "SceneView.h"
 
@@ -42,8 +43,6 @@ namespace Shard::Renderer
     REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_CLAS_TRIANGLES, 64);
     REGIST_PARAM_TYPE(UINT, RENDER_SYSTEM_CLAS_GROUP_SIZE, 32);
 
-
-
     enum class EPrimitiveState
     {
         eAdded, //need allocate gpu slot
@@ -61,37 +60,37 @@ namespace Shard::Renderer
 
     };
 
-    struct ECSExtractedVFXSystem
+    struct ECSVFXSystemProxy
     {
 
     };
 
-    struct ECSExtractedPrimitve
+    struct ECSPrimitveProxy
     {
 
         //share primive & material handle with world scene proxy
     };
 
-    struct ECSExtractedLight
+    struct ECSLightProxy
     {
 
     };
 
-    struct ECSExtractedCamera
+    struct ECSCameraProxy
     {
 
     };
 
-    struct ECSExtractedHairPrimitve
+    struct ECSHairPrimitveProxy
     {
 
     };
 
-    struct ECSExtractedFoliagePrimitve
+    struct ECSFoliagePrimitveProxy
     {
     };
 
-    struct ECSExtractedVolumePrimitve
+    struct ECSVolumePrimitveProxy
     {
     };
 
@@ -103,14 +102,17 @@ namespace Shard::Renderer
         //todo vector
     };
 
+
     //declare global GPU scene unifrom buffer
     BEGIN_SHADER_PARAMETER_DEF(GPUSceneUniformBuffer)
     END_SHADER_PARAMETER_DEF()
 
 
-    class SceneProxy : public Utils::ECSAdmin<Allocator = TLSScalablePoolAllocatorInstance<uint8_t, POOL_RENDER_SYSTEM_ID> > //todo
+    class SceneProxy : public Utils::ECSAdmin<Allocator=Utils::ScalablePoolAllocator> //todo
     {
     public:
+        friend class GPUUpLoadSystem;
+        friend class RenderAbleExtractSystem;
         SceneProxy() = default;
 
         void Init(Scene::WorldScene* world);
@@ -122,15 +124,14 @@ namespace Shard::Renderer
         void OnRenderEnd();
 
         /*prepare scene for view-related data*/
-        JobHandle AsyncPrepareForViews(const SceneView& view);
+        //JobHandle AsyncPrepareForViews(const SceneView& view);
 
         //add logic sync with ecs world scene
-        JobHandle AsyncApplyWorldUpdates();
+        //JobHandle AsyncApplyWorldUpdates();
         //add logic sync with gpu proxy to command buffer(hal layer multithread backend update)
-        JobHandle BuildGPUSceneProxyUpdateCommands(HAL::HALCommandContext& cmd_buffer) const;
+        //JobHandle BuildGPUSceneProxyUpdateCommands(HAL::HALCommandContext& cmd_buffer) const;
 
         GPUSceneProxy* GetGPUSceneProxy() const { return gpu_scene_; }
-
 
         /*whether scene supported CLAS scene*/
         FORCE_INLINE bool IsCLASSupported()const;
@@ -168,7 +169,7 @@ namespace Shard::Renderer
         GPUSceneProxy*  gpu_scene_{ nullptr };
 
         //scene entity mapping to render world entity
-        HashMap<Entity, Entity> entity_scene_to_proxy_;
+        //HashMap<Entity, Entity> entity_scene_to_proxy_; //no need, using clone external to clone external world component
         
         //do not need primitive proxy
         //just query all primitive from ecs after app logic finalized
@@ -182,6 +183,11 @@ namespace Shard::Renderer
         //it's a data access overlap problem between render & game system
         //current the solution is double-data buffer, one for read , one for write
         //...
+
+
+        //global gpu resource cache here
+        RenderArray<Texture::Handle> texture_cache_;
+        RenderArray<Buffer::Handle> buffer_cache_;
 
 
         //todo static/dynamic primitves

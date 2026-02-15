@@ -19,7 +19,7 @@ namespace Shard
             return *this;
         }
 
-        Entity EntityManager::Generate()
+        Entity EntityManager::Spawn()
         {
             if (free_indices_.size() > 0u)
             {
@@ -34,6 +34,26 @@ namespace Shard
                 generation_.push_back(0u);
                 return { index, 0u };
             }
+        }
+
+        bool EntityManager::Insert(const Entity& entity)
+        {
+            const auto index = entity.Index();
+            if (index >= generation_.size())
+            {
+                generation_.resize(index + 1u, 0u);
+            }
+            if (IsAlive(entity))
+            {
+                return false;
+            }
+            generation_[index] = entity.Generation();
+            //remove from free list if in
+            if (auto iter = eastl::find(free_indices_.begin(), free_indices_.end(), index); iter != free_indices_.end())
+            {
+                free_indices_.erase(iter);
+            }
+            return true;
         }
 
         void EntityManager::Release(Entity entity)

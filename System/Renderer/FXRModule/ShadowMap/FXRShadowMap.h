@@ -6,10 +6,10 @@
 
 namespace Shard::Renderer::FXR
 {
-	struct ShadowRenderTargetAtlas
+	struct ECSShadowRenderTargetAtlas
 	{
-		SmallVector<Render::RenderTexture*> xx_;
-		Render::RenderTexture* depth_stencil_;
+		SmallVector<Render::TextureHandle> depth_atlas_;
+		Render::TextureHandle depth_stencil_;
 	};
 
 	struct ShadowRender
@@ -22,10 +22,8 @@ namespace Shard::Renderer::FXR
 		float   normal_bias_;
 		float   texel_size_; //one texel size in world space
 		float   filter_size_; //filter size in world space
-		float	lod_dis_factor_{ 1.f }; //lod distance factor
 		uint32_t	flags_;
 
-		ShadowRenderTargetAtlas render_target_;
 		uint4 scissor_rect_; //sub shadow map size and region
 
 #ifndef SM_GPU_DRIVEN_RENEDER

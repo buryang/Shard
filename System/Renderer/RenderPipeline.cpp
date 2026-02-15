@@ -45,7 +45,7 @@ namespace Shard::Renderer
 
     void HDRPRender3D::Render(Span<FXR::ViewRender>& views)
     {
-        BeginUpdateSceneProxyFromECS(); 
+        BeginUpdateSceneProxyFromECS(); //sync scene with ecs
         fxr_modules_->Draw(render_graph_, views, ERenderPhase::ePreInitViews);
         //1.init views and collect meshes
         EndUpdateSceneProxyFromECS();

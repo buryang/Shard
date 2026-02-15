@@ -1,4 +1,5 @@
-#includ "DDGICommon.hlsli"
+#include "DDGICommon.hlsli"
+#include "../RayTrace/RTCommon.hlsli" 
 
 EProbeState QueryProbeState(float3 position)
 {
@@ -7,7 +8,7 @@ EProbeState QueryProbeState(float3 position)
 
 void TraceProbeRays()
 {
-    //todo
+    //screen-space ray tracing for ddgi probes
 }
 
 [numthreads(8, 8, 1)]

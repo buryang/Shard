@@ -8,6 +8,17 @@
 #include <SDL3/SDL.h>
 #endif
 
+void mm_pause()
+{
+#ifdef _MSC_VER
+    _mm_pause();
+#elif defined(__GNUC__) || defined(__clang__)
+    __builtin_ia32_pause();
+#else
+    std::this_thread::yield();
+#endif
+}
+
 namespace Shard::Utils
 {
 #ifdef USE_RAWINPUT
@@ -16,10 +27,7 @@ namespace Shard::Utils
 	using WindowHandle = SDL_Window*;
 #endif
 	using PID = size_type;
-}
 
-namespace Shard::Utils
-{
 	//thread
 #if __cplusplus < 202002L
 	void BindThreadToCPU(std::thread& th, uint32_t core_id);
@@ -40,9 +48,9 @@ namespace Shard::Utils
 
 	struct MonitorSetting
 	{
-		uint32_t    fps_;
+		uint32_t	fps_;
 		uint32_t    bits_per_pixel_;
-		float2        resolution_;
+		float2		resolution_;
 	};
 
 	const MonitorSetting& GetMonitorSetting();

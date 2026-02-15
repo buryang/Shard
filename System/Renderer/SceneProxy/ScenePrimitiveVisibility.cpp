@@ -1,14 +1,12 @@
 #include "Utils/CommonUtils.h"
 #include "Core/EngineGlobalParams.h"
+#include "Scene/Primitive.h"
 #include "ScenePrimitiveVisibility.h"
 
-//force mesh lod, default ~0u mean not force
-REGIST_PARAM_TYPE(UINT, RENDER_LOD_FORCE_VAL, ~0u);
-//engine global lod factor bias
-REGIST_PARAM_TYPE(FLOAT, RENDER_LOD_FACTOR_BIAS, 1.f); 
 
 namespace Shard::Renderer
 {
+
     void VisiblePrimitiveConsumer::AddBatches(const VisiblePrimitivesCollector& collector)
     {
        //

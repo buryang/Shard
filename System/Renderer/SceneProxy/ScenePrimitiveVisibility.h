@@ -6,6 +6,8 @@
 #include "SceneProxy.h"
 #include "SceneStreaming.h"
 
+/*scene primitive visibility do GPU-driven instance culling work*/
+
 namespace Shard::Renderer
 {
     REGIST_PARAM_TYPE(UINT, SCENE_INSTANCE_CULLING_BATCH_SIZE, 256u); //number of instances per culling batch

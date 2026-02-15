@@ -10,6 +10,8 @@
  *  Grassmann Algebra for Intesection calc
  */
 
+#define MAX_STATIC_MESH_LODS 8u
+
 namespace Shard::Scene
 {
 
@@ -164,12 +166,194 @@ namespace Shard::Scene
         uint32_t    index_;
     };
 
+    struct Triangle
+    {
+        float3 vertices_[3];
+    };
+
     //todo:plane to 4D vector Grassmann Algebra
     struct Plane
     {
-        float3    normal_;
-        float3    tangent_;
+        float4 normal_;
+        float4 tangent_;
     };
+
+    /*
+    * frustum planes are ordered left, right, top, bottom, near, far
+    * the normal vectors point toward the interior of the frustum
+    */
+    struct Frustum
+    {
+        enum {
+            NUM_PLANES = 6u,
+        };
+        float4 xyzw_[NUM_PLANES];
+    };
+
+    template<uint32_t planes>
+    struct ConvexVolume
+    {
+        enum {
+            NUM_PLANES = planes,
+        };
+        float4 xyzw_[NUM_PLANES];
+    };
+
+    //ABCD/Hessian Representation, permuted plane data, re-range for SIMD intrinsics
+    struct PermutedFrustum
+    {
+        enum {
+            NUM_DIMS = 6,
+            NUM_DIMS_VEC4 = (NUM_DIMS + 3u) / 4u,
+            NUM_DIMS_REMAIN = NUM_DIMS % 4u,
+        };
+        float4 xxxx_[NUM_DIMS_VEC4];
+        float4 yyyy_[NUM_DIMS_VEC4];
+        float4 zzzz_[NUM_DIMS_VEC4];
+        float4 wwww_[NUM_DIMS_VEC4];
+
+    };
+
+    template<uint32_t planes>
+    struct PermutedConvexVolume
+    {
+        enum {
+            NUM_DIMS = planes,
+            NUM_DIMS_VEC4 = (NUM_DIMS + 3u) / 4u,
+            NUM_DIMS_REMAIN = NUM_DIMS % 4u,
+        };
+        float4 xxxx_[NUM_DIMS_VEC4];
+        float4 yyyy_[NUM_DIMS_VEC4];
+        float4 zzzz_[NUM_DIMS_VEC4];
+        float4 wwww_[NUM_DIMS_VEC4];
+    };
+
+    template<class Volume, class PermutedVolume>
+    PermutedVolume VolumePermute(const Volume& vol)
+    {
+        static_assert(PermulatedVolume::NUM_DIMS == Volume::NUM_PLANES);
+
+        PermutedVolume permuted_vol;
+        constexpr auto permute_count = PermutedVolume::NUM_DIMS_VEC4;
+        constexpr auto permute_remain = PermutedVolume::NUM_DIMS_REMAIN;
+
+        auto n = 0, offset = 0;
+        for (; n < permute_count-1; ++n, offset += 4)
+        {
+            //permute to SIMD ready order
+            permuted_vol.xxxx_[n] = float4(0, 0, 0, 0);
+            permuted_vol.yyyy_[n] = float4(0, 0, 0, 0);
+            permuted_vol.zzzz_[n] = float4(0, 0, 0, 0);
+            permuted_vol.wwww_[n] = float4(0, 0, 0, 0);
+        }
+
+        if constexpr (permute_remain)
+        {
+            float4 xxxx = float4(0.f);
+            float4 yyyy = float4(0.f);
+            float4 zzzz = float4(0.f);
+            float4 wwww = float4(0.f);
+            
+            if constexpr (permute_remain > 0u)
+            {
+                xxxx[0] = xx;
+                yyyy[0] = xx;
+                zzzz[0] = xx;
+                wwww[0] = xx;
+            }
+
+            if constexpr (permute_remain > 1u)
+            {
+                xxxx[1] = xx;
+                yyyy[1] = xx;
+                zzzz[1] = xx;
+                wwww[1] = xx;
+            }
+
+            if constexpr (permute_remain > 2u)
+            {
+                normal[2] = xx;
+                tangent[2] = xx;
+            }
+            
+            permuted_vol.xxxx_[n] = float4(normal[0].x, normal[1].x, normal[2].x, normal[3].x);
+            permuted_vol.yyyy_[n+1] = float4(normal[0].y, normal[1].y, normal[2].y, normal[3].y);
+            permuted_vol.zzzz_[n+2] = float4(normal[0].z, normal[1].z, normal[2].z, normal[3].z);
+            permuted_vol.wwww_[n+3] = float4(normal[0].w, normal[1].w, normal[2].w, normal[3].w);
+
+        }
+
+        return permuted_vol;
+    }
+
+    template<class PermutedVolume>
+    bool IntersectBoxTest(const PermutedVolume& vol, const float3& box_origin, const float3& box_extent)
+    {
+        const float4 cx = float4(box_origin.x);
+        const float4 cy = float4(box_origin.y);
+        const float4 cz = float4(box_origin.z);
+
+        const float4 ex = float4(box_extent.x);
+        const float4 ey = float4(box_extent.y);
+        const float4 ez = float4(box_extent.z);
+
+        for(auto n = 0; n < PermutedVolume::NUM_DIMS_VEC4; ++n)
+        {
+            //base dot = |n|¡¤center + d
+            float4 dot_center = vol.xxxx_[i] * cx  + vol.yyyy_[i] * cy +
+                    vol.zzzz_[i] * cz + vol.wwww_[i];
+
+            //radius in plane normal direction = |n|¡¤extent
+            float4 radius  = abs(vol.xxxx_[i]) * ex + abs(vol.yyyy_[i]) * ey +
+                    abs(vol.zzzz_[i]) * ez;
+            //the box is completely on the negative side if: dot_center + radius < 0
+            //the padding xyzw components are all zero, so no problem
+            if (any(dot_center + radius < 0.0f))
+                return false;
+        }
+
+        return true;
+    }
+
+    template<class PermutedVolume>
+    bool IntersectSphereTest(const PermutedVolume& vol, float4 sphere)
+    {
+        float4 cx(sphere.x), cy(sphere.y), cz(sphere.z), r(sphere.z);
+
+        for (auto n = 0; n < PermutedVolume::NUM_DIMS_VEC4-1; ++n)
+        {
+            float4 dist = cx * vol.xxxx_[n] + cy * vol.yyyy_[n] + cz * vol.zzzz_[n] + vol.wwww_[n];
+            if( glm::any(glm::lessThan(dist, -r))){
+                return false;
+            }
+        }
+
+        constexpr auto remain = PermutedVolume::NUM_DIMS_REMAIN;
+        float4 dist = cx * vol.xxxx_[n] + cy * vol.yyyy_[n] + cz * vol.zzzz_[n] + vol.wwww_[n];
+        auto is_outside = glm::lessThan(dist, -r);
+        if constexpr (!remain)
+        {
+            return !is_outside.x;
+        }
+        else if constexpr (remain == 1u) {
+            if( dist.x < -r.x ){
+                return false;
+        }
+        else if constexpr (remain == 2u) {
+            return !is_outside.x || !is_outside.y;
+        }
+        else if constexpr (remain == 3u) {
+            return !is_outside.x || !is_outside.y || !is_outside.z;
+        }
+
+        return true;
+
+    }
+
+    //template<class PermutedVolume>
+    //bool IntersectTriangleTest(const PermutedVolume& vol, const Triangle& tri)
+    //{
+    //}
 
     struct SubMeshIndexInfo32 //copy from unity 
     {
@@ -404,10 +588,49 @@ namespace Shard::Scene
         float3    axisZ_;
     };
 
+ 
     struct AABB
     {
         float3    lo_;
         float3    hi_;
+    };
+
+    //https://gpfault.net/posts/aabb-tricks.html said below AABB is better for ray intersection test
+    //will write in hlsl later
+    struct AABBMinMax
+    {
+        float x_minmax_[2];
+        float y_minmax_[2];
+        float z_minmax_[2];
+    };
+
+    inline float3 GetAABBCorner(const AABBMinMax& aabb, uint32_t index) {
+        return float3(aabb.x_minmax_[index & 0x1],
+            aabb.y_minmax_[(index & 0x2) >> 1],
+            aabb.z_minmax_[(index & 0x4) >> 2]);
+    }
+
+    inline AABBMinMax EnclosingAABBs(const AABBMinMax& lhs, const AABBMinMax& rhs) {
+        return AABBMinMax{
+            { eastl::min(lhs.x_minmax_[0], rhs.x_minmax_[0]), eastl::max(lhs.x_minmax_[1], rhs.x_minmax_[1]) },
+            { eastl::min(lhs.y_minmax_[0], rhs.y_minmax_[0]), eastl::max(lhs.y_minmax_[1], rhs.y_minmax_[1]) },
+            { eastl::min(lhs.z_minmax_[0], rhs.z_minmax_[0]), eastl::max(lhs.z_minmax_[1], rhs.z_minmax_[1]) },
+        };
+    }
+
+    inline AABBMinMax AABBToAABBMinMax(const AABB& aabb) {
+        return AABBMinMax{
+            { aabb.lo_.x, aabb.hi_.x },
+            { aabb.lo_.y, aabb.hi_.y },
+            { aabb.lo_.z, aabb.hi_.z },
+        };
+    }
+
+    struct BoundingBoxSphere
+    {
+        float3  center_;
+        float3  extent_;
+        float   radius_;
     };
 
     /*get corner of the AABB bounding box*/
@@ -422,7 +645,9 @@ namespace Shard::Scene
         eDIRECTIONAL,
         eAREA,
         eDISTANT,
+        eRECTANGLE,
         ePOLYGONAL,
+        eLINE,
     };
 
 
@@ -452,7 +677,7 @@ namespace Shard::Scene
         float3    pos_;
         float3    direction_;
         float3    tangent_;
-        vec4    color_;
+        float4    color_;
         float   fall_off_exp_;
         float   specular_scale_;
         float   spot_angles_;
@@ -514,7 +739,7 @@ namespace Shard::Scene
     struct Image
     {
         Vector<uint8_t> raw_;
-        ufloat3            size_;
+        uint2           size_;
         uint32_t        mip_levels_{ 1 };
         uint32_t        array_layers_{ 1 };
         EImageType        type_{ EImageType::TEXTURE_2D };
@@ -532,6 +757,7 @@ namespace Shard::Scene
     enum class EAddressMode : uint8_t
     {
         WARP,
+        REPEAT, //??
         MIRROR,
         CLAMP,
         BORDER,
@@ -650,5 +876,137 @@ namespace Shard::Scene
         HashType hash_;
     };
 
+    //primitive render relevant
+    struct ECSPrimitveRelevant
+    {
+        uint32_t    layer_flags_;
+    };
 
+    inline bool IsLayerFlagsEnabled(const ECSPrimitiveRevant& relevant, uint32_t layer_mask)
+    {
+        return (relevant.layer_flags_ & layer_mask) != 0u;
+    }
+
+    struct ECSLightRelevant
+    {
+        //IES
+        uint32_t ies_atlas_;
+    };
+
+    //tag that hidden a light, avoid render it
+    using ECSLightHiddenTag = Uitls::ECSTagComponent<struct LightHidden>;
+
+    /*
+     * each paricle system instance has own indepent hal buffer, especially number of system is few
+     * some situation maybe share buffer, 
+     * 1.Mesh Renderers: If using the same static mesh asset across
+     * systems, the base vertex/index data (from the mesh) is shared. but instance-specific transforms/-
+     * particles use per-system dynamic buffers.
+     * 2.Sprite/Ribbon Renderers: GPU buffers (e.g., structured buffers for positions) are per-emitter,
+     * but sorting (if enabled) uses a temporary shared index buffer on GPU for reordering across particles in one draw call.
+     */
+    struct ECSVFXParticleSystem
+    {
+
+    };
+
+    struct ECSSpatialTransformComponent
+    {
+        float4x4    rotate_trans_scale_;
+    };
+
+    struct ECSpatialQuaternionComponent
+    {
+        float4    quatern_;
+    };
+
+    struct ECSSpatialDualQuaternionComponent
+    {
+        float4    real_;
+        float4    imag_;
+    };
+
+    struct ECSSpatialSE3Component
+    {
+        float3    lie_vec_;
+    };
+
+    using ECSLocalSpatitalTransformComponent = ECSSpatialTransformComponent; //local-to-world
+    using ECSWorldSpatialTransformComponent = ECSSpatialTransformComponent; //inverse
+
+    //view proj matrix
+    using ECSViewProjMatrixComponent = ECSSpatialTransformComponent; //view matrix
+    using ECSViewInvProjMatrixComponent = ECSSpatialTransformComponent; //inverse view matrix
+    //translated transform component(move origin to camera position)
+    using ECSTranslatedViewMatrixComponent = ECSSpatialTransformComponent;
+    using ECSTranslatedViewInvMatrixComponent = ECSSpatialTransformComponent; //view matrix to translated world
+
+    inline ECSTranslatedViewMatrixComponent MakeTranslatedViewMatrix(const ECSViewProjMatrixComponent& view_matrix, const float3& view_tanslation)
+    {
+        return xx;
+    }
+
+    inline ECSTranslatedViewInvMatrixComponent MakeTranslatedViewInvMatrix(const ECSViewInvProjMatrixComponent& view_inv_matrix, const float3& view_translation)
+    {
+        return xx;
+    }
+
+    using ECSSpatialBoundBoxComponent = BoundingBoxSphere;
+    using ECSLocalSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
+    using ECSWorldSpatitalBoundBoxComponent = ECSSpatialBoundBoxComponent;
+
+    struct ECSStaticMeshComponent
+    {
+        enum class EMobility :uint8_t
+        {
+            eStatic,
+            eDynamic,
+        };
+    };
+
+    struct ECSMeshLODGroupComponent
+    {
+        uint32_t    lod_{ 0u };
+    };
+
+    struct ECSGlobalEnvironmentMapComponent
+    {
+
+    };
+
+    struct ECSLocalEnvironmentMapComponent
+    {
+
+    };
+
+    //render sprite componenet
+    template<typename T>
+    struct ECSRenderSpriteComponent : ECSRenderAbleComponent
+    {
+        union
+        {
+            struct
+            {
+                uint32_t    dirty_ : 1;
+                uint32_t    static_ : 1;
+                uint32_t    visible_ : 1;
+            };
+            uint32_t    packet_bits_{ 0u };
+        }property_;
+        T    data_;
+        //todo 
+        ECSRenderSpriteComponent(T data) :data_(data) {
+
+        }
+    };
+
+    //instance render layer/properties
+    struct ECSInstanceLayerComponent
+    {
+        uint8_t is_shadow_caster_ : 1;
+        uint8_t is_occluder_ : 1;
+        uint8_t is_depth_passes_ : 1; //include in depth render pass
+        uint8_t is_main_passes_ : 1; //included in main pass
+        uint8_t is_dither_lod_enabled_ : 1; //whether support dither lod
+    }
 }

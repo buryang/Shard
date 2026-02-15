@@ -91,7 +91,7 @@ namespace Shard::HAL {
     protected:
         HALResourceHandle GetAvailableResourceHandle(uint32_t tag) {
             HALResourceHandle handle;
-            std::unique_lock<std::shared_mutex>    lock(free_mutex_);
+            std::unique_lock<std::shared_mutex>	lock(free_mutex_);
             if (!free_index_.empty()) {
                 handle = free_index_.front();
                 handle.tag_ = tag;

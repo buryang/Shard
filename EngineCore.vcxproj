@@ -22,12 +22,23 @@
     <ClCompile Include="Graphics\Core\EngineGlobalParams.cpp" />
     <ClCompile Include="Effect\EffectRayTracingCore.cpp" />
     <ClCompile Include="Effect\EffectRayTracingUtils.cpp" />
+    <ClCompile Include="Scene\Material.cpp" />
     <ClCompile Include="Scene\Primitive.cpp" />
-    <ClCompile Include="System\Render\Effect\Base\EffectBasePass.cpp" />
-    <ClCompile Include="System\Render\Effect\DebugView\EffectDebugView.cpp" />
-    <ClCompile Include="System\Render\Effect\DebugView\EffectImguiView.cpp" />
-    <ClCompile Include="System\Render\Effect\Font\EffectFonts.cpp" />
-    <ClCompile Include="System\Render\Effect\PostProcess\EffectDepthOfField.cpp" />
+    <ClCompile Include="System\ExtractSP\ExtractSystem.cpp" />
+    <ClCompile Include="System\PostUpdate\PostUpdateSystem.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\PostProcess\FXRBloomVeil.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\PostProcess\FXRMotionBlur.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\PrepassVelocity\FXRPrepassAndVelocityRender.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\ShadowMap\DFS\DistanceFieldShadow.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\TAA\FXRTAA.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\VFX\FXRVFXSystemManager.cpp" />
+    <ClCompile Include="System\Renderer\QueueSortSystem.cpp" />
+    <ClCompile Include="System\Renderer\SceneProxy\SceneView.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\Base\FXRBaseModule.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\DebugView\FXRDebugView.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\DebugView\FXRImguiView.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\Font\FXRFonts.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\PostProcess\FXRDepthOfField.cpp" />
     <ClCompile Include="Graphics\HAL\Vulkan\HALQueryVulkan.cpp" />
     <ClCompile Include="Graphics\HAL\Vulkan\HALRenderPassVulkan.cpp" />
     <ClCompile Include="Graphics\Render\RenderBarrier.cpp" />
@@ -45,10 +56,11 @@
     <ClCompile Include="Graphics\HAL\HALResourceBinding.cpp" />
     <ClCompile Include="Graphics\HAL\HALResourcePool.cpp" />
     <ClCompile Include="Graphics\HAL\Vulkan\HALMemoryResidencyVulkan.cpp" />
-    <ClCompile Include="System\App\CameraSystem.cpp" />
+    <ClCompile Include="System\App\AppLogicSystem.cpp" />
     <ClCompile Include="System\DebugView\DebugViewSystem.cpp" />
     <ClCompile Include="System\Entity\EntityCommandUpdateSystem.cpp" />
-    <ClCompile Include="System\Render\RenderSystem.cpp" />
+    <ClCompile Include="System\Renderer\FXRModule\ShadowMap\FXRShadowMap.cpp" />
+    <ClCompile Include="System\Renderer\RenderSystem.cpp" />
     <ClCompile Include="Graphics\HAL\HALCommand.cpp" />
     <ClCompile Include="Graphics\HAL\HALGlobalEntity.cpp" />
     <ClCompile Include="Graphics\HAL\HALResources.cpp" />
@@ -82,9 +94,15 @@
     <ClCompile Include="System\Render\RuntimeWorkIR.cpp" />
     <ClCompile Include="System\Render\RuntimeWorkProcessor.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
-    <ClCompile Include="System\Render\SceneProxy\SceneProxy.cpp" />
-    <ClCompile Include="System\Render\SceneProxy\SceneStreaming.cpp" />
-    <ClCompile Include="System\Resource\Loader\DDSTextureLoader.cpp" />
+    <ClCompile Include="System\Renderer\SceneProxy\ScenePrimitiveVisibility.cpp" />
+    <ClCompile Include="System\Renderer\SceneProxy\SceneProxy.cpp" />
+    <ClCompile Include="System\Renderer\SceneProxy\SceneStreaming.cpp" />
+    <ClCompile Include="System\Render\VirtualTexture\VirtualShadowMap.cpp" />
+    <ClCompile Include="System\Render\VirtualTexture\VirtualShadowMapCache.cpp" />
+    <ClCompile Include="System\Render\VirtualTexture\VirtualTexture.cpp" />
+    <ClCompile Include="System\Asset\Loader\DDSTextureLoader.cpp" />
+    <ClCompile Include="System\Asset\Loader\ResourceLoader.cpp" />
+    <ClCompile Include="System\Asset\Loader\SPIRVShaderLoader.cpp" />
     <ClCompile Include="Utils\CommonUtils.cpp" />
     <ClCompile Include="Utils\DataFileCache.cpp" />
     <ClCompile Include="Utils\Memory.cpp" />
@@ -100,11 +118,29 @@
     <ClInclude Include="Graphics\Core\GFXDefinitions.h" />
     <ClInclude Include="Graphics\Core\EngineGlobalParams.h" />
     <ClInclude Include="Effect\EffectRayTracing.h" />
-    <ClInclude Include="System\Render\Effect\Base\EffectBasePass.h" />
-    <ClInclude Include="System\Render\Effect\DebugView\EffectDebugView.h" />
-    <ClInclude Include="System\Render\Effect\DebugView\EffectImguiView.h" />
-    <ClInclude Include="System\Render\Effect\Font\EffectFonts.h" />
-    <ClInclude Include="System\Render\Effect\PostProcess\EffectDepthOfField.h" />
+    <ClInclude Include="System\App\AppCommon.h" />
+    <ClInclude Include="System\PostUpdate\PostUpdateSystem.h" />
+    <ClInclude Include="System\PhyX\VFX\VFXSystem.h" />
+    <ClInclude Include="System\ExtractSP\ExtractSystem.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PostProcess\FXRBloomVeil.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PostProcess\FXRMotionBlur.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PostProcess\FXRPPCommon.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PostProcess\FXRToneMapping.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PrepassVelocity\FXRPrepassAndVelocityRender.h" />
+    <ClInclude Include="System\Renderer\FXRModule\ShadowMap\DFS\DistanceFieldShadowCommon.h" />
+    <ClInclude Include="System\Renderer\FXRModule\ShadowMap\DFS\DistanceFieldShadow.h" />
+    <ClInclude Include="System\Renderer\FXRModule\TAA\FXRTAA.h" />
+    <ClInclude Include="System\Renderer\FXRModule\VFX\FXRVFXSystem.h" />
+    <ClInclude Include="System\Renderer\FXRModule\VFX\VFXSystemSimulation.h" />
+    <ClInclude Include="System\Renderer\QueueSortSystem.h" />
+    <ClInclude Include="System\Renderer\RenderCommon.h" />
+    <ClInclude Include="System\Renderer\SceneProxy\SceneView.h" />
+    <ClInclude Include="System\Renderer\FXRModule\Base\FXRBaseModule.h" />
+    <ClInclude Include="System\Renderer\SceneProxy\ClusterCommon.h" />
+    <ClInclude Include="System\Renderer\FXRModule\DebugView\FXRDebugView.h" />
+    <ClInclude Include="System\Renderer\FXRModule\DebugView\FXRImguiView.h" />
+    <ClInclude Include="System\Renderer\FXRModule\Font\FXRFonts.h" />
+    <ClInclude Include="System\Renderer\FXRModule\PostProcess\FXRDepthOfField.h" />
     <ClInclude Include="Graphics\HAL\HALQuery.h" />
     <ClInclude Include="Graphics\HAL\HALRenderPass.h" />
     <ClInclude Include="Graphics\HAL\Vulkan\HALQueryVulkan.h" />
@@ -129,11 +165,12 @@
     <ClInclude Include="Graphics\Render\RenderShaderParameters.h" />
     <ClInclude Include="Renderer\RtRenderShaderUtils.h" />
     <ClInclude Include="System\Animation\AnimationSystem.h" />
-    <ClInclude Include="System\App\CameraSystem.h" />
+    <ClInclude Include="System\App\AppLogicSystem.h" />
     <ClInclude Include="System\DebugView\DebugViewSystem.h" />
     <ClInclude Include="System\Entity\EntityCommandUpdateSystem.h" />
     <ClInclude Include="System\PhyX\PhyXSystem.h" />
-    <ClInclude Include="System\Render\RenderSystem.h" />
+    <ClInclude Include="System\Renderer\FXRModule\ShadowMap\FXRShadowMap.h" />
+    <ClInclude Include="System\Renderer\RenderSystem.h" />
     <ClInclude Include="Graphics\HAL\HALGlobalEntity.h" />
     <ClInclude Include="Graphics\HAL\HALCommand.h" />
     <ClInclude Include="Graphics\HAL\HALCommandIR.h" />
@@ -173,13 +210,16 @@
     <ClInclude Include="Scene\Primitive.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="System\Input\InputSystem.h" />
-    <ClInclude Include="System\Render\Runtime\RumtimePrimitiveCPUCulling.h" />
-    <ClInclude Include="System\Render\Runtime\RuntimeMeshBatchGenerator.h" />
-    <ClInclude Include="System\Render\SceneProxy\SceneProxy.h" />
-    <ClInclude Include="System\Render\SceneProxy\SceneStreaming.h" />
-    <ClInclude Include="System\Resource\Loader\DDSTextureLoader.h" />
-    <ClInclude Include="System\Resource\Loader\ResourceLoader.h" />
-    <ClInclude Include="System\Resource\Loader\SPIRVShaderLoader.h" />
+    <ClInclude Include="System\Renderer\Runtime\RuntimeMeshBatchGenerator.h" />
+    <ClInclude Include="System\Renderer\SceneProxy\ScenePrimitiveVisibility.h" />
+    <ClInclude Include="System\Renderer\SceneProxy\SceneProxy.h" />
+    <ClInclude Include="System\Renderer\SceneProxy\SceneStreaming.h" />
+    <ClInclude Include="System\Render\VirtualTexture\VirtualShadowMap.h" />
+    <ClInclude Include="System\Render\VirtualTexture\VirtualShadowMapCache.h" />
+    <ClInclude Include="System\Render\VirtualTexture\VirtualTexture.h" />
+    <ClInclude Include="System\Asset\Loader\DDSTextureLoader.h" />
+    <ClInclude Include="System\Asset\Loader\ResourceLoader.h" />
+    <ClInclude Include="System\Asset\Loader\SPIRVShaderLoader.h" />
     <ClInclude Include="System\Resource\ResourceLoaderSystem.h" />
     <ClInclude Include="System\System.h" />
     <ClInclude Include="Utils\Algorithm.h" />
@@ -187,6 +227,7 @@
     <ClInclude Include="Utils\DataFileCache.h" />
     <ClInclude Include="Utils\DirectedAcyclicGraph.h" />
     <ClInclude Include="Utils\Handle.h" />
+    <ClInclude Include="Utils\Math.h" />
     <ClInclude Include="Utils\Memory.h" />
     <ClInclude Include="Utils\Reflection.h" />
     <ClInclude Include="Utils\ReflectionImageObject.h" />
@@ -198,7 +239,7 @@
   <ItemGroup>
     <None Include="cpp.hint" />
     <None Include="Graphics\Render\RenderShaderUtils.inl" />
-    <None Include="Shaders\BindlessResource.hlsli" />
+    <None Include="Shaders\BindlessResources.hlsli" />
     <None Include="Shaders\BSDF.hlsli" />
     <None Include="Shaders\BVHCommon.hlsli" />
     <None Include="Shaders\CommonUtils.hlsli" />
@@ -210,21 +251,39 @@
     <None Include="Shaders\GPUScene\DataDecode.hlsli" />
     <None Include="Shaders\GPUScene\GPUSceneCommon.hlsli" />
     <None Include="Shaders\GPUScene\StreamingCommon.hlsli" />
+    <None Include="Shaders\GPUScene\ViewCommon.hlsli" />
     <None Include="Shaders\ParallelSort.hlsli" />
     <None Include="Shaders\Lighting\LTC.hlsli" />
     <None Include="Shaders\Lighting\ZBin.hlsli" />
     <None Include="Shaders\Material.hlsli" />
     <None Include="Shaders\Math.hlsli" />
     <None Include="Shaders\Platform.hlsli" />
+    <None Include="Shaders\Raster\CullingCommon.hlsli" />
+    <None Include="Shaders\Raster\RasterCommon.hlsli" />
     <None Include="Shaders\ShaderAssert.hlsli" />
     <None Include="Shaders\ShaderPrintf.hlsli" />
+    <None Include="Shaders\Shadow\GTAO.hlsli" />
+    <None Include="Shaders\Shadow\VSMClipmap.hlsli" />
     <None Include="Shaders\SoftRaster\RasterCommon.hlsli" />
+    <None Include="Shaders\VirtualShadowMap\VSMCommon.hlsli" />
+    <None Include="Shaders\VirtualTexture\VTPageCommon.hlsli" />
+    <None Include="Shaders\VirtualTexture\VTPageDispatcher.hlsli" />
     <None Include="Shaders\WorkDistributionUtils.hlsli" />
     <None Include="Utils\Algorithm.inl" />
     <None Include="Utils\DirectedAcyclicGraph.cpp" />
     <None Include="Utils\SimpleEntitySystem.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\ComputeShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.6</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\DebugView\GSDebugViewShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
@@ -306,6 +365,16 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\Shadow\VSM.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\SoftRaster\HZBCulling.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
@@ -336,9 +405,59 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\VirtualShadowMap\VSMLightGrid.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\VirtualShadowMap\VSMPageConsult.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\VirtualShadowMap\VSMProjection.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\VirtualShadowMap\VSMDrawSchedule.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\VirtualTexture\VTPageManagement.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="System\Render\Effect\MBOIT\Readme.txt" />
+    <Text Include="System\Renderer\FXRModule\MBOIT\Readme.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -352,26 +471,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -465,7 +584,7 @@
       <AdditionalDependencies>volk.lib;glog.lib;folly.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
-      <ShaderModel>6.2</ShaderModel>
+      <ShaderModel>6.6</ShaderModel>
       <AdditionalOptions>-HV 2021 -spirv -fvk-use-dx-layout %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>

@@ -18,6 +18,7 @@ namespace Shard::HAL {
         eSetPipelineState,
         eSetShader,
         eBindPSO,
+		//eBindBindlessHeap, 
         eBeginPass,
         eEndPass,
         eNextSubPass,
@@ -263,9 +264,9 @@ namespace Shard::HAL {
         union {
             struct {
                 union {
-                    vec4    float32_{ 0u };
-                    ivec4   int32_;
-                    uvec4   uint32_;
+                    float4    float32_{ 0u };
+                    int4   int32_;
+                    uint4   uint32_;
                 };
             }color_;
             struct {

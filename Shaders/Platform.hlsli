@@ -92,7 +92,7 @@
 
 #define COMPILER_SUPPORT_MINMAX3 0
 
-#ifdef GPU_VENOR_AMD //defined(__AMDGCN__) || defined(__MESA__)
+#ifdef GPU_VENDOR_AMD //defined(__AMDGCN__) || defined(__MESA__)
 #define THREAD_WARP_SIZE 64
 #else //NVIDIA
 #define THREAD_WARP_SIZE 32

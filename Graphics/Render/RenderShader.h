@@ -12,6 +12,11 @@
 #include "eastl/shared_ptr.h"
 #include <atomic>
 
+//todo declare parameters
+#define BEGIN_SHADER_PARAMETER_DEF(param_type) struct param_type { 
+#define SHADER_PARAMETER(type, name, padding)
+#define END_SHADER_PARAMETER_DEF() };
+
 namespace Shard::Render
 {
     struct RenderShaderParamBindings
@@ -39,22 +44,23 @@ namespace Shard::Render
         END_DECLARE_TYPE_LAYOUT_DEF(RenderShaderParamBindings)
     };
 
-    enum class EShaderFrequency :uint8_t
-    {
-        eVertex,
-        eHull,//tessellation control
-        eGeometry,
-        eDomain,
-        eFrag,
-        eCompute,
-        eRayGen,
-        eRayIntersection,
-        eRayAnyHit,
-        eRayCloseHit,
-        eRayMiss,
-        eCallAble,
-        eNum,
-        eGFXNum = eFrag + 1,
+	enum class EShaderFrequency :uint8_t
+	{
+		eVertex,
+		eHull,//tessellation control
+		eGeometry,
+		eDomain,
+		eFrag,
+		eCompute,
+		eRayGen,
+		eRayIntersection,
+		eRayAnyHit,
+		eRayCloseHit,
+		eRayMiss,
+		eCallAble,
+		eNum,
+		eGFXNum = eFrag + 1,
+		eUnkown = ~0u,
     };
 
     enum class EShaderModel :uint16_t
@@ -71,6 +77,8 @@ namespace Shard::Render
         eSM_6_6 = 0x66,
         eSM_6_7 = 0x67,
     };
+
+	DECLARE_ENUM_COMPARISON_OPS(EShaderModel);
 
     struct ShaderPlatform
     {
@@ -195,6 +203,12 @@ namespace Shard::Render
             return false;
         }
 
+        //if compile this shader, should modify compile env
+        static void ModifyCompileEnv(ShaderCompileEnv& env) {
+            return;
+        }
+
+		//todo refactor to only have bindless res/scalar data types
         struct ShaderParameter 
         {
             virtual ~ShaderParameter() {}
@@ -208,7 +222,7 @@ namespace Shard::Render
         const HashType& GetShaderHash()const;
         const uint32_t GetResourceIndex()const;
         const RenderShaderType* GetShaderType()const;
-        virtual bool IsCompileNeedFor(const ShaderPlatform& platform, const uint32_t permutation) = 0;
+		virtual void SetupBindlessIndices() = 0; //todo bindless setup
         virtual RenderShaderParametersMeta* GetShaderParametersMeta() = 0;
     protected:
         void BindShaderParameters(const RenderShaderParameterInfosMap& param_infos);
@@ -252,5 +266,19 @@ namespace Shard::Render
         //to do whehter define here
         mutable std::atomic_uint32_t    use_counter_{ 0u };
         mutable std::atomic_uint32_t    last_use_time_{ 0u };
+    };
+
+    /**
+     * \brief help class to add generial compute shader to render graph
+     */
+    class RenderGraph;
+    class MINIT_API RenderComputeShaderHelper
+    {
+        template<class ComputeShader>
+        static void AddPass(RenderGraph& graph, ComputeShader& compute_shader, ComputeShader::ShaderParameter compute_parameter, uint3 dispath_dimension, const String& event_name)
+        {
+            //graph.
+            //graph.AddPass()
+        }
     };
 }

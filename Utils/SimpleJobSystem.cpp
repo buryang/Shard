@@ -66,7 +66,7 @@ namespace Shard
                             }
                         }
                         try_count--;
-                        _mm_pause();//
+                        mm_pause();//
                     }
 
                     if (ret)

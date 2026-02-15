@@ -6,10 +6,20 @@
 #include "Delegate/Delegate/MulticastDelegate.h"
 #include <limits>
 #include <type_traits>
+#include <typeindex>
 
 //http://bitsquid.blogspot.com/2014/10/building-data-oriented-entity-system.html
 //https://docs.unity3d.com/Packages/com.unity.entities@0.17/manual/ecs_core.html
 //https://www.youtube.com/watch?v=jjEsB611kxs
+
+/* now only realize sparset ecs system, which is suitable for small number of entities
+ * future work:
+ * 1. archetype based ecs system for better cache performance
+ * 2. hybrid sparse/archetype( archetype for simulation, while sparse for render/editor ), with two seperate ECS world
+ * 3. bevy like ECS system, some component with archetye while others with sparseset
+ */
+
+//todo realize wildcard, entity as component
 
 namespace Shard
 {
@@ -35,6 +45,18 @@ namespace Shard
         template<typename Func, template<typename...> class Tuple, typename... Args>
         struct is_applicable<Func, const Tuple<Args...>> : std::is_invocable<Func, Args...> {};
 
+        //component delegate check
+#define DECLARE_COMPONENT_DELEGATE(Delegate)\
+        template<typename ComponentRepo, typename = void> \
+        struct has_##Delegate : std::false_type {}; \
+        template<typename ComponentRepo, typename Delegate> \
+        struct has_##Delegate<ComponentRepo, std::void_t<decltype(std::declval<ComponentRepo>().Delegate)>> : std::true_type {}; 
+
+        DECLARE_COMPONENT_DELEGATE(OnConstruct)
+        DECLARE_COMPONENT_DELEGATE(OnUpdate)
+        DECLARE_COMPONENT_DELEGATE(OnRelease)
+#undef DECLARE_COMPONENT_DELEGATE
+
         struct Entity
         {
             Entity(uint32_t id = -1, uint32_t gen = 0u) :id_(id), generation_(gen) {}
@@ -51,6 +73,7 @@ namespace Shard
             }
             uint32_t    id_ : 20;
             uint32_t    generation_ : 12;
+            //fixme https://ajmmertens.medium.com/doing-a-lot-with-a-little-ecs-identifiers-25a72bd2647 
             static const Entity Null;
         };
 
@@ -61,7 +84,9 @@ namespace Shard
             EntityManager() = default;
             EntityManager(const EntityManager& other);
             EntityManager& operator=(const EntityManager& other);
-            Entity Generate();
+            Entity Spawn();
+            /*inset an user input entity id */
+            bool Insert(const Entity& entity);
             void Release(Entity entity);
             VersionType Version(const Entity& entity)const;
             bool IsAlive(const Entity& entity) const;
@@ -69,6 +94,24 @@ namespace Shard
         public:
             Vector<VersionType>    generation_;
             List<uint32_t>    free_indices_;
+        };
+
+        /*
+        * component/archetype type helper traits
+        */
+        using ComponentID = std::type_index;
+        using ArcheTypeID = xx;
+
+        template<class component>
+        struct ComponentIDTraits final 
+        {
+            static constexpr ComponentID ID = std::typeid(component);
+        };
+
+        template<class ArcheType>
+        struct ArcheTypeIDTraits final
+        {
+            static constexpr auto ID = ...;
         };
 
         template<typename Container>
@@ -111,7 +154,7 @@ namespace Shard
         };
 
         template<typename ElementType, template <typename> typename AllocatorType>
-        class SparseSet
+        class SparseSet final
         {
         public:
             using ValueType = ElementType;
@@ -236,6 +279,146 @@ namespace Shard
             PageAllocatorType*  page_alloc_{nullptr};
         };
 
+        class ArcheTypeComponentContainerBase
+        {
+        public:
+            virtual void Resize(size_type size) = 0;
+            virtual ~ArcheTypeComponentContainerBase() = default;
+        };
+
+        //individual component storage for archetype table
+        template<class Component, class Allocator>
+        class ArcheTypeComponentContainer final : public ArcheTypeComponentContainerBase
+        {
+        public:
+            explicit ArcheTypeComponentContainer(Allocator& allocator) :allocator_(allocator) {
+            }
+            void Resize(size_type size) override {
+                component_repo_.resize(size);
+            }
+        protected:
+            Allocator& allocator_;
+            Vector<Component, Allocator> component_repo_;
+        };
+
+        class ArcheTypeTableBase
+        {
+        public:
+            ArcheTypeTableBase() = default;
+            virtual ~ArcheTypeTableBase() = default;
+
+            void Resize(size_type size) {
+                for (auto& [_, container] : component_storage_) {
+                    container->Resize(size);
+                }
+                entity_count_ = size;
+            }
+            void Tick(uint64_t current_tick) {
+                last_tick_ = current_tick;
+            }
+
+            static uint64_t CalcArchetypeHash(const Span<std::type_index>& component_types) {
+                uint64_t hash{ component_types.size() };
+                for (auto& type : component_types)
+                {
+                    hash = (hash + 1013u) ^ (type.hash_code() + 107u) << 1u;
+                }
+                return hash;
+            }
+        protected:
+            auto& ResigterComponent(std::type_index type_index, ArcheTypeComponentContainerBase* container) {
+                sorted_component_types.push_back(type_index);
+                component_storage_[type_index] = container;
+                sorted_component_types.sort();
+
+                //regist add/remove edge
+
+                return *this;
+            }
+            ArcheTypeComponentContainerBase* GetComponentContainer(std::type_index type_index) {
+                auto iter = component_storage_.find(type_index);
+                if (iter != component_storage_.end()) {
+                    return iter->second;
+                }
+                return nullptr;
+            }
+            //traversal edges
+
+        protected:
+            //sorted list of component for hashing 
+            SmallVector<ComponentID> sorted_component_types;
+            size_type entity_count_{ 0u };
+            mutable uint64_t last_tick_{ 0u };
+        };
+
+        struct ArcheTypeEdge
+        {
+            ArcheTypeTableBase& target_archetype_;
+        };
+
+        //todo support archtype
+        template<class Allocator, class ...Components>
+        class ArcheTypeTable final : public ArcheTypeTableBase
+        {
+        public:
+            explicit ArcheTypeTable(Allocator& allocator) :allocator_(allocator)
+            {
+                (RegisterActiveComponent<Component>(), ...);
+
+                //generate hash code
+                hash_ = CalcArchetypeHash(sorted_component_types);
+            }
+        protected:
+            Allocator& allocator_;
+            uint64_t hash_;
+            Vector<Entity, Allocator> entities_;
+            Map<ComponentID, ArcheTypeEdge, Allocator> change_edges_; //add/remove component(type_index), result archetype
+            Map<ComponentID, ArcheTypeComponentContainerBase*, Allocator> component_storage_;
+        private:
+            DISALLOW_COPY_AND_ASSIGN(ArcheTypeTable);
+            template<class T>
+            void RegisterActiveComponent() {
+                const auto type_index = std::type_index(typeid(T));
+                auto* container = new ArcheTypeComponentContainer<T>(allocator_); //fixme use allocator
+                RegisterComponent(type_index, container);
+            }
+        };
+
+        enum class EComponentStorageType :uint8_t
+        {
+            eDense, //dense data component, stored in contiguous memory for better cache performance, suitable for frequently accessed component
+            eSparse, //sparse data component, stored in hash map or other sparse data structure, suitable for infrequently accessed component
+        };
+
+        struct ComponentVersion
+        {
+            uint16_t added_at_{ 0u };
+            uint16_t changed_at_{ 0u };
+
+            bool IsAddedAfter(uint32_t since) const
+            {
+                if (added_at_ == 0u) return false;
+                uint16_t diff = added_at_ - static_cast<uint16_t>(since);
+                return diff < 0x8000;
+            }
+
+            bool IsChangedAfter(uint32_t since) const
+            {
+                if (changed_at_ == 0u) return false;
+                uint16_t diff = changed_at_ - static_cast<uint16_t>(since);
+                return diff < 0x8000;
+            }
+
+            void MarkAdded(uint32_t tick) {
+                added_at_ = static_cast<uint16_t>(tick); changed_at_ = added_at_;
+            }
+            
+            void MarkChanged(uint32_t tick) {
+                changed_at_ = static_cast<uint16_t>(tick);
+            }
+
+        };
+
         class ComponentRepoBase
         {
         public:
@@ -249,11 +432,17 @@ namespace Shard
         public:
             using Type = Component;
             using ThisType = ComponentRepo<Component, Allocator>;
+            constexpr bool has_dense_data = !std::is_base_of_v<NoDenseDataPayload, Component>; //todo
             explicit ComponentRepo(Allocator& alloc) : sparse_set_(alloc), component_data_(alloc){
 
             }
             void Reverse(uint32_t size) {
                 component_data_.reserve(size);
+            }
+            template<typename...Args>
+            Type& Add(Entity e) {
+                const auto index = ToIndex(e);
+                return Append(index, std::forward<Args&&...>(args));
             }
             void Destroy(Entity e) {
                 auto index = LookUp(e);
@@ -271,10 +460,23 @@ namespace Shard
                 }
                 sparse_set_.Clear();
             }
+
+            //sort component
+            template<typename BinaryCompare>
+            void Sort(BinaryCompare&& compare_op) {
+
+            }
+
+            //sort component order as target component repo
+            template<typename OtherComponent>
+            void SortAs(const ComponentRepo<OtherComponent>& target) {
+
+            }
+        protected:
             template<typename... Args>
             Type& Append(uint32_t index, Args&&... args) {
                 if (++size_ > 0.9 * capacity_) {
-                    auto new_size = 2*capacity_; //FIXME
+                    auto new_size = 2 * capacity_; //FIXME
                     Reverse(new_size);
                 }
                 Type* result = component_data_ + index;
@@ -289,30 +491,17 @@ namespace Shard
             {
                 //swap size-1 to index, fixme deal reference
                 auto ptr = (component_data_ + index);
-                if constexpr(ptr->) {
+                if constexpr (ptr->) {
                     Remove();
                 }
                 reinterpret_cast<Type*>(ptr)->~Type();
                 *(component_data_ + index) = *(component_data_ + size_ - 1);
                 --size_;
-
             }
 
             void Swap(uint32_t lhs, uint32_t rhs) {
                 Swap(component_data_[lhs], component_data_[rhs]);
                 sparse_set_.SwapDense(lhs, rhs);
-            }
-
-            //sort component
-            template<typename BinaryCompare>
-            void Sort(BinaryCompare&& compare_op) {
-
-            }
-
-            //sort component order as target component repo
-            template<typename OtherComponent>
-            void SortAs(const ComponentRepo<OtherComponent>& target) {
-
             }
 
             const Vector<Entity>& GetEntities() const{
@@ -348,6 +537,10 @@ namespace Shard
             const auto& Elements()const {
                 return component_data_;
             }
+            /*whether the component is dirty*/
+            bool IsDirty() const {
+                return dirty_version_.load() != last_extract_version_;
+            }
             //delegate
             auto& OnConstruct() {
                 return on_construct_;
@@ -359,9 +552,13 @@ namespace Shard
                 return on_release_;
             }
         private:
-            SparseSet<uint32_t, Allocator>    sparse_set_; 
+            std::atomic_uint32_t dirty_version_{ 0u }; //mutable any instance->dirty_version++, if not changed skip all extract work
+            uint32_t last_extract_version_{ ~0u };
+            SparseSet<uint32_t, Allocator> sparse_set_; 
+            //ArcheType
             using ComponentAlloc = std::allocator_traits<Allocator>::template rebind_alloc<Type>;
-            Vector<Type, ComponentAlloc> component_data_; //todo
+            Vector<Type, ComponentAlloc> component_data_; //todo atomic change
+            Vector<ComponentVersion, ComponentAlloc> component_version_; //component version/ticks
             //delegate 
             DelegateLib::MulticastDelegate<void(ThisType*, Entity)>    on_construct_;
             DelegateLib::MulticastDelegate<void(ThisType*, Entity)>    on_update_;
@@ -611,7 +808,7 @@ namespace Shard
 
         };
 
-        /*group component together and pointer to position by cursor*/
+        /*group/bundle component together and pointer to position by cursor*/
         template<typename ...Component, typename ...Reject>
         class ECSComponentGroup<ECSOwnedList<Component...>, ECSExcludedList<Reject...>>
         {    
@@ -749,6 +946,26 @@ namespace Shard
             IteratorType iter_;
             std::tuple<ComponentRepo<Component>*, ...> component_repos_;
         };
+
+        //todo support WithOut instead of excluced list and filter logic
+        template<typename ...Reject>
+        struct WithOut
+        {
+            bool operator()(void) const
+            {
+
+            }
+        };
+
+        template<typename ...>
+        struct Filter
+        {
+            bool operator()(void) const
+            {
+
+            }
+        };
+
         template<typename, typename>
         class ECSComponentQuery;
 
@@ -818,10 +1035,11 @@ namespace Shard
             RejectedRepoType    rejected_repos_;
         };
 
+        template<class DataType>
         struct ECSSharedComponent
         {
             std::atomic_uint32_t    ref_count_{ 0u };
-            uint32_t    index_{ 0u };
+            DataType    data_;
         };
 
         enum class EUpdatePhase : uint8_t
@@ -836,9 +1054,9 @@ namespace Shard
         };
 
         struct ECSSystemUpdateContext {
-            float    delta_time_{ 0.f };//in seconds
+            float   delta_time_{ 0.f };//in seconds
             uint64_t    frame_index_{ 0u }; //frame index
-            EUpdatePhase phase_{ EUpdatePhase::eFrameStart };
+            EUpdatePhase    phase_{ EUpdatePhase::eFrameStart };
         };
 
         template<typename ...Component>
@@ -952,7 +1170,6 @@ namespace Shard
         private:
             SmallVector<ECSSystem*>    sub_sys_;
         };
-
 
         template<typename Allocator=Utils::LinearAllocator<void>, typename ...T>
         class ECSAdmin : public MessageQueue<T...>
@@ -1181,6 +1398,16 @@ namespace Shard
                 auto iter = singleton_data_.find(typeid(Component));
                 return iter != singleton_data_.end();
             }
+
+            template<typename Component>
+            void RemoveSingletonComponent() {
+                assert(HasSingltonComponent<Component>());
+                auto iter = singleton_data_.find(typeid(Component));
+                if (iter != singleton_data_.end()) {
+                    del iter->second;
+                    singleton_data_.erase(iter);
+                }
+            }
         
             //check whether a component enable
             template<typename Component>
@@ -1191,6 +1418,10 @@ namespace Shard
                     return static_cast<ECSEnableComponent*>(val)->enable_;
                 }
                 return false;
+            }
+
+            Allocator& GetAllocator() {
+                return alloc_;
             }
         private:
             template<typename System, typename Message, typename C, typename... Cs>
@@ -1227,7 +1458,7 @@ namespace Shard
 
             //entity related function
             Entity NewEntity() {
-                auto entity = entity_manager_.Generate();
+                auto entity = entity_manager_.Spawn();
                 return entity;
             }
 
@@ -1247,16 +1478,38 @@ namespace Shard
                 }
             }
             //move entity from other world to current world
-            template<class UAllocator>
-            Entity CloneExternal(Entity prefab, ECSAdmin<UAllocator>& external) {
-                //todo
+            template<class UAllocator, class ...UComponent>
+            bool CloneExternalRetainID(Entity prefab, ECSAdmin<UAllocator>& external) {
+                if (entity_manager_.Insert(prefab))
+                {
+                    ( ( external.HasComponent<UComponent>(prefab)
+                        ? ( (AddComponent<UComponent>(prefab, external.GetComponent<UComponent>(prefab))), 0u )
+                        : 0u ), ... );
+                    return true;
+                }
+
+                //clone failed
+                return false;
+            }
+            template<class UAllocator, class ...UComponent> 
+            void CloneExternal(Entity prefab, ECSAdmin<UAllocator>& external) {
+                auto new_entity = NewEntity();
+                ( ( external.HasComponent<UComponent>(prefab)
+                    ? ( (AddComponent<UComponent>(new_entity, external.GetComponent<UComponent>(prefab))), 0u )
+                    : 0u ), ... );
             }
         private:
             Allocator alloc_;
             EntityManager entity_manager_;
             //todo fixme type info bugs ??? //https://skypjack.github.io/2020-03-14-ecs-baf-part-8/
+            Map<std::type_index, ArcheTypeTableBase*> archetype_tables_;
             Map<std::type_index, ComponentRepoBase*> components_data_;
             Map<std::type_index, void*>    singleton_data_;
+
+            //archetype table lookuptable
+            Map<std::type_index, std::type_index> component_to_archetype_;
+            Map<std::type_index, std::type_index> component_tuple_to_archetype_;
+
             template <typename... Components>
             struct ComponenentCollector
             {
