@@ -1,5 +1,4 @@
 # Shard: A Data-Driven C++ Rendering Engine
-============================================
 
 Shard is a modern, data-driven C++ rendering engine designed for high-performance real-time graphics. It embraces a data-oriented design philosophy to maximize efficiency and scalability on contemporary hardware.
 
