@@ -19,6 +19,18 @@ void mm_pause()
 #endif
 }
 
+constexpr uint64_t count_zero(uint64_t val)
+{
+#if __cplusplus >= 202002L
+    return std::countr_zero(val);
+#elif _MSC_VER
+    return _tzcnt_u64(val);
+#else
+    return __builtin_ctzll(val);
+#endif
+}
+
+
 namespace Shard::Utils
 {
 #ifdef USE_RAWINPUT

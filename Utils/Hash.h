@@ -8,7 +8,7 @@
 namespace Shard::Utils {
 
     template<typename Hash, uint32_t hash_size=20*8>
-    class HashSignature {
+    class HashSignature final{
     public:
         enum {
             MAX_HASH_SIZE = hash_size,
@@ -45,10 +45,14 @@ namespace Shard::Utils {
     using SpookyV2Hash32 = HashSignature<folly::hash::SpookyHashV2, 32>;
     using SpookyV2Hash64 = HashSignature<folly::hash::SpookyHashV2, 64>;
     using SpookyV2Hash128 = HashSignature<folly::hash::SpookyHashV2, 128>;
-    using SHA1Hash = HashSignature<CSHA1, 20*8>; //20 bytes
+    //bad avalanche effect
+    //using SHA1Hash = HashSignature<CSHA1, 20*8>; //20 bytes
     //my default cryptographic hash 
     using Blake3Hash64 = HashSignature<blake3_hasher, 64>; //64 bits
     using Blake3Hash256 = HashSignature<blake3_hasher, 32*8>;//32 bytes
+
+    //fnv-1a 64bit hash
+    using FNV1AHash64 = HashSignature<struct FNV1_, 64>;
 
     //template function implement
     template<typename TCHAR>
@@ -200,4 +204,152 @@ namespace Shard::Utils {
             static_assert(false, "calc not support spooky hash size");
         }
     }
+
+    //fnv-1a 
+    auto InternFNV1AHashForBytes(const uint8_t* bytes, size_t size)->FNV1AHash64
+    {
+        FNV1AHash64 output;
+        uint64_t hash = 14695981039346656037ULL;
+        for (size_t i = 0; i < size; ++i) {
+            hash ^= static_cast<uint64_t>(bytes[i]);
+            hash *= 1099511628211ULL;
+        }
+        *(uint64_t*)output.GetBytes() = hash;
+        return output;
+    }
+
+    namespace bloom_details
+    {
+        //mixer(based wyhash finalizer£©
+        inline uint64_t splitmix64(uint64_t z) noexcept {
+            z += 0x9e3779b97f4a7c15ull;
+            z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+            z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+            return z ^ (z >> 31);
+        }
+
+        //mixer£¨multiply-xorshift style£©
+        inline uint64_t mulxorshift(uint64_t x) noexcept {
+            x ^= x >> 33;
+            x *= 0xff51afd7ed558ccdull;
+            x ^= x >> 33;
+            x *= 0xc4ceb9fe1a85ec53ull;
+            return x ^ (x >> 33);
+        }
+
+        // default hash (string / integral suitable£©
+        template<typename T>
+        concept Hashable = std::convertible_to<T, Span<const std::byte>>;
+
+        template<typename T>
+        uint64_t hash1(const T& key, uint64_t seed = 0u) noexcept {
+            if constexpr (std::integral<std::remove_cvref_t<T>>) {
+                uint64_t v = static_cast<uint64_t>(key) ^ seed;
+                return mulxorshift(v);
+            }
+            else if constexpr (Hashable<T>) {
+                auto bytes = std::as_bytes(std::span{ &key, 1 });
+                uint64_t h = seed ^ bytes.size();
+                for (auto b : bytes) {
+                    h ^= static_cast<uint64_t>(b);
+                    h *= 0xff51afd7ed558ccdull;
+                }
+                return mulxorshift(h);
+            }
+            else {
+                // fallback: treat as bytes
+                return hash1(std::as_bytes(std::span{ &key, 1 }), seed);
+            }
+        }
+    }
+
+    //bloom filter
+    template<size_type ExpectedN, double FP = 0.001>
+    class BloomFilter final
+    {
+        static constexpr double p = FP;
+        static constexpr size_type n = ExpectedN;
+        // m ¡Ö -n ln p / (ln 2)^2 = n ln(1/p) / (ln 2)^2
+        static constexpr double ln_one_over_p = -std::log(p); // ln(1/p) = -ln p
+        static constexpr double ln2_squared = std::log(2) * std::log(2);
+        static constexpr size_type m = static_cast<size_type>(n * ln_one_over_p / ln2_squared + 0.5); // +0.5 for rounding
+
+        static constexpr size_type num_bits = Utils::AlignUp(m, 64u);
+        static constexpr size_type num_words = num_bits / 64;
+
+        // k ¡Ö (m/n) ln 2
+        static constexpr uint32_t K = static_cast<uint32_t>((static_cast<double>(num_bits) / n) * std::log(2) + 0.5);
+
+        // we only do twice hashing, then double hashing to generate K position
+        static constexpr uint32_t K_hash = 2u;
+
+        alignas(size_type) uint64_t bits_[num_words]{};
+
+    public:
+        void Clear() noexcept {
+            std::memset(bits_, 0u, sizeof(bits_));
+        }
+
+        BloomFilter& Insert(const auto& key) noexcept {
+            const uint64_t h1 = bloom_details::hash1(key, 0x517cc1b727220a95ull);
+            const uint64_t h2 = bloom_details::hash1(key, 0x9e3779b97f4a7c15ull);
+
+            for (unsigned i = 0; i < K; ++i) {
+                size_t idx = GetIndex(h1, h2, i);
+                size_t word = idx / 64;
+                size_t bit = idx % 64;
+                bits_[word] |= (uint64_t(1) << bit);
+            }
+            return *this;
+        }
+
+        // test whether the key is contained (may have false positive)
+        bool MayContain(const auto& key) const noexcept {
+            const uint64_t h1 = bloom_details::hash1(key, 0x517cc1b727220a95ull);
+            const uint64_t h2 = bloom_details::hash1(key, 0x9e3779b97f4a7c15ull);
+
+            for (unsigned i = 0; i < K; ++i) {
+                size_t idx = GetIndex(h1, h2, i);
+                size_t word = idx / 64;
+                size_t bit = idx % 64;
+                if ((bits_[word] & (uint64_t(1) << bit)) == 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool DefinitelyNotContain(const auto& key) const noexcept {
+            return !MayContain(key);
+        }
+
+        constexpr uint32_t HashCount() const noexcept {
+            return K;
+        }
+
+        double TheoreticalFP() const noexcept {
+            return std::pow(1.0 - std::exp(-K * n / double(num_bits)), K);
+        }
+
+        // returns true if this filter might contain all elements of the other (query) filter
+        bool MayMatch(const BloomFilter& query) const noexcept {
+            for (size_t i = 0; i < num_words; ++i) {
+                if ((bits_[i] & query.bits_[i]) != query.bits_[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    protected:
+        //double hashing: h2(key,i) = (h1(key) + i * h2(key)) & mask
+        //but to avoid the expensive%, we make m as close as possible 
+        //to a power of 2, or directly use the high - order bits of the multiplication.
+        //Here we simply use & (m_bits - 1), but m_bits is not necessarily a power of 2,
+        //so we make a compromise.
+        inline size_t GetIndex(uint64_t h1, uint64_t h2, unsigned i) const noexcept {
+            uint64_t combined = h1 + static_cast<uint64_t>(i) * h2;
+            return combined % num_bits;
+        }
+    };
 }
