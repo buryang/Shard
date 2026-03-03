@@ -188,10 +188,51 @@ namespace Shard
         }
     }
 
-    void ArcheTypeTableBase::Finalize(const ComponentTypeRegistry& registry)
+    uint32_t ArcheTypeChunk::SwapAndRemove(uint32_t slot)
+    {
+        return 0;
+    }
+
+    ArcheTypeTable::ArcheTypeTable(ArcheTypeTable&& other)
+        : entity_manager_(other.entity_manager)
+        , archetype_graph_(other.archetype_graph_)
+        , signature_(std::move(other.signature_))
+        , component_sizes_(std::move(other.component_sizes_))
+        , component_alignments_(std::move(other.component_alignments_)
+        , component_offsets_(std::move(other.component_offsets_))
+        , id_to_index_(std::move(other.id_to_index_))
+        , chunks_(std::move(other.chunks_))
+        , non_full_chunks_(std::move(other.non_full_chunks_))
+        , free_head_(std::exchange(other.free_head_, nullptr))
+        , entities_(std::move(other.entities_))
+        , entity_count_(std::exchange(other.entity_count_, 0u))
+        , free_chunk_count_(std::exchange(other.free_chunk_count_, 0u))
+        , per_entity_bytes_(std::exchange(other.per_entity_bytes_, 0u))
+        , max_chunk_capacity_(std::exchange(other.max_chunk_capacity_, 0u))
+        , last_tick_(std::exchange(other.last_tick_, Ticks{}))
+    {
+    }
+
+    ArcheTypeTable& ArcheTypeTable::operator=(ArcheTypeTable&& other)
+    {
+        if (this != &other) {
+            this->~ArcheTypeTable();
+            new(this) ArcheTypeTable(std::move(other));
+        }
+        return *this;
+    }
+
+    void ArcheTypeTable::Finalize(const ComponentTypeRegistry& registry)
     {
         //first sort signature
         signature_.Finalize();
+
+        //build id_to_index_
+        size_type index = 0u;
+        for (const auto id : signature_.sorted_component_types_)
+        {
+            id_to_index[id] = index++;
+        }
 
 #ifdef ARCHETYPE_BLOOM_FILTER_ENABLED
         for(const auto id : signature_.sorted_component_types_)
@@ -223,7 +264,12 @@ namespace Shard
         }
     }
 
-    bool ArcheTypeTableBase::HasAll(const Vector<ComponentID>& ids) const
+    void ArcheTypeTable::Release()
+    {
+        //todo
+    }
+
+    bool ArcheTypeTable::HasAll(const Vector<ComponentID>& ids) const
     {
         if(ids.size() > signature_.GetNumComponents()) UNLIKELY {
             return false;
@@ -237,7 +283,7 @@ namespace Shard
         return true;
     }
 
-    bool ArcheTypeTableBase::HasAny(const Vector<ComponentID>& ids) const
+    bool ArcheTypeTable::HasAny(const Vector<ComponentID>& ids) const
     {
         for(const auto id : ids)
         {
@@ -248,7 +294,7 @@ namespace Shard
         return false;
     }
 
-    bool ArcheTypeTableBase::HasNone(const Vector<ComponentID>& ids) const
+    bool ArcheTypeTable::HasNone(const Vector<ComponentID>& ids) const
     {
         if(ids.empty()) UNLIKELY {
             return true;
@@ -262,7 +308,49 @@ namespace Shard
         return true;
     }
 
-    void ArcheTypeTableBase::BuildChunkLayout(ArcheTypeChunk& chunk) noexcept
+    bool ArcheTypeTable::AddComponent(Entity entity, ComponentID component_id, const void* data, size_type data_size)
+    {
+        auto entity_loc = entity_manager_->GetEntityLocation(entity);
+
+        if (!entity_loc.IsValid() || entity_loc.arche_type_ != this) UNLIKELY{
+            return false;
+        }
+        
+        //check wether already hs this component
+        if (HasComponent(component_id)) {
+            auto* chunk = GetChunk(entity_loc.chunk_index_);
+            chunk->WriteComponent();
+            return true;
+        }
+
+        //need move entity
+        auto* target_archetype = archetype_graph_->GetOrCreateAddTarget(this, component_id);
+        if (nullptr == target_archetype) {
+            return false;
+        }
+
+        return MoveEntity(entity, *target_archetype);
+        
+    }
+
+    bool ArcheTypeTable::RemoveComponent(Entity entity, ComponentID component_id)
+    {
+        auto entity_loc = world_->GetEntityLocation(entity);
+        if(!entity_loc.IsValid() || entity_loc.arche_type_ != this) UNLIKELY{
+            return false;
+        }
+        if (!HasComponent(component_id)) {
+            return false;
+        }
+
+        auto* target_archetype = arche_graph_->GetOrCreateRemoveTarget(this, component_id);
+        if (nullptr == target_archetype) {
+            return false;
+        }
+        return MoveEntity(entity, *target_archetype);
+    }
+
+    void ArcheTypeTable::BuildChunkLayout(ArcheTypeChunk& chunk) noexcept
     {
 
         //allocate all component array as order
@@ -295,7 +383,7 @@ namespace Shard
         //anything to do?
     }
 
-    size_type ArcheTypeTableBase::EstimateChunkHeaderSize(size_type capacity) const
+    size_type ArcheTypeTable::EstimateChunkHeaderSize(size_type capacity) const
     {
         size_type size = sizeof(ArcheTypeChunk);
         //add entities id memory size
@@ -306,7 +394,7 @@ namespace Shard
         return Utils::AlingUp(size, 64u);
     }
 
-    size_type ArcheTypeTableBase::EstimatePerEntitySize(const ComponentTypeRegistry& registry) const
+    size_type ArcheTypeTable::EstimatePerEntitySize(const ComponentTypeRegistry& registry) const
     {
         size_type per_entity_rough{ 0u };
         for (const auto id : signature_.sorted_component_types_)
@@ -317,7 +405,7 @@ namespace Shard
         return perentity_rough;
     }
 
-    size_type ArcheTypeTableBase::EstimateMaxCapacity(const ComponentTypeRegistry& registry) const
+    size_type ArcheTypeTable::EstimateMaxCapacity(const ComponentTypeRegistry& registry) const
     {
         assert(signature_.GetNumComponents() != 0u);
 
@@ -351,7 +439,7 @@ namespace Shard
 
     }
 
-    bool ArcheTypeTableBase::TryFitWithCapacity(const ComponentTypeRegistry& registry, size_type capacity, size_type& mem_size)
+    bool ArcheTypeTable::TryFitWithCapacity(const ComponentTypeRegistry& registry, size_type capacity, size_type& mem_size)
     {
         size_type offset = EstimateHeaderSize(capacity);
         for (const auto id : signature_.sorted_component_types_)
@@ -369,7 +457,7 @@ namespace Shard
         return true;
     }
 
-    bool ArcheTypeTableBase::TryAddEntity(Entity new_entity, uint32_t& out_chunk_index, uint32_t& out_slot)
+    bool ArcheTypeTable::TryAddEntity(Entity new_entity, uint32_t& out_chunk_index, uint32_t& out_slot)
     {
         ArcheTypeChunk* chunk = nullptr;
         if (non_full_chunks_.empty()) {
@@ -404,7 +492,7 @@ namespace Shard
     }
     
     //remove with swap
-    void ArcheTypeTableBase::RemoveEntity(uint32_t chunk_index, uint32_t slot)
+    void ArcheTypeTable::RemoveEntity(uint32_t chunk_index, uint32_t slot)
     {
         assert(chunk_index < chunks_.size() && "chunk_index out of range");
         auto* chunk = chunks_[chunk_index];
@@ -428,6 +516,46 @@ namespace Shard
             LinkNonFull(*chunk);
         }       
     }
-    
+
+    bool ArcheTypeTable::MoveEntity(Entity entity, ArcheTypeTable& target_archetype)
+    {
+        auto entity_old_loc = entity_manager_->GetEntityLocation(entity);
+        if (!entity_old_loc.IsValid() || entity_old_loc.arche_type_ != this) UNLIKELY{
+            return false;
+        }
+
+        auto* old_chunk = GetChunk(entity_old_loc.chunk_index_);
+        //remove entity from chunk
+        auto swapped_slot = old_chunk->SwapAndRemove(entity_old_loc.slot_);
+
+        //allocate in new archetype
+        uint32_t new_chunk_index, new_slot;
+        if (!target_archetype.TryAddEntity(entity, new_chunk_index, new_slot)) {
+            //failed to move, roll back
+            old_chunk->WriteComponent(entity_old_loc.slot_, 0, nullptr, 0); //todo need write back all component data?
+            return false;
+        }
+
+        //transfer component data to new chunk
+        auto* new_chunk = target_archetype.GetChunk(new_chunk_index);
+        for (auto n = 0u; n < component_sizes_.size(); ++n)
+        {
+            const auto size = component_sizes_[n];
+            const auto component_id = signature_.sorted_component_types_[n];
+            assert(target_archetype.HasComponent(component_id) && "target archetype should has this component");
+            
+            const auto old_component_index = GetComponentIndex(component_id);
+            const auto new_component_index = target_archetype.GetComponentIndex(component_id);
+            assert(old_component_index != ~0u && new_component_index != ~0u && "component index should be valid")       ;
+
+            auto* src = old_chunk->GetComponent(old_component_index, swapped_slot);
+            auto* dst = new_chunk->GetComponent(new_component_index, new_slot);
+            std::memcpy(dst, src, size);
+        }
+
+        entity_manager_->SetLocation(entity, { &target_archetype, new_chunk_index, new_slot });
+    }
+
+
 
 }

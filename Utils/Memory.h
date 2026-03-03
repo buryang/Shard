@@ -22,6 +22,9 @@ namespace Shard
             const size_type max_size()const {
                 return capacity_;
             }
+            size_type GetCapacity() const {
+                return capacity_;
+            }
             ~LinearAllocatorImpl();
         private:
             size_type    capacity_{ 0u };
@@ -51,7 +54,7 @@ namespace Shard
 
             }
             [[nodiscard]] pointer allocate(size_type n = 1u) {
-                pointer ptr = impl_->Alloc(sizeof(T), n);
+                pointer ptr = impl_->allocate(sizeof(T), n);
                 if (nullptr != ptr) {
                     return reinterpret_cast<T*>(ptr);
                 }
@@ -60,13 +63,25 @@ namespace Shard
             template <typename... Args>
             [[nodiscard]] pointer AllocNoDestruct(Args&&... args) {
                 auto ptr = allocate();
-                return new(ptr)T(std::forward<Args>(args)...);
+                if (ptr) {
+                    new(ptr) T(std::forward<Args>(args)...);
+                }
+                return ptr;
             }
             void deallocate(pointer ptr, size_type n) {
-                impl_->DeAlloc(ptr, n * sizeof(T));
+                impl_->deallocate(ptr, n * sizeof(T));
             }
             size_type max_size()const {
                 return impl_->GetCapacity() / sizeof(value_type);
+            }
+            size_type used() const {
+                return impl_->offset_;
+            }
+            size_type available() const {
+                return impl_->GetCapacity() - impl_->offset_;
+            }
+            void release() {
+                impl_->Reset();
             }
             ~LinearAllocator() = default;
             void Reset() {
@@ -93,9 +108,10 @@ namespace Shard
             void deallocate(void* ptr, size_type n);
             void Reset();
             void ReWind(void* marker); //undo to specific point
+            void DeAlloc(void* ptr, size_type size) { deallocate(ptr, size); }
             ~StackAllocatorImpl();
         private:
-            size_type    capactity_{ 0u };
+            size_type    capacity_{ 0u };
             size_type    offset_{ 0u };
             void* memory_{ nullptr };
         };
@@ -115,15 +131,14 @@ namespace Shard
             friend class StackAllocator;
         public:
             StackAllocator() = default;
-            explicit StackAllocator(size_type capacity) :std::make_shared<StackAllocatorImpl>(capacity) {
-
+            explicit StackAllocator(size_type capacity) : impl_(std::make_shared<StackAllocatorImpl>(capacity)) {
             }
             template<class U>
             StackAllocator(const StackAllocator<U>& other) noexcept :impl_(other.impl_)
             {
             }
             [[nodiscard]] T* allocate(size_type n = 1u) {
-                return reinterpret_cast<T*>(impl_->Alloc(sizeof(T), n));
+                return reinterpret_cast<T*>(impl_->allocate(sizeof(T), n));
             }
             template <typename... Args>
             [[nodiscard]] T* AllocNoDestruct(Args&&... args) {
@@ -131,11 +146,19 @@ namespace Shard
                 return new(ptr)T(std::forward<Args>(args)...);
             }
             void deallocate(T* ptr, size_type n) {
-                std::destroy(ptr, ptr + n);
-                impl_->DeAlloc(ptr, sizeof(T) * n);
+                if (ptr) {
+                    std::destroy(ptr, ptr + n);
+                }
+                impl_->deallocate(ptr, sizeof(T) * n);
             }
             void Reset() {
                 impl_->Reset();
+            }
+            void* marker() const {
+                return static_cast<char*>(impl_->memory_) + impl_->offset_;
+            }
+            void rewind(void* marker) {
+                impl_->ReWind(marker);
             }
             template<class U>
             friend bool operator==(const StackAllocator& lhs, const StackAllocator<U>& rhs) {
@@ -169,31 +192,33 @@ namespace Shard
                 memory_ = ::operator new(sizeof(Node) * element_count);
                 free_head_ = reinterpret_cast<Node*>(memory_);
                 auto* tail = free_head_;
-                //constructor free list
                 for (auto n = 0; n < element_count; ++n, ++tail) {
                     tail->next_ = tail + 1;
                 }
                 tail->next_ = nullptr;
             }
-            //todo lock
             [[nodiscard]] T* allocate() {
-                auto* next = free_head_->next_;
-                if (next == nullptr) {
-                    return nullptr;
-                }
-                std::swap(next, free_head_);
-                return &(next->data_);
+                if (free_head_ == nullptr) return nullptr;
+                Node* result = free_head_;
+                free_head_ = free_head_->next_;
+                return &result->data_;
             }
             template <typename... Args>
             [[nodiscard]] T* AllocNoDestruct(Args&&... args) {
                 auto ptr = allocate();
-                return new(ptr)T(std::forward<Args>(args)...);
+                if (ptr) {
+                    new(ptr) T(std::forward<Args>(args)...);
+                }
+                return ptr;
             }
             void deallocate(T* ptr) {
-                std::destroy(ptr, ptr + 1);//to do
-                auto* node = reintepret_cast<Node*>(static_cast<uintptr_t>(ptr) - sizeof(Node*));
+                if (!ptr) return;
+                ptr->~T();
+                Node* node = reinterpret_cast<Node*>(
+                    static_cast<char*>(ptr) - offsetof(Node, data_)
+                );
                 node->next_ = free_head_;
-                std::swap(node, free_head_);
+                free_head_ = node;
             }
             ~PooledAllocator() { ::operator delete(memory_); memory_ = nullptr; }
             friend bool operator==(const PooledAllocator& lhs, const PooledAllocator& rhs) {
@@ -206,61 +231,180 @@ namespace Shard
             DISALLOW_COPY_AND_ASSIGN(PooledAllocator);
         private:
             struct Node {
-                Node* next_{ nullptr }; //todo
-                T    data_;
+                Node* next_{ nullptr };
+                T     data_;
             };
             Node* free_head_{ nullptr };
             void* memory_{ nullptr };
         };
-
-        namespace CBT //https://www.arxiv.org/abs/2407.02215
+		
+		//multithread pool allocator
+		//Concurrent Binary Trees
+        namespace CBT
         {
             class BinaryTree
             {
             public:
-                void Init(size_type tree_depth) {
-                    const auto sign_size = tree_depth * (tree_depth + 1u) / 2;
-                    sign_.resize(tree_depth);
+                void Init(size_type pool_size) {
+                    leaf_count_ = pool_size;
+                    word_count_ = (pool_size + 63) / 64;
+                    
+                    sum_tree_.resize(2 * word_count_);
+                    bitfield_.resize(word_count_, 0);
+                    
+                    for (size_type i = 0; i < word_count_; ++i) {
+                        size_type bits_in_word = (i == word_count_ - 1 && leaf_count_ % 64 != 0)
+                            ? (leaf_count_ % 64)
+                            : 64;
+                        sum_tree_[word_count_ + i].store(static_cast<uint32_t>(bits_in_word));
+                    }
+                    for (size_type i = word_count_ - 1; i > 0; --i) {
+                        sum_tree_[i].store(sum_tree_[i * 2].load() + sum_tree_[i * 2 + 1].load());
+                    }
                 }
+
                 void UnInit() {
-                    //do nothing
+                    sum_tree_.clear();
+                    bitfield_.clear();
+                    leaf_count_ = 0;
+                    word_count_ = 0;
                 }
+
                 size_type Accquire() {
-
+                    if (sum_tree_[1].load() == 0) return static_cast<size_type>(-1);
+                    
+                    uint32_t node = 1;
+                    while (node < word_count_) {
+                        uint32_t left = sum_tree_[node * 2].load();
+                        if (left > 0) {
+                            node = node * 2;
+                        } else {
+                            node = node * 2 + 1;
+                        }
+                    }
+                    
+                    size_type leaf_idx = node - word_count_;
+                    if (leaf_idx >= word_count_) return static_cast<size_type>(-1);
+                    
+                    uint64_t word = bitfield_[leaf_idx];
+                    
+                    // Handle last word boundary - only valid bits
+                    uint64_t valid_mask = ~0ull;
+                    if (leaf_idx == word_count_ - 1 && leaf_count_ % 64 != 0) {
+                        valid_mask = (1ull << (leaf_count_ % 64)) - 1;
+                    }
+                    
+                    uint64_t valid_word = word & valid_mask;
+                    if (valid_word == valid_mask) return static_cast<size_type>(-1);  // All bits full
+                    
+                    uint32_t bit_pos = countr_zero(~valid_word);
+                    size_type slot_idx = leaf_idx * 64 + bit_pos;
+                    
+                    // Mark as allocated (set bit to 1)
+                    uint64_t bit_mask = 1ull << bit_pos;
+                    bitfield_[leaf_idx] |= bit_mask;
+                    
+                    // Update sum tree: subtract 1, propagate up
+                    uint32_t update_node = node;
+                    while (update_node > 0) {
+                        sum_tree_[update_node].fetch_sub(1);
+                        update_node /= 2;
+                    }
+                    
+                    return slot_idx;
                 }
+
                 void Release(size_type index) {
-
+                    if (index >= leaf_count_) return;
+                    
+                    size_type word_idx = index / 64;
+                    uint64_t bit_mask = 1ull << (index % 64);
+                    
+                    if ((bitfield_[word_idx] & bit_mask) == 0) return;  // Already free
+                    
+                    bitfield_[word_idx] &= ~bit_mask;
+                    
+                    // Update sum tree: add 1 at leaf level, propagate up
+                    uint32_t node = static_cast<uint32_t>(word_idx + word_count_);
+                    while (node > 0) {
+                        sum_tree_[node].fetch_add(1);
+                        node /= 2;
+                    }
                 }
-                ~BinaryTree() = default;
+
+                size_type available() const {
+                    return sum_tree_[1].load();
+                }
+
+                size_type GetCapacity() const {
+                    return leaf_count_;
+                }
+
+                ~BinaryTree() {
+                    UnInit();
+                }
+
             private:
-                BitVector<> sign_;
-                //todo support corrent
+                eastl::vector<std::atomic<uint32_t>> sum_tree_;
+                eastl::vector<uint64_t> bitfield_;
+                size_type leaf_count_ = 0;
+                size_type word_count_ = 0;
             };
 
             template<typename T>
             class PooledAllocator
             {
             public:
-                [[nodiscard]] T* allocate() {
-                    const auto index = tree_->Accquire();
-                    if (index != -1) {
-                    }
-                    return nullptr;
+                void Init(size_type pool_size) {
+                    tree_.Init(pool_size);
+                    data_.resize(pool_size);
                 }
-                void deallocate(T* ptr) {
-                    const auto index = PointerToIndex(ptr);
-                    ptr->~T();
-                    tree_->Release(ptr);
-                    //todo
-                }
-            protected:
-                size_type PointerToIndex(T* ptr) const {
 
+                [[nodiscard]] T* allocate() {
+                    size_type idx = tree_.Accquire();
+                    if (idx == static_cast<size_type>(-1)) return nullptr;
+                    return &data_[idx];
                 }
+
+                template <typename... Args>
+                [[nodiscard]] T* AllocNoDestruct(Args&&... args) {
+                    auto ptr = allocate();
+                    if (ptr) {
+                        new(ptr) T(std::forward<Args>(args)...);
+                    }
+                    return ptr;
+                }
+
+                void deallocate(T* ptr) {
+                    if (!ptr) return;
+                    size_type idx = ptr - data_.data();
+                    if (idx >= tree_.GetCapacity()) return;
+                    ptr->~T();
+                    tree_.Release(idx);
+                }
+
+                size_type available() const {
+                    return tree_.available();
+                }
+
+                size_type GetCapacity() const {
+                    return tree_.GetCapacity();
+                }
+
+                ~PooledAllocator() {
+                    UnInit();
+                }
+
+                void UnInit() {
+                    tree_.UnInit();
+                    data_.clear();
+                }
+
             private:
                 DISALLOW_COPY_AND_ASSIGN(PooledAllocator);
             private:
-                BinaryTree  tree_;
+                BinaryTree tree_;
+                eastl::vector<T> data_;
             };
         }
 
@@ -340,6 +484,18 @@ namespace Shard
                 FORCE_INLINE size_type GetBlkCount()const {
                     return blk_count_;
                 }
+                FORCE_INLINE size_type available() const {
+                    return available_;
+                }
+                FORCE_INLINE size_type used() const {
+                    return blk_count_ - available_;
+                }
+                FORCE_INLINE bool empty() const {
+                    return available_ == blk_count_;
+                }
+                FORCE_INLINE bool full() const {
+                    return available_ == 0;
+                }
             private:
                 size_type FindContinusBlocks(size_type size) const;
                 void SetBlockInUse(size_type index, size_type n);
@@ -347,6 +503,7 @@ namespace Shard
             private:
                 const size_type blk_size_{ 0u };
                 const size_type blk_count_{ 0u };
+                size_type available_{ 0u };
                 void* memory_{ nullptr };
                 void* ledger_{ nullptr };
             };
@@ -464,10 +621,11 @@ namespace Shard
                     ScalableBucket(size_type blk_size);
                     ScalableBucket(ScalableBucket&& other);
                     [[nodiscard]] void* allocate([[maybe_unused]] size_type size);
-                    //default deallocate; do deallcating in this thread
                     void deallocate(void* ptr, [[maybe_unused]] size_type size);
-                    //do deallocating in another thread
                     void deallocate_external(void* ptr, [[maybe_unused]] size_type size);
+                    size_type GetBlkSize() const { return blk_size_; }
+                    size_type GetTotalMemory() const { return total_allocated_; }
+                    size_type GetAvailableMemory() const;
                     ~ScalableBucket();
                 private:
                     Chunk* AllocChunk();
@@ -478,7 +636,23 @@ namespace Shard
                     Chunk*    active_chunk_{ nullptr };
                     const size_type    blk_size_{ 0u };
                     const size_type    blk_count_{ 0u };
+                    size_type    total_allocated_{ 0u };
                     std::atomic<FreeBlock*>    external_freed_{ nullptr };
+                };
+
+                class ScalablePool
+                {
+                public:
+                    ScalablePool() noexcept;
+                    [[nodiscard]] void* allocate(size_type size);
+                    void deallocate(void* ptr, size_type size);
+                    void deallocate_external(void* ptr, size_type size);
+                    size_type total_allocated() const;
+                    size_type available() const;
+                private:
+                    DISALLOW_COPY_AND_ASSIGN(ScalablePool);
+                private:
+                    Array<ScalableBucket, PoolBucketInfo_TypeCount<SCALABLE_BUCKET_FAKE_ID>::value>  buckets_;
                 };
 
                 class ScalablePool
