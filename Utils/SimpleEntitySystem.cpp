@@ -119,7 +119,7 @@ namespace Shard
             return allocator_->Alloc(size);
         }
 
-        void ECSSystemGroup::Init()
+        void SystemGroup::Init()
         {
             Sort();//first sort system 
             for (auto* sys : sub_sys_) {
@@ -127,19 +127,19 @@ namespace Shard
             }
         }
 
-        void ECSSystemGroup::UnInit()
+        void SystemGroup::UnInit()
         {
             for (auto* sys : sub_sys_) {
                 sys->UnInit();
             }
         }
 
-        void ECSSystemGroup::Update(ECSSystemUpdateContext& ctx)
+        void SystemGroup::Update(SystemUpdateContext& ctx)
         {
             //todo sort by each phase?
         }
 
-        bool ECSSystemGroup::IsPhaseUpdateBefore(const ECSSystem& other, EUpdatePhase phase)const
+        bool SystemGroup::IsPhaseUpdateBefore(const System& other, EUpdatePhase phase)const
         {
             if (IsPhaseUpdateEnabled(phase)) {
                 return sub_sys_.back()->IsPhaseUpdateBefore(other, phase);
@@ -147,7 +147,7 @@ namespace Shard
             return false;
         }
 
-        bool ECSSystemGroup::IsPhaseUpdateEnabled(EUpdatePhase phase)const
+        bool SystemGroup::IsPhaseUpdateEnabled(EUpdatePhase phase)const
         {
             for (auto sub_sys : sub_sys_) {
                 if (sub_sys->IsPhaseUpdateEnabled(phase)) {
@@ -156,32 +156,32 @@ namespace Shard
             }
             return false;
         }
-        void ECSSystemGroup::AddSubSystem(ECSSystem* sub_system)
+        void SystemGroup::AddSubSystem(System* sub_system)
         {
             sub_sys_.push_back(sub_system);
         }
-        void ECSSystemGroup::RemoveSubSystem(ECSSystem* sub_system)
+        void SystemGroup::RemoveSubSystem(System* sub_system)
         {
             if (auto iter = eastl::find(sub_sys_.begin(), sub_sys_.end(), sub_system); iter != sub_sys_.end())
             {
                 sub_sys_.erase(iter);
             }
         }
-        ECSSystemGroup::~ECSSystemGroup()
+        SystemGroup::~SystemGroup()
         {
             for (auto* sys : sub_sys_) {
                 delete sys;
             }
             sub_sys_.clear();
         }
-        bool ECSSystemGroup::IsSubSystemIncluded(ECSSystem* sub_system)
+        bool SystemGroup::IsSubSystemIncluded(System* sub_system)
         {
             if (auto iter = eastl::find(sub_sys_.begin(), sub_sys_.end(), sub_system); iter != sub_sys_.end()) {
                 return true;
             }
             return false;
         }
-        void ECSSystemGroup::Sort()
+        void SystemGroup::Sort()
         {
             //todo sort by what?
             eastl::sort(sub_sys_.begin(), sub_sys_.end(), [](auto* lhs, auto* rhs) { return true; });
@@ -191,6 +191,58 @@ namespace Shard
     uint32_t ArcheTypeChunk::SwapAndRemove(uint32_t slot)
     {
         return 0;
+    }
+
+    bool ArcheTypeChunk::HasComponentChanged(uint32_t component_index)
+    {
+        if (component_index >= num_components_) {
+            return false;
+        }
+
+        return (change_mask_[component_index / 64u] & (1ull << (component_index % 64u))) != 0;
+    }
+
+    bool ArcheTypeChunk::HasSlotChanged(uint32_t component_index, uint32_t slot)
+    {
+        if(!HasComponentChanged(component_index) || slot >= entity_count_){
+            return false;
+        }
+        const auto byte_index = slot / 8u;
+        const auto bit_index = slot % 8u;
+        return (slot_change_masks_[component_index][byte_index] & (1u << bit_index)) != 0;  
+    }
+
+    void ArcheTypeChunk::MarkChanged(uint32_t component_index, uint32_t slot)
+    {
+        if (component_index >= num_components_ || slot >= entity_count_) {
+            return;
+        }
+        change_mask_[component_index / 64u] |= (1ull << (component_index % 64u));
+        const auto byte_index = slot / 8u;
+        const auto bit_index = slot % 8u;
+        slot_change_masks_[component_index][byte_index] |= (1u << bit_index); 
+    }
+
+    void ArcheTypeChunk::ResetComponentChanges(uint32_t component_index)
+    {
+        if (component_index >= num_components_)  {
+            return;
+        }
+        change_mask_[component_index / 64] &= ~(1ull << (component_index % 64u));
+        const auto mask_bytes = Utils::CeilDiv(entity_count_, 8u);
+        memset(slot_change_masks_[component_index], 0u, mask_bytes);
+
+    }
+
+    void ArcheTypeChunk::ResetAllChanges()
+    {
+        memset(change_mask_, 0u, sizeof(change_mask_));
+
+        const auto mask_bytes = Utils::CeilDiv(entity_count_, 8u);
+        for (auto component_index = 0u; component_index < num_components_; ++component_index)                           
+        {
+            memset(slot_change_masks_[component_index], 0u, mask_bytes);
+        }
     }
 
     ArcheTypeTable::ArcheTypeTable(ArcheTypeTable&& other)

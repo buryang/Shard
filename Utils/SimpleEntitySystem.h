@@ -8,6 +8,8 @@
 #include <limits>
 #include <type_traits>
 #include <typeindex>
+#include <atomic>
+
 
 /**
  * Core Design and Features of this ECS Framework
@@ -80,6 +82,7 @@ namespace Shard
         constexpr size_type QUEY_BLOOM_EXPECTN = 32u;
         //bloom filter expected number of archetype
         constexpr size_type ARCHETYPE_BLOOM_EXPECTN = 64u;
+        constexpr size_type ARCHETYPE_MAX_COMPONENTS = 64u; 
 
         template<typename, typename = void>
         struct has_update_func : std::false_type {};
@@ -597,60 +600,84 @@ namespace Shard
             using SizeType = Vector<ValueType>::size_type;
             using Iterator = SparseSetIterator<Vector<ValueType>>;
             using ConstIterator = Vector<ValueType>::const_iterator;
-       
-            SparseSet() = default;
-            explicit SparseSet(SizeType size, Allocator& alloc) : dense_(alloc), page_alloc_(alloc) {
+
+            struct SparsePage
+            {
+                static constexpr size_type PAGE_SIZE = 4096u;
+                static constexpr size_type PAGE_COUNT = 128u;
+                ValueType data_[PAGE_SIZE];
+                BitSet<PAGE_SIZE> flags_;
+                SparsePage() {
+                    eastl::fill(eastl::begin(data_), eastl::end(data_), -1);
+                }
+            };
+            
+            explicit SparseSet(Allocator& alloc) : dense_(alloc), page_alloc_(alloc), sparse_page_(alloc) {
+                //sparse_pages_.resize(SparsePage::PAGE_COUNT, nullptr);
+            }   
+            explicit SparseSet(SizeType size, Allocator& alloc) : dense_(alloc), page_alloc_(alloc), sparse_page_(alloc) {
                 Resize(size);
             }
             void Resize(SizeType size) { //deprecated todo
                 const auto old_size = Count();
                 if (old_size > size) {
-                    //to do
+                    dense_.resize(size);
                 }
                 dense_.resize(size);
-                const auto page_size = std::ceil(float(old_size) / SparsePage::PAGE_SIZE);
-                //todo renew pages
+                const auto required_pages = Utils::CeilDiv(new_size, SparsePage::PAGE_SIZE);
+                if (sparse_pages_.size() < required_pages)   {
+                    sparse_pages_.resize(required_pages, nullptr);
+                }
             }
             Iterator Begin() {
                 return Iterator(dense_, 0u);
             }
             Iterator End() {
-                return Iterator(dense_, dense_.size());
+                return Iterator(dense_, static_cast<uint32_t>(dense_.size()));
             }
             void Swap(ThisType& rhs) {
                 std::swap(dense_, rhs.dense_);
                 std::swap(sparse_pages_, rhs.sparse_pages_);
                 std::swap(page_alloc_ rhs.page_alloc_);
-                //todo allocator
             }
             void SwapByDense(ValueType lhs, ValueType rhs) {
-                SetSparseValue(dense_[lhs], rhs);
-                SetSparseValue(dense_[rhs], lhs);
-                std::swap(dense_[lhs], dense_[rhs]);
+                const ValueType lhs_ent = dense_[lhs_idx];
+                const ValueType rhs_ent = dense_[rhs_idx];
+
+                SetSparseValue(lhs_ent, rhs_idx);
+                SetSparseValue(rhs_ent, lhs_idx);
+                std::swap(dense_[lhs_idx], dense_[rhs_idx]);
             }
             void Insert(ValueType i) {
+                if (Test(i)) return; //avoid duplicates conflict
                 dense_.push_back(i);
                 SetSparseValue(i, dense_.size() - 1);
             }
             void Erase(ValueType i) {
+                if (!Test(i)) return; //not exist 
                 const auto dense_index = GetSparseValue(i);
-                sparse_[i] = -1;
+                UnSetSparseValue(i);
                 if (dense_index != dense_, size() - 1) {
-                    const auto dense_back = dense_.back();
-                    sparse_[dense_back] = dense_index; //todo
-                    dense_[dense_index] = dense_back;//todo
+                    const auto last_dense = dense_.back();
+                    SetSparseValue(dense_back, dense_index);
+                    dense_[dense_index] = last_dense;
                 }
                 dense_.pop_back();
             }
             void Erase(const Iterator& iter) {
-                Erase(*iter);
+                if (iter != End()) {
+                    Erase(*iter);
+                }
             }
             void Clear() {
                 dense_.clear();
                 for (auto* page : sparse_pages_) {
-                    page_alloc_.DeAlloc(page);
-                    page_ = nullptr;
+                    if (page) {
+                        page->~SparsePage();
+                        page_alloc_.deallocate(page);
+                    }
                 }
+                sparse_pages_.clear();
             }
             SizeType Count()const {
                 return dense_.size();
@@ -662,44 +689,43 @@ namespace Shard
                 return dense_.empty();
             }
         private:
-            struct SparsePage
-            {
-                static constexpr auto PAGE_SIZE = 4096u;
-                static constexpr auto PAGE_COUNT = 128u;
-                ValueType    data_[PAGE_SIZE];
-                BitSet<PAGE_SIZE>    flags_;
-            };
             SparsePage* CreateSparsePage() {
-                SparsePage* page = page_alloc_.Alloc();
-                std::fill_n(page->data_, SparsePage::PAGE_SIZE, -1);
+                SparsePage* page = new(SparsePage) page_alloc_.allocate(1);
+                return page;
             }
             void ReleaseSparsePage(SparsePage*& page, uint32_t index) {
+                if (nullptr == page) return;
                 page.flags_.reset(index)
                 if (page.flags_.none()) {
-                    page_alloc_.Dealloc(page);
+                    page->~SparsePage();
+                    page_alloc_.deallocate(page);
                     page = nullptr;
                 }
             }
             void SetSparseValue(ValueType pos, ValueType value) {
-                const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
-                if (sparse_pages_[page_index] == nullptr) {
+                const auto page_index = Utils::CeilDiv(pos, SparsePage::PAGE_SIZE);
+                if (sparse_pages_.size() < page_index) {
+                    sparse_pages_.resize(page_index + 1, nullptr);
+                }
+                if(!sparse_pages_[page_index]) {
                     sparse_pages_[page_index] = CreateSparsePage();
                 }
+
                 const auto inner_index = pos % SparsePage::PAGE_SIZE;
                 sparse_pages_[page_index]->data_[inner_index] = value;
                 sparse_pages_[page_index]->flags_.set(inner_index); 
             }
             void UnSetSparseValue(ValueType pos) {
-                const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
-                if (sparse_pages_[page_index] != nullptr) {
+                const auto page_index = Utils::CeilDiv(pos, SparsePage::PAGE_SIZE);
+                if (sparse_pages_.size() > page_index && sparse_pages_[page_index] != nullptr) {
                     const auto inner_index = pos % SparsePage::PAGE_SIZE;
-                    sparse_pages_[page_index]->data_[inner_index] = -1;
+                    sparse_pages_[page_index]->data_[inner_index] = static_cast<ValueType>(-1);
                     ReleaseSparsePage(sparse_pages_[page_index], innder_index);
                 }
             }
             void GetSparseValue(ValueType pos) const {
-                const auto page_index = std::ceil(pos / SparsePage::PAGE_SIZE);
-                if (sparse_pages_[page_index] != nullptr) {
+                const auto page_index = Utils::CeilDiv(pos, SparsePage::PAGE_SIZE);
+                if (page_index < sparse_pages_.size() &&sparse_pages_[page_index] != nullptr) {
                     const auto inner_index = pos % SparsePage::PAGE_SIZE;
                     return sparse_pages_[page_index]->data_[inner_index];
                 }
@@ -708,10 +734,22 @@ namespace Shard
         private:
             using DenseAllocatorType = std::allocator_traits<Allocator>::template rebind_alloc<ValueType>;
             using PageAllocatorType = std::allocator_traits<Allocator>::template rebind_alloc<SparsePage>;
-            Vector<ValueType, DenseAllocatorType>   dense_;
-            SmallVector<SparsePage*, SparsePage::PAGE_COUNT>    sparse_pages_;
-            PageAllocatorType*  page_allocator_{nullptr};
+            Vector<ValueType, DenseAllocatorType> dense_;
+            SmallVector<SparsePage*, SparsePage::PAGE_COUNT> sparse_pages_;
+            PageAllocatorType&  page_allocator_{nullptr};
         };
+
+        template<typename ElementType, template <typename> typename AllocatorType>
+        typename SparseSet<ElementType, AllocatorType>::size_type
+            SparseSet<ElementType, AllocatorType>::GetSparseValue(ValueType entity) const {
+            const size_type page_idx = entity / SparsePage::PAGE_SIZE;
+            if (page_idx >= sparse_pages_.size() || !sparse_pages_[page_idx]) {
+                return static_cast<size_type>(-1);
+            }
+
+            const size_type inner_idx = entity % SparsePage::PAGE_SIZE;
+            return sparse_pages_[page_idx]->data_[inner_idx];
+        }
 
 
         //archetype storage with fixed-size and SOA layout
@@ -721,7 +759,7 @@ namespace Shard
             size_type chunk_index_{ 0u };
             size_type entity_count_{ 0u };
             size_type capacity_{ ~0u };
-            size_type num_component_{ 0u };
+            size_type num_components_{ 0u };
             ArcheTypeChunk* prev_{ nullptr };
             ArcheTypeChunk* next_{ nullptr };
             //when push to free list set this to archetype's free list head
@@ -730,8 +768,12 @@ namespace Shard
             //component storage(right after the header or aligned)
             uint8_t** component_storage_{ nullptr };
             //optional entity ids(helps with swap-remove)
-            uint32_t* entity_ids_{ nullptr };
+            EntityIndex* entity_ids_{ nullptr };
             uint8_t* component_strides_{ nullptr }; //not store here, just pointer to archetype strides
+
+            //change mask
+            uint64_t change_mask_[ARCHETYPE_MAX_COMPONENTS/64u]{ 0u }; //bit i means whether component i changed, for system with change filter
+            uint8_t** slot_change_mask_{ nullptr }; //pointer to each component's change bit vector(one bit for one slot)
 
         public:
             friend class ArcheTypeTable;
@@ -779,6 +821,14 @@ namespace Shard
 
             uint32_t SwapAndRemove(uint32_t slot);
 
+            //---------------------------------------------------------------------------
+            //change detection logic
+            //---------------------------------------------------------------------------
+            bool HasComponentChanged(uint32_t component_index);
+            bool HasSlotChanged(uint32_t component_index, uint32_t slot);
+            void MarkChanged(uint32_t component_index, uint32_t slot);
+            void ResetComponentChanges(uint32_t component_index);
+            void ResetAllChanges();
 
         };
 
@@ -1106,37 +1156,70 @@ namespace Shard
         //or u can use Ticks instead
         struct ComponentVersion
         {
-            uint16_t added_at_{ 0u };
-            uint16_t changed_at_{ 0u };
+            std::atomic<uint16_t> added_at_{ 0u };
+            std::atomic<uint16_t> changed_at_{ 0u };
 
             bool IsAddedAfter(Ticks since) const
             {
-                if (added_at_ == 0u) return false;
-                uint16_t diff = added_at_ - static_cast<uint16_t>(since);
+                const uint16_t added_tick = added_at_.load(std::memory_order_relaxed);
+                if (added_tick == 0u) return false; // Never added
+
+                // Cast since to 16-bit (safe for wrap-around logic)
+                const uint16_t since_16 = static_cast<uint16_t>(since);
+
+                // Handle 16-bit unsigned wrap-around (e.g., tick 65535 ¡ú 0)
+                // Diff < 0x8000 means "added_tick is more recent than since_16"
+                const uint16_t diff = added_tick - since_16;
                 return diff < 0x8000;
             }
 
             bool IsChangedAfter(Ticks since) const
             {
-                if (changed_at_ == 0u) return false;
-                uint16_t diff = changed_at_ - static_cast<uint16_t>(since);
+                const uint16_t changed_tick = changed_at_.load(std::memory_order_relaxed);
+                if (changed_tick == 0u) return false; // Never changed
+
+                const uint16_t since_16 = static_cast<uint16_t>(since);
+                const uint16_t diff = changed_tick - since_16;
                 return diff < 0x8000;
             }
 
             void MarkAdded(Ticks Ticks) {
-                added_at_ = static_cast<uint16_t>(Ticks); changed_at_ = added_at_;
+                const uint16_t tick_16 = static_cast<uint16_t>(tick);
+                added_at_.store(tick_16, std::memory_order_relaxed);
+                changed_at_.store(tick_16, std::memory_order_relaxed); // Changed = added initially
             }
             
             void MarkChanged(Ticks Ticks) {
-                changed_at_ = static_cast<uint16_t>(Ticks);
-            }
+                const uint16_t new_tick = static_cast<uint16_t>(tick);
+                uint16_t current_tick = changed_at_.load(std::memory_order_relaxed);
 
+                // Use compare-exchange loop to atomically update only if new tick is newer
+                // (handles wrap-around: new_tick is "newer" if (new_tick - current_tick) < 0x8000)
+                while (true)
+                {
+                    // If current tick is already newer, exit (no update needed)
+                    const uint16_t diff = new_tick - current_tick;
+                    if (diff >= 0x8000) break;
+
+                    // Try to swap current_tick with new_tick
+                    if (changed_at_.compare_exchange_weak(
+                        current_tick,
+                        new_tick,
+                        std::memory_order_relaxed,
+                        std::memory_order_relaxed))
+                    {
+                        break; // Success: updated
+                    }
+                    //no-ops??
+                }
+            }
         };
 
         class SparseComponentRepoBase
         {
         public:
             virtual ~SparseComponentRepoBase() = default;
+            virtual Remove(Entity entity) = 0u;
         };
 
         template<typename Component, typename Allocator>
@@ -1145,19 +1228,41 @@ namespace Shard
         public:
             using Type = Component;
             using ThisType = SparseComponentRepo<Component, Allocator>;
-            constexpr bool has_dense_data = !std::is_base_of_v<NoDenseDataPayload, Component>; //todo
+            static constexpr bool has_dense_data = !eastl::is_empty_v<Component>;
             explicit SparseComponentRepo(Allocator& alloc) : sparse_set_(alloc), component_data_(alloc){
 
             }
-            void Reverse(uint32_t size) {
-                component_data_.reserve(size);
+            void Reserve(uint32_t size) {
+                if (size <= capacity_) {
+                    return;
+                }
+                if constexpr (has_dense_data) {
+                    component_data_.reserve(size);
+                    component_version_.reserve(size);
+                }
+                sparse_set_.Resize(size);
             }
             template<typename...Args>
-            Type& Add(Entity e) {
+            Type& Add(Entity e, Args&&... args) {
                 const auto index = ToIndex(e);
+                if (index != ~0u) {
+                    return Element(index);
+                }
                 return Append(index, std::forward<Args&&...>(args));
             }
-            void Destroy(Entity e) {
+            void Set(Entity e, const Type& value) {
+                const auto index = ToIndex(e);
+                if (index != ~0u) {
+                    Element(index) = value;
+                    if (on_update_) {
+                        on_update_(this, e);
+                    }
+                }
+                else { 
+                    Add(e, value);
+                }
+            }
+            void Remove(Entity e) override{
                 auto index = LookUp(e);
                 if (index != -1) {
                     Remove(index);
@@ -1166,25 +1271,47 @@ namespace Shard
                     on_release_(this, e);
                 }
             }
+            bool IsContain(Entity e) const {
+                return sparse_set_.Test(e);
+            }
             void Clear() {
-                //todo logic error
-                for (auto iter = sparse_set_.Begin(); iter != sparse_set_.End(); ++iter) {
-                    Destroy(iter->);
+                if constexpr (has_dense_data) {
+                    for (size_type i = 0; i < size_; ++i) {
+                        reinterpret_cast<Type*>(component_data_ + i)->~Type();
+                    }
+                    component_data_.clear();
+                    component_version_.clear();
                 }
                 sparse_set_.Clear();
+                size_ = 0u;
+                capacity_ = 0u;
+            }
+            size_type Size() const {
+                return size_;
+            }
+            size_type Capacity() const {
+                return capacity_;
             }
         protected:
             template<typename... Args>
-            Type& Append(uint32_t index, Args&&... args) {
-                if (++size_ > 0.9 * capacity_) {
-                    auto new_size = 2 * capacity_; //FIXME
-                    Reverse(new_size);
+            void Add(Entity e, Args&&... args) {
+                //resize if Reached Capacity Threshold (80% for Safety)
+                if (size_ >= 0.8f * capacity_) {
+                    const size_type new_cap = (capacity_ == 0) ? 16 : capacity_ * 2;
+                    Reserve(new_cap);
                 }
-                Type* result = component_data_ + index;
-                new(result)(std::forward<Args>(args)...);
+
+                sparse_set_.Insert(e);
+                
+                //construct component in-place
+                if constexpr (has_dense_data) {
+                    new(component_data_ + size_) Type(std::forward<Args&&...>(args)...);
+                    component_version_[size_].MarkAdded(change_ticks_.load());
+                }
                 if (on_construct_) {
-                    on_contruct_(this, );
+                    on_contruct_(this, e);
                 }
+                ++size_;
                 return result;
             }
 
@@ -1206,37 +1333,51 @@ namespace Shard
             }
 
             size_type ToIndex(Entity entt) const {
-                return sparse_set_.
+                return sparse_set_.GetSparseValue(entt);
             }
 
             Entity ToEntity(size_type index) const {
-                return sparse_set_.
+                assert(index < size_);
+                return *sparse_set_.Begin() + index;
             }
 
             bool IsContain(Entity entt) const {
                 return ToIndex(entt) != -1;
             }
 
-            Type& Element(uint32_t index)
+            Type& Get(Entity e)
             {
+                static_assert(has_dense_data && "empty component has no dense data");
+                const auto index = ToIndex(e);
                 assert(index < component_data_.size());
                 return component_data_[index];
             }
 
-            const Type& Element(uint32_t index) const
+            const Type& Get(Entity e) const
             {
+                static_assert(has_dense_data && "empty component has no dense data");
+                const auto index = ToIndex(e);
                 assert(index < component_data_.size());
                 return component_data_[index];
             }
-            auto& Elements() {
-                return component_data_;
+            
+            auto& GetVersion(Entity e)
+            {
+                static_assert(has_dense_data && "empty component has no version");
+                const auto index = ToIndex(e);
+                return component_version_[index];
             }
-            const auto& Elements()const {
-                return component_data_;
-            }
+
+            const auto& GetVersion(Entity e) const
+            {
+                static_assert(has_dense_data && "empty component has no version");
+                const auto index = ToIndex(e);
+                return component_version_[index];
+            }   
+            
             /*whether the component is dirty*/
             bool IsDirty() const {
-                return dirty_version_.load() != last_extract_version_;
+                return change_ticks_.load() != last_change_version_;
             }
             //delegate
             auto& OnConstruct() {
@@ -1249,104 +1390,19 @@ namespace Shard
                 return on_release_;
             }
         private:
-            std::atomic_uint32_t dirty_version_{ 0u }; //mutable any instance->dirty_version++, if not changed skip all extract work
-            uint32_t last_extract_version_{ ~0u };
+            std::atomic<Ticks> change_ticks_;
+            Ticks last_change_version_{ ~0u };
+            size_type size_{ 0u };
+            size_type capacity_{ 0u };
             SparseSet<uint32_t, Allocator> sparse_set_; 
             //ArcheType
             using ComponentAlloc = std::allocator_traits<Allocator>::template rebind_alloc<Type>;
-            Vector<Type, ComponentAlloc> component_data_; //todo atomic change
+            Vector<Type, ComponentAlloc> component_data_; 
             Vector<ComponentVersion, ComponentAlloc> component_version_; //component version/Ticks
             //delegate 
             DelegateLib::MulticastDelegate<void(ThisType*, Entity)>    on_construct_;
             DelegateLib::MulticastDelegate<void(ThisType*, Entity)>    on_update_;
             DelegateLib::MulticastDelegate<void(ThisType*, Entity)>    on_release_;
-        };
-
-        template<typename ...T>
-        class MessageQueue
-        {
-        public:
-            //message size 128
-            struct Message
-            {
-                enum class Flags : uint16_t
-                {
-                    eNone        = 0x0,
-                    eRecursive    = 0x1,
-                };
-                uint32_t    message_type_ : 16;
-                uint32_t    message_flags_ : 16;
-                float        time_{ 0 };
-                uint8_t        payload_[128 - sizeof(uint32_t) - sizeof(float)];
-                template<typename MessageType>
-                MessageType& Cast() {
-                    assert(MessageType::Type = message_type_);
-                    return *reinterpret_cast<const MessageType*>(this->playload_);
-                }
-                bool IsRecursive() const {
-                    return !!(message_flags_ & static_cast<uint16_t>(Flags::eRecursive));
-                }
-                friend bool operator < (const Message& lhs, const Message& rhs) {
-                    return lhs.time_ < rhs.time_;
-                }
-            };
-            using MessageHandler = std::function<void(Message&)>;
-        public:
-            void RegisterHandler(uint32_t mess_type, MessageHandler&& handle) {
-                message_handlers_[mess_type].push_back(handle);
-            }
-            void Dispatch(const Message& mess) {
-                for (auto& h : message_handlers_[mess.message_type_]) {
-                    h(mess);
-                }
-            }
-            template<typename Payload, typename... Args>
-            void Dispatch(Args&& ..args) {
-                Message mess{ Payload::message_id, 0, 0 };
-                new(&mess.payload_)Payload(std::forward<Args>(args)...);
-                Dispatch(mess);
-            }
-            bool Queue(const Message& mess) {
-                message_queue_.push(mess);
-                return true;
-            }
-            template<typename Payload, typename ...Args>
-            bool Queue(float time, Args&&... args) {
-                Message mess{ Payload::message_id, 0, curr_time_ + time };
-                return Queue(mess);
-            }
-            //deal messages before curr time
-            void Update(float delta_time) {
-                curr_time_ += delta_time;
-                while (!IsEmpty() && message_queue_.top().time_ < curr_time_) {
-                    auto mess = message_queue_.top();
-                    message_queue_.pop();
-                    Dispatch(mess);
-                }
-            }
-            //deal one message
-            void Step() {
-                if (!IsEmpty()) {
-                    auto mess = message_queue_.top();
-                    curr_time_ = mess.time;
-                    message_queue_.pop();
-                    Dispatch(mess);
-                }
-            }
-            bool IsEmpty() const {
-                return message_queue_.empty();
-            }
-            const Message& Top()const {
-                return message_queue_.top();
-            }
-            void Reset() {
-                priority_queue_ = decltype(priority_queue_)();
-                curr_time_ = 0;
-            }
-        protected:
-            float curr_time_{ 0 };
-            Map<uint32_t, SmallVector<MessageHandler>> message_handlers_;
-            std::priority_queue<Message, Vector<Message>, std::less<Message>> message_queue_;
         };
 
         enum class EUpdatePhase : uint8_t
@@ -1364,16 +1420,18 @@ namespace Shard
         {
             eNone,
             eAuto,      //cache cacheable terms
-            aAll,       //require all tems cacheable
+            aAll,       //require all terms cacheable
             eDefault,   //based on context
         };
 
-        struct ECSSystemUpdateContext {
+        struct SystemUpdateContext {
             float   delta_time_{ 0.f };//in seconds
             uint64_t    frame_index_{ 0u }; //frame index
             EUpdatePhase    phase_{ EUpdatePhase::eFrameStart };
         };
         
+        using CommandFunc = std::function<void(void)>;
+
         //deal with component from entity
         struct ECSComponentCommandIR
         {
@@ -1385,9 +1443,9 @@ namespace Shard
                 eRelease,
                 eNum,
             };
-            EType   type_{ EType::eUnkown };
-            String  debug_name_;
-            std::function<void(void)>  task_; //command work
+            EType type_{ EType::eUnkown };
+            String debug_name_;
+            CommandFunc task_; //command work
         };
 
         /*collect component add/rm/update commands*/
@@ -1440,28 +1498,28 @@ namespace Shard
             command_buffer.Push(cmd_ir);
         }
 
-        class ECSSystem
+        class System
         {
         public:
             virtual void Init() = 0;
             virtual void UnInit() = 0;
-            virtual void Update(ECSSystemUpdateContext& ctx) = 0;
+            virtual void Update(SystemUpdateContext& ctx) = 0;
             //default return true for all phase/all other system
-            virtual bool IsPhaseUpdateBefore(const ECSSystem& other, EUpdatePhase phase)const { return IsPhaseUpdateEnabled(phase); }
+            virtual bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase)const { return IsPhaseUpdateEnabled(phase); }
             virtual bool IsPhaseUpdateEnabled(EUpdatePhase phase)const { return true; }
-            virtual ~ECSSystem() = default;
+            virtual ~System() = default;
         private:
             std::atomic<Ticks> ticks_counter_{ 0u }; //atomic to sync
         };
 
         //similar to unity system group & flecs schedule
-        class ECSSystemGroup : public ECSSystem
+        class SystemGroup : public System
         {
         public:
             void Init() override;
             void UnInit() override;
-            void Update(ECSSystemUpdateContext& ctx) override;
-            bool IsPhaseUpdateBefore(const ECSSystem& other, EUpdatePhase phase)const override;
+            void Update(SystemUpdateContext& ctx) override;
+            bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase)const override;
             bool IsPhaseUpdateEnabled(EUpdatePhase phase)const override;
             template<typename Function>
             void Enumerate(Function&& func) {
@@ -1469,15 +1527,15 @@ namespace Shard
                     func(sys);
                 }
             }
-            void AddSubSystem(ECSSystem* sub_system);
+            void AddSubSystem(System* sub_system);
             //todo change the interface
-            void RemoveSubSystem(ECSSystem* sub_system);
-            virtual ~ECSSystemGroup();
+            void RemoveSubSystem(System* sub_system);
+            virtual ~SystemGroup();
         private:
-            bool IsSubSystemIncluded(ECSSystem* sub_system);
+            bool IsSubSystemIncluded(System* sub_system);
             void Sort();
         private:
-            SmallVector<ECSSystem*>    sub_systems_;
+            SmallVector<System*>    sub_systems_;
         };
 
         using ObserverCallback = std::funcction<void(Entity)>;
@@ -1520,32 +1578,33 @@ namespace Shard
             }
         };
 
-        template<template<class> class ECSAdmin, class Allocator>
+        template<template<class> class World, class Allocator>
         class EntityTT;
 
-        template<template<class> class ECSAdmin, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
         class QueryTT;
 
-        template<typename Allocator=Utils::LinearAllocator<void>, typename ...T>
-        class ECSAdmin : public MessageQueue<T...>
+        template<typename Allocator=Utils::LinearAllocator<void>, typename ...Policies>
+        class World final
         {
         public:
-            using ThisType = ECSAdmin<T...>;
-            using EntityType = EntityTT<ThisType, Allocator>;
-        public:
-            ECSAdmin() {
+            World() {
                 //must initial singleton entity
                 singleton_entity_ = entity_manager_.Spawn();
             }
 
-            ~ECSAdmin() {
+            ~World() {
                 //release singleton components
                 RemoveEntity(singleton_entity_);
-                //todo other things
+                Clear();
             }
 
+            //----------------------------------------------------------------------------------
+            // system mamnagement
+            //---------------------------------------------------------------------------------
+
             template<typename System, typename... Args>
-                requires std::is_convertible_v<ECSSystem, System>
+                requires std::is_convertible_v<System, System>
             System* RegisterSystem(Args&&... args) {
                 auto ptr = new System(std::forward<Args>(args)...);
                 systems_.insert(std::make_pair(std::type_inex(typeid(System), ptr);
@@ -1559,7 +1618,7 @@ namespace Shard
                 return ptr;
             }
             template<typename System>
-                requires std::is_base_of_v<ECSSystem, System>
+                requires std::is_base_of_v<System, System>
             System* GetSystem() {
                 static const auto key = std::type_index(typeid(System));
                 if (auto iter = systems_.find(key)) {
@@ -1567,60 +1626,58 @@ namespace Shard
                 }
                 return nullptr;
             }
-            template<typename Component>
-            void RegisterComponent(ComponentRepo<Component>* component_repo) {
-                components_data_.insert(std::make_pair(std::type_index(typeid(Component)), component_repo));
+
+            SystemGroup& GetSystemGroup(const String& group_name) {
+                if (auto iter = groups_.find(group_name); iter != groups_.end()) {
+                    return *iter->second;
+                }
+                else {
+                    auto* group = new (allocator_->allocate(sizeof(SystemGroup))SystemGroup;
+                    groups_.insert(std::make_pair(group_name, group));
+                    return *group;
+                }
             }
-            template<typename Component, typename... Args>
-            void RegisterComponent(Args&&... args) {
-                auto comp_repo = new ComponentRepo<Component>(std::forward<Args>(args)...);  
-                RegisterComponent(comp_repo);
+
+            void UpdateSystems() {
+
+            }
+            void UpdateSystemGroup(const String& group_name) {
+
+            }
+
+            //----------------------------------------------------------------------------------
+            // component manger logic
+            //---------------------------------------------------------------------------------
+            template<typename Component>
+            void RegisterComponent(EComponentStorageType storage = ) {
+                component_registry_.RegisterComponent<Compoent>();
+            }
+
+            template<typename Component>
+            void RegisterSparseComponent() {
+                component_registry_.RegisterComponent<Compoent>();
+                //allocate sparse component repo, todo use allocator
+                auto* ptr = allocator_->allocate(sizeof(SparseComponentRepo<Component, Allocator>));
+                auto* repo = new(ptr)SparseComponentRepo<Component, Allocator>(*allocator_);
+                sparse_components_data_[std::make_pair(component_registry_.GetComponentID<Component>()] =  repo;
             }
 
             //singleton component should be register individualy
-            template<typename Component, typename ...Args>
-            void RegisterSingletonComponent(Args&&... args)
+            template<typename Component>
+            void RegisterSingletonComponent()
             {
-                RegisterComponent(args);
+                RegisterSparseComponent();
                 auto* info = const_cast<ComponentTypeInfo*>(component_registry_.GetComponentTypeInfo<Component>());
                 info->flags |= COMPONENT_FLAG_IS_SINGTON;
             }
 
-            template<typename ...Component>
-            auto GetComponentRepos() {
-                if constexpr (sizeof...(Component) == 0u) {
-                    return nullptr;
-                }
-                else {
-                    if constexpr (sizeof...(Component) == 1u) {
-                        if (auto iter = components_data_.find(std::type_index(typeid(Component)))) {
-                            return static_cast<ComponentRepo<Component>*>(iter->second);
-                        }
-                        LOG(ERROR) << "admin not has such component repo";
-                        return nullptr;
-                    }
-                    else {
-                        return std::make_tuple(GetComponentRepos<Component>...);
-                    }
-                }
-            }
-            template<typename Component, typename BinaryCompare>
-            void Sort(BinaryCompare&& compare_op) {
-                GetComponentRepo<Component>()->Sort(compare_op);
-            }
-
-            template<typename Component, typename ComponentReferred>
-            void Sort() {
-                GetComponentRepo<Component>()->SortAs(GetComponentRepo<ComponentReferred>());//todo
-            }
-
             //new command buffer
-            ECSComponentCommandBuffer<Allocator>& NewCommandBuffer() {
+            ComponentCommandBuffer<Allocator>& NewCommandBuffer() {
                 command_buffers_.emplace_back(ECSComponentCommandBuffer<Allocator>(, alloc_));
                 return command_buffers_.back();
             }
             //dispose command buffer
-            void Dispose(ECSComponentCommandBuffer<Allocator>& command_buffer) {
+            void Dispose(ComponentCommandBuffer<Allocator>& command_buffer) {
                 assert(std::this_thread::get_id() == xx && "current on engine main thread");
                 //all component change work done in sequence
                 for (auto command = command_buffer.Poll(); command.has_value(); ) {
@@ -1631,17 +1688,6 @@ namespace Shard
                     std::invoke(command->task_);
                     command = command_buffer.Poll();
                 }
-            }
-
-            template<typename ...Component, typename ...Exclued>
-            ECSComponentQuery<Component..., Exclued...> Query() {
-                auto owned_repos = GetComponentRepo<Component...>();
-                if (std::apply([](auto...* repo) { return (repo!=nullptr&&...); }, owned_repos))
-                {
-                    auto exclueded_repos = GetComponentRepo<Exclued...>();
-                    return { owned_repos, exclueded_repos };
-                }
-                LOG(ERROR) << "the query disired not existed";
             }
 
             void Clear() {
@@ -1655,11 +1701,7 @@ namespace Shard
             template<typename ...Component>
             void ClearComponents() {
                 if constexpr (sizeof...(Component) == 0u) {
-                    for (auto [_, comp] : components_data_) {
-                        //todo 
-                        delete comp;
-                    }
-                    components_data_.clear();
+                    //
                 }
                 else {
                     if constexpr (sizeof...(Component) == 1u) {
@@ -1688,8 +1730,21 @@ namespace Shard
                     }
                 }
             }
-            virtual ~ECSAdmin() {
-                Clear();
+            //----------------------------------------------------------------------------------
+            // entity manger logc
+            //----------------------------------------------------------------------------------
+            Entity Spawn() {
+                return entity_manager_.Spawn();
+            }
+
+            Entity Spawn(Entity prefab)
+            {
+                return Clone(prefab);
+            }
+
+            void Remove(Entity entity) {
+                RemoveAllComponents(entity);
+                entity_manager_.Release(entity);
             }
 
             template<typename Component, typename... Args>
@@ -1706,29 +1761,72 @@ namespace Shard
                 auto component_id = component_registry_->GetComponentID<Component>();
                 if (IsSparseComponent(component_id)) UNLIKELY
                 {
-                    const auto* repo = sparse_components_data_[component_id];
+                    const auto* repo = GetSparseComponentRepo<Component>();
+                    assert(repo->IsContain(e) && "entity does not have the component");
                     return repo->GetComponent(e);
                 }
 
                 auto entity_loc = entity_manager_.GetLocation(e);
-                const auto* arche_type = arche_
-
+                const auto* arche_type = entity_loc.arche_type_;
+                return arche_type->GetComponent(entity, component_id);
             }
+
+            template<typename Component>
+            Component* TryGetComponent(Entity e) {
+                auto component_id = component_registry_->GetComponentID<Component>();
+                if (IsSparseComponent(component_id)) UNLIKELY
+                {
+                    const auto* repo = GetSparseComponentRepo<Component>();
+                    return repo->IsContain(e) ? &repo->GetComponent(e) : nullptr;
+                }
+                auto entity_loc = entity_manager_.GetLocation(e);
+                const auto* arche_type = entity_loc.arche_type_;
+                if (!arche_type->HasComponent(component_id)) {
+                    return nullptr;
+                }
+                return arche_type->GetComponent(entity, component_id);
+            }
+
             template<typename Component>
             void RemoveComponent(Entity e) {
+                auto component_id = component_registry_->GetComponentID<Component>();
+                if (IsSparseComponent(component_id)) UNLIKELY
+                {
+                    const auto* repo = GetSparseComponentRepo<Component>();
+                    repo->Remove(e);
+                    return;
+                }
+                auto entity_loc = entity_manager_.GetLocation(e);
+                auto* arche_type = archetype_graph_.GetArcheType(entity_loc.arche_type_index_);
+                if (!arche_type->HasComponent(component_id)) {
+                    LOG(WARNING) << "entity does not have the component";
+                    return;
+                }
+                arche_type->RemoveComponent(entity, component_id);
             }
+
+            void RemoveAllComponent(Entity e) {
+                auto entity_loc = entity_manager_.GetLocation(e);
+                auto* arche_type = archetype_graph_.GetArcheType(entity_loc.arche_type_index_);
+                arche_type->RemoveAllComponent(e);
+
+                if(entity_loc.sparse_mask_ != 0u) UNLIKELY
+                {
+                    for (auto bit = 0u; bit <= MAX_SPARSE_COMPONENT_ID; ++bit) {
+                        const auto index = 1 << bit;
+                        if (entity_loc.sparse_mask_ & index) {
+                            auto* repo = sparse_components_data_[bit];
+                            repo->Remove(e);
+                        }
+                    }
+                }
+            }   
+
             template<typename Component, typename... Args>
             void UpdateOrCreateComponent(Entity e,  Args&&... args) {
-                auto it = component_data_.find(typeid(Component));
-                assert(component_data_.end() != it);
-                const auto index = it->second->LookUp(e);
-                if (index != -1) {
-                    new(it->second->Element(index)) Component(std::forward<Args...>(args));
-                }
-                else {
-                    comp_iterface->Add(std::forward<Args...>(args));
-                }
+                //todo
             }
+
             template<typename Component>
             bool HasComponent(Entity e) {
                 auto* val = GetComponent<Component>();
@@ -1780,7 +1878,18 @@ namespace Shard
                 return false;
             }
 
-            Allocator& GetAllocator() {
+            //----------------------------------------------------------------------------------
+            //query operations
+            //----------------------------------------------------------------------------------
+            template<typename ...Required, typename ...Optional, typename ...Excluded>
+            Query<World, Required..., Optional..., Excluded...> Query() {
+                return Query<World, Required..., Optional..., Excluded...>(*this);
+            }   
+
+            template<typename... Required, typename ...ChangedTs, typename ...Optional, typename ...Excluded>
+            Query<World, Required..., Changed<ChangedTs...>, Optional..., Excluded...> QueryChanged();
+
+            AllocatorType& GetAllocator() {
                 return alloc_;
             }
 
@@ -1789,52 +1898,8 @@ namespace Shard
             }
 
         private:
-            DISALLOW_COPY_AND_ASSIGN(ECSAdmin);
-
-            template<typename System, typename Message, typename C, typename... Cs>
-            void RegisterComponentMessage(System* sys, , std::true_type&&) {
-                ComponenentCollector<Cs...> collector;
-                auto run = [&](Message& mess, ComponentInterface* comp_interface) {
-                    //auto call_back = [&](Message& mess, )
-                }
-                for (auto n = 0; n < collector.COMP_SIZE; ++n) {
-                    auto comp_iter = collector.Get<n>();
-                    RegisterHandler(comp_iter, [&](Message& mess) {
-                        run(mess, comp_iter);
-                    });
-                }
-            }
-            template<typename System, typename Message, typename C, typename... Cs>
-            void RegisterComponentMessage(System* sys, , std::false_type&&) {
-                //no operation
-            }
-            template<typename System, typename MessageType>
-            void RegisterMessageHandler(System* s) {
-                //check where system support messagetype
-                if (constexpr(has_message<System, MessageType>)) {
-                    auto sys_handle = [&](MessageType& mess) {
-                        //system update bind component 
-                        for (auto [component_id, comp_data] : component_data_) {
-                            s->Update(mess. comp_data);
-                        }
-                    };
-
-                    RegisterHandler(, sys_handle);
-                }
-            }
-
-            //entity related function
-            Entity NewEntity() {
-                auto entity = entity_manager_.Spawn();
-                return entity;
-            }
-
-            void RemoveEntity(Entity e) {
-                for (auto [_, comp_repo] : components_data_) {
-                    comp_repo->Remove(e); //todo slow
-                }
-                entity_manager_.Release(e);
-            }
+            DISALLOW_COPY_AND_ASSIGN(World);
+            
             //copies an existing entity and creates a new entity from that copy
             Entity Clone(Entity prefab) {
                 auto new_entity = NewEntity();
@@ -1854,7 +1919,7 @@ namespace Shard
 
                 LIKELY
                 if (!TestEntitySparse(prfab_loc)){
-                    return;
+                    return Entity::null;
                 }
                 //sparse component copy
                 for (auto bit = 0u; bit < sizeof(prefab_loc.sparse_mask_) * 8u; ++bit) {
@@ -1865,10 +1930,12 @@ namespace Shard
                     }
                 }
 
+                return new_entity;
+
             }
             //move entity from other world to current world
             template<class UAllocator, class ...UComponent>
-            bool CloneExternalRetainID(Entity prefab, ECSAdmin<UAllocator>& external) {
+            bool CloneExternalRetainID(Entity prefab, World<UAllocator>& external) {
                 if (entity_manager_.Insert(prefab))
                 {
                     ( ( external.HasComponent<UComponent>(prefab)
@@ -1881,11 +1948,17 @@ namespace Shard
                 return false;
             }
             template<class UAllocator, class ...UComponent> 
-            void CloneExternal(Entity prefab, ECSAdmin<UAllocator>& external) {
+            void CloneExternal(Entity prefab, World<UAllocator>& external) {
                 auto new_entity = NewEntity();
                 ( ( external.HasComponent<UComponent>(prefab)
                     ? ( (AddComponent<UComponent>(new_entity, external.GetComponent<UComponent>(prefab))), 0u )
                     : 0u ), ... );
+            }
+            template<class Component>
+            SparseComponentRepo<Component, Allocator>* GetSparseComponentRepo() {
+                auto component_id = component_registry_.GetComponentID<Component>();
+                assert(IsSparseComponent(component_id) && "component should be a sparse component");
+                return static_cast<SparseComponentRepo<Component, Allocator>*>(sparse_components_data_[component_id]);
             }
         private:
             Allocator alloc_;
@@ -1922,7 +1995,7 @@ namespace Shard
             };
 
             //according to entt, type_index/type_info.hash_code both not unique
-            Map<std::type_index, ECSSystem*> systems_;
+            Map<std::type_index, System*> systems_;
             //ecs group define 
             Map<std::type_index, ECSComponentGroupBase*> groups_;
             //command buffers
@@ -1934,27 +2007,105 @@ namespace Shard
         };
 
         //entity warper, it used to do entity related operation like add/remove component, get component etc
-        template<template<class> class ECSAdmin, class Allocator>
+        template<template<class> class World, class Allocator>
         class EntityTT
         {
-            using World = ECSAdmin<Allocator>;
-            Entity entity_;
+            using World = World<Allocator>;
+            Entity entity_{Entity::null};
             World& world_;
         public:
             
             explicit EntityTT(Entity entt, World& world):entity_(entt), world_(world){
             }
 
+            EntityTT(EntityTT&&) = default;
+            EntityTT& operator=(EntityTT&&) = default;
+            
+            ~EnttityTT() = default;
+
+            Entity GetID() const {
+                return entity_;
+            }   
+
+            bool IsValid() const {
+                return entity_.IsValid();
+            }
+
+            bool IsAlive() const {
+                return entity_.IsAlive();
+            }
+
+            /**
+            * @brief Add a new component (or overwrite if exists).
+            * @return *this for chaining
+            */
             template<class Component, class ...Args>
             EntityTT& Add(Args&& ...args) {
+                static_assert(!std::is_same_v<T, void>, "Cannot add void component");
                 world_.AddComponent<Component>(entity_, std::forward<Args>(args)...);
                 return *this;
             }
 
+            /**
+             * @brief Set/replace an existing component (must already exist).
+             * @return *this for chaining
+             */
+            template<typename T, typename... Args>
+            EntityTT& Set(Args&&... args)
+            {
+                static_assert(!std::is_same_v<T, void>, "Cannot set void component");
+                world_.SetComponent<T>(entity_, std::forward<Args>(args)...);
+                return *this;
+            }
+
+            /**
+             * @brief Remove a component if it exists.
+             * @return *this for chaining
+             */
             template<class Component>
             EntityTT& Remove() {
+                static_assert(!std::is_same_v<T, void>, "Cannot remove void component");
                 world_.RemoveComponent<Component>(entity_);
                 return *this;
+            }
+
+            template<class Component, typename ...Args>
+            Component& GetOrAdd(Args&&... args) {
+                if (!Has<Component>()) {
+                    Add<Component>(std::forward<Args>(args)...);
+                }
+                return Get<Component>();
+            }
+
+            //----------------------------------------------------------------------------------
+            //batch operations
+            //----------------------------------------------------------------------------------
+            /**
+             * @brief Remove multiple components at once (chainable).
+            */
+            template<typename... Components>
+            EntityTT& RemoveAll()
+            {
+                (Remove<Components>(), ...);
+                return *this;
+            }
+
+            /**
+             * @brief Clear all components from this entity (dense + sparse).
+             */
+            void RemoveAllComponents()
+            {
+                // Remove all dense components (iterate signature if needed)
+                // For sparse: clear sparse_mask and remove from sparse_stores
+                world_.RemoveAllComponents(entity_);
+            }
+
+            /**
+             * \brief manual destroy the entity
+             */
+            void Destroy() {
+                world_.RemoveEntity(entity_);
+                entity_ = Entity::null;
             }
 
             template<class Component>
@@ -1967,14 +2118,39 @@ namespace Shard
                 return world_.GetComponent<Component>(entity_);
             }
 
-            //todo other api like get component, update component, etc
+            template<class Component>
+            Component* TryGet() {
+                return world_.GetComponent<Component>(entity_);
+            }
+
+            /**
+             *\brief Get const reference to component (asserts existence).
+             */
+            template<typename T>
+            const T& Get() const
+            {
+                return world_.GetComponent<T>(entity_);
+            }
+
+            /**
+             *\brief Get const pointer to component (returns nullptr if missing).
+             */
+            template<typename T>
+            const T* TryGet() const
+            {
+                return world_.GetComponent<T>(entity_);
+            }
+        protected:
+
+            EntityTT(const EntityTT&) = delete;
+            EntityTT& operator=(const EntityTT&) = delete;
         };
 
 
-        template<template<class> class ECSAdmin, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
         class SparseQueryIterator final
         {
-            using QueryType = QueryTT<ECSAdmin, Allocator, Required..., Optional..., Excluded...>;
+            using QueryType = QueryTT<World, Allocator, Required..., Optional..., Excluded...>;
 
         public:
             struct Element
@@ -2062,10 +2238,10 @@ namespace Shard
 
         };
 
-        template<template<class> class ECSAdmin, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
         class QueryIterator final
         {
-            using QueryType = QueryTT<ECSAdmin, Allocator, Required..., Optional..., Excluded...>;
+            using QueryType = QueryTT<World, Allocator, Required..., Optional..., Excluded...>;
 
         public:
             struct Element
@@ -2177,17 +2353,17 @@ namespace Shard
             }
         };
 
-        template<template<class> class ECSAdmin, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
         class QueryTT
         {
             //because all sparseset component in Optional, so just test whether Required is empty 
             static constexpr auto IS_PURE_SPARSE = sizeof...(Required) == 0u;
 
-            using World = ECSAdmin<Allocator>;
+            using World = World<Allocator>;
             using RequireTuple = std::tuple<Required...>;
             using OptionalTuple = std::tuple<Optional...>;
             using ExcluededTuple = std::tuple <Excluded...>;
-            using Iterator = std::conditional_t<IS_PURE_SPARSE, QueryIterator<ECSAdmin, Allocator, Required..., Optional..., Excluded...>,
+            using Iterator = std::conditional_t<IS_PURE_SPARSE, QueryIterator<World, Allocator, Required..., Optional..., Excluded...>,
                                                         SparseQueryIterator<>>;
 
             const World& world_;
