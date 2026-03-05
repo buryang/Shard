@@ -432,6 +432,13 @@ namespace Shard
         chunk->entity_ids_ = reinterpret_cast<uint32_t*>(ptr_t);
         ptr_t += sizeof(uint32_t) * max_chunk_capacity_;
 
+        for (auto n = 0u; n < component_sizes_.size(); ++n)
+        {
+            chunk->slot_change_masks_[n] = reinterpret_cast<uint8_t*>(ptr_t);
+            const auto mask_bytes = Utils::CeilDiv(max_chunk_capacity_, 8u);
+            ptr_t += mask_bytes;
+        }
+
         //anything to do?
     }
 
@@ -442,6 +449,8 @@ namespace Shard
         size += sizeof(Entity) * capacity; //ArcheTypeChunk::MAX_CHUNK_CAPACITY;
         //add storage pointer array size
         size += sizeof(void*) * signature_.GetNumComponents();
+        //add change detection for slot
+        size += sizeof(uint8_t) * Utils::CeilDiv(capacity, 8u) * signature_.GetNumComponents();
 
         return Utils::AlingUp(size, 64u);
     }
@@ -504,6 +513,16 @@ namespace Shard
                 return false;
             }
             offset += array_size;
+        }
+
+        for (auto n = 0u; n < signature_.GetNumComponents(); ++n)   
+        {
+            const auto mask_bytes = Utils::CeilDiv(capacity, 8u);
+            if (offset + mask_bytes > ArcheTypeChunk::CHUNK_SIZE)
+            {
+                return false;
+            }
+            offset += mask_bytes;
         }
         mem_size = offset;
         return true;

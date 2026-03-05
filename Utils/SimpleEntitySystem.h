@@ -61,6 +61,13 @@ namespace Shard
 {
     namespace Utils
     { 
+
+        class ArcheTypeTable;
+        class ArcheTypeChunk;
+        class EntityManager;
+        class ArchetypeGraph;
+        class ObserverRegistry;
+
         //basic types 
         using EntityIndex = uint32_t;
         using EntityVersion = uint32_t;
@@ -84,36 +91,30 @@ namespace Shard
         constexpr size_type ARCHETYPE_BLOOM_EXPECTN = 64u;
         constexpr size_type ARCHETYPE_MAX_COMPONENTS = 64u; 
 
-        template<typename, typename = void>
-        struct has_update_func : std::false_type {};
-        template<typename System>
-        struct has_update_func<System, std::void_t<decltype(std::declval<System>.Update())>> : std::true_type {};
-        template<typename, typename, typename = void>
-        struct has_message : std::false_type {};
-        template<typename System, typename MessageType>
-        struct has_message<System, MessageType, std::void_t<decltype(std::declval<System>().Deal(std::declval<MessageType>()))> > : std::true_type {};
-        template<typename, typename = void>
-        struct has_component : std::false_type{};
-        template<typename System>
-        struct has_component<System, std::void_t<decltype(std::declval<System>().components_)>> : std::true_type {};
-        //component system operation
-        
-        template<typename, typename>
-        struct is_applicable : std::false_type {};
-        template<typename Func, template<typename...> class Tuple, typename... Args>
-        struct is_applicable<Func, const Tuple<Args...>> : std::is_invocable<Func, Args...> {};
+        //marker tags for clean query syntax
+        template<typename... Ts> struct Require {};
+        template<typename... Ts> struct Optional {};
+        template<typename... Ts> struct Changed {};
+        template<typename... Ts> struct Added {};
+        template<typename... Ts> struct Exclude {};
 
-        //component delegate check
-#define DECLARE_COMPONENT_DELEGATE(Delegate)\
-        template<typename ComponentRepo, typename = void> \
-        struct has_##Delegate : std::false_type {}; \
-        template<typename ComponentRepo, typename Delegate> \
-        struct has_##Delegate<ComponentRepo, std::void_t<decltype(std::declval<ComponentRepo>().Delegate)>> : std::true_type {}; 
+        //traits to unpack markers from the parameter pack
+        template<typename... Markers> struct QueryTraits {
+            using require_t = std::tuple<>;
+            using optional_t = std::tuple<>;
+            using changed_t = std::tuple<>;
+            using added_t = std::tuple<>;
+            using exclude_t = std::tuple<>;
+        };
 
-        DECLARE_COMPONENT_DELEGATE(OnConstruct)
-        DECLARE_COMPONENT_DELEGATE(OnUpdate)
-        DECLARE_COMPONENT_DELEGATE(OnRelease)
-#undef DECLARE_COMPONENT_DELEGATE
+        template<typename... Rs, typename... Os, typename... Cs, typename... As, typename... Es>
+        struct QueryTraits<Require<Rs...>, Optional<Os...>, Changed<Cs...>, Added<As...>, Exclude<Es...>> {
+            using require_t = std::tuple<Rs...>;
+            using optional_t = std::tuple<Os...>;
+            using changed_t = std::tuple<Cs...>;
+            using added_t = std::tuple<As...>;
+            using exclude_t = std::tuple<Es...>;
+        };
 
         struct Entity
         {
@@ -137,8 +138,6 @@ namespace Shard
             //fixme https://ajmmertens.medium.com/doing-a-lot-with-a-little-ecs-identifiers-25a72bd2647 
             static const Entity Null;
         };
-
-        class ArcheTypeTable;
 
         struct EntityLocation
         {
@@ -927,8 +926,6 @@ namespace Shard
 
         };
 
-        class ArcheTypeGraph;
-
         class ArcheTypeTable
         {
         public:
@@ -1219,7 +1216,8 @@ namespace Shard
         {
         public:
             virtual ~SparseComponentRepoBase() = default;
-            virtual Remove(Entity entity) = 0u;
+            virtual void Remove(Entity entity) = 0u;
+            virtual void ResetAllChange() = 0u;
         };
 
         template<typename Component, typename Allocator>
@@ -1250,27 +1248,7 @@ namespace Shard
                 }
                 return Append(index, std::forward<Args&&...>(args));
             }
-            void Set(Entity e, const Type& value) {
-                const auto index = ToIndex(e);
-                if (index != ~0u) {
-                    Element(index) = value;
-                    if (on_update_) {
-                        on_update_(this, e);
-                    }
-                }
-                else { 
-                    Add(e, value);
-                }
-            }
-            void Remove(Entity e) override{
-                auto index = LookUp(e);
-                if (index != -1) {
-                    Remove(index);
-                }
-                if (on_release_) {
-                    on_release_(this, e);
-                }
-            }
+
             bool IsContain(Entity e) const {
                 return sparse_set_.Test(e);
             }
@@ -1292,7 +1270,7 @@ namespace Shard
             size_type Capacity() const {
                 return capacity_;
             }
-        protected:
+
             template<typename... Args>
             void Add(Entity e, Args&&... args) {
                 //resize if Reached Capacity Threshold (80% for Safety)
@@ -1374,6 +1352,14 @@ namespace Shard
                 const auto index = ToIndex(e);
                 return component_version_[index];
             }   
+
+            //reset all change version
+            void ResetAllChange() override
+            {
+                for (size_type i = 0; i < component_version_.size(); ++i) {
+                    repo->component_version_[i].changed_at_.store(0, std::memory_order_relaxed);
+                }
+            }
             
             /*whether the component is dirty*/
             bool IsDirty() const {
@@ -1581,7 +1567,7 @@ namespace Shard
         template<template<class> class World, class Allocator>
         class EntityTT;
 
-        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Markers>
         class QueryTT;
 
         template<typename Allocator=Utils::LinearAllocator<void>, typename ...Policies>
@@ -1671,6 +1657,11 @@ namespace Shard
                 info->flags |= COMPONENT_FLAG_IS_SINGTON;
             }
 
+            template<typename Component>
+            ComponentID GetComponentID() const {
+                return component_registry_.GetComponentID<ComponentID>();
+            }
+
             //new command buffer
             ComponentCommandBuffer<Allocator>& NewCommandBuffer() {
                 command_buffers_.emplace_back(ECSComponentCommandBuffer<Allocator>(, alloc_));
@@ -1713,6 +1704,24 @@ namespace Shard
                     }
                 }
             }
+
+            void ResetChangeMasks() noexcept
+            {
+                for (auto& [_, arche_tpye] : ) {
+                    for (size_type chunk_index = 0u; chunk_index < arche_type->GetChunkCount(); ++chunk_index) {
+                        auto* chunk = arche_type->GetChunk(chunk_index);
+                        chunk->ResetAllChange();
+                    }
+                }
+
+                for (ComponentID id = 0; id <= MAX_SPARSE_COMPONENT_ID; ++id) {
+                    auto* repo = sparse_components_data_[id];
+                    if (nullptr != repo) {
+                        repo->ResetAllChange();
+                    }
+                }
+            }
+
             template<typename... System>
             void ClearSystems() {
                 if constexpr (sizeof...(System) == 0u) {
@@ -1761,7 +1770,7 @@ namespace Shard
                 auto component_id = component_registry_->GetComponentID<Component>();
                 if (IsSparseComponent(component_id)) UNLIKELY
                 {
-                    const auto* repo = GetSparseComponentRepo<Component>();
+                    const auto* repo = GetSparseComponentRepoImpl<Component>();
                     assert(repo->IsContain(e) && "entity does not have the component");
                     return repo->GetComponent(e);
                 }
@@ -1776,7 +1785,7 @@ namespace Shard
                 auto component_id = component_registry_->GetComponentID<Component>();
                 if (IsSparseComponent(component_id)) UNLIKELY
                 {
-                    const auto* repo = GetSparseComponentRepo<Component>();
+                    const auto* repo = GetSparseComponentRepoImpl<Component>();
                     return repo->IsContain(e) ? &repo->GetComponent(e) : nullptr;
                 }
                 auto entity_loc = entity_manager_.GetLocation(e);
@@ -1792,7 +1801,7 @@ namespace Shard
                 auto component_id = component_registry_->GetComponentID<Component>();
                 if (IsSparseComponent(component_id)) UNLIKELY
                 {
-                    const auto* repo = GetSparseComponentRepo<Component>();
+                    const auto* repo = GetSparseComponentRepoImpl<Component>();
                     repo->Remove(e);
                     return;
                 }
@@ -1881,16 +1890,18 @@ namespace Shard
             //----------------------------------------------------------------------------------
             //query operations
             //----------------------------------------------------------------------------------
-            template<typename ...Required, typename ...Optional, typename ...Excluded>
-            Query<World, Required..., Optional..., Excluded...> Query() {
+            template<typename ...Markers>
+            auto Query() {
                 return Query<World, Required..., Optional..., Excluded...>(*this);
             }   
 
-            template<typename... Required, typename ...ChangedTs, typename ...Optional, typename ...Excluded>
-            Query<World, Required..., Changed<ChangedTs...>, Optional..., Excluded...> QueryChanged();
+            void BeginFrame();
+            void EndFrame();
+
+            void OnStructureChange() { change_tick_.fetch_add(1u, std::memory_order_relaxed); }
 
             AllocatorType& GetAllocator() {
-                return alloc_;
+                return allocator_;
             }
 
             Ticks GetLastChangeTick() const {
@@ -1917,8 +1928,7 @@ namespace Shard
                     AddComponent(new_entity, comp_data); //todo perfect forward     
                 }
 
-                LIKELY
-                if (!TestEntitySparse(prfab_loc)){
+                if (!TestEntitySparse(prfab_loc))LIKELY{
                     return Entity::null;
                 }
                 //sparse component copy
@@ -1955,7 +1965,7 @@ namespace Shard
                     : 0u ), ... );
             }
             template<class Component>
-            SparseComponentRepo<Component, Allocator>* GetSparseComponentRepo() {
+            SparseComponentRepo<Component, Allocator>* GetSparseComponentRepoImpl() {
                 auto component_id = component_registry_.GetComponentID<Component>();
                 assert(IsSparseComponent(component_id) && "component should be a sparse component");
                 return static_cast<SparseComponentRepo<Component, Allocator>*>(sparse_components_data_[component_id]);
@@ -2147,10 +2157,10 @@ namespace Shard
         };
 
 
-        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
+        template<template<class> class World, class Allocator, class... Markers>
         class SparseQueryIterator final
         {
-            using QueryType = QueryTT<World, Allocator, Required..., Optional..., Excluded...>;
+            using QueryType = QueryTT<World, Allocator, Markers...>;
 
         public:
             struct Element
@@ -2231,6 +2241,67 @@ namespace Shard
                 //get entity
                 auto entity = sparse_it_->entity_;
                 current_data_.entity_ = entity;
+
+                bool added_ok = true;
+                size_type add_idx = 0;
+                for (auto add_id : query_->req_added_ids_) {
+                    auto* repo = query_->world_.GetComponentRepo(add_id);
+                    if (!repo) {
+                        added_ok = false;
+                        break;
+                    }
+
+                    auto local_idx = repo->sparse_set_.Get(entity.id_);
+                    if (local_idx == SparseSet<uint32_t, Allocator>::INVALID_INDEX) {
+                        added_ok = false;
+                        break;
+                    }
+
+                    uint16_t added_at = repo->component_version_[local_idx].added_at_.load(std::memory_order_relaxed);
+                    if (added_at < query_->last_change_tick_) {
+                        added_ok = false;
+                        break;
+                    }
+                    ++add_idx;
+                }
+
+                if (!added_ok) {
+                    current_data_ = {};
+                    return;
+                }
+
+                bool change_ok = true;
+                size_type idx = 0u;
+                for (auto ch_id : query_->req_changed_ids_) {
+                    auto* repo = query_->world_.GetComponentRepo(ch_id);
+                    if (!repo) {
+                        change_ok = false;
+                        break;
+                    }
+
+                    // Get local index in repo
+                    auto local_idx = repo->sparse_set_.Get(entity.id_);
+                    if (local_idx == SparseSet<uint32_t, Allocator>::INVALID_INDEX) {
+                        change_ok = false;
+                        break;
+                    }
+
+                    // Check changed_at_ >= query_->last_system_tick_ (or world_.change_tick_)
+                    uint16_t changed_at = repo->component_version_[local_idx].changed_at_.load(std::memory_order_relaxed);
+                    if (changed_at < query_->last_change_tick_) {
+                        change_ok = false;
+                        break;
+                    }
+
+                    ++idx;
+                }
+
+                if (!change_ok) {
+                    // Skip this entity (but since it's iterator, we need to advance in ++)
+                    // For simplicity, assume we filter in a separate loop if needed
+                    current_data_ = {};  // or throw / skip
+                    return;
+                }
                 //fill sparse optional
                 size_type index = 0u;
                 ((std::get<Optional*>(current_data_.optional_sparse_) = query->world_.HasComponent<Optional>(entity) ? query->world_.GetComponent<Optional>(entity) : nullptr, ++index), ...);  
@@ -2242,7 +2313,6 @@ namespace Shard
         class QueryIterator final
         {
             using QueryType = QueryTT<World, Allocator, Required..., Optional..., Excluded...>;
-
         public:
             struct Element
             {
@@ -2312,25 +2382,75 @@ namespace Shard
                 Step();
             }
             void Step() {
-                while (arch_index_ < query->matched_archetypes_.size()) {
-                    auto* arch = query->matched_archetypes_[arch_index_];
-                    if (chunk_index_ >= arch->chunks_.size()) {
-                        ++arch_index;
+                while (arch_index_ < query_->matched_archetypes_.size()) {
+                    auto* arch = query_->matched_archetypes_[arch_index_];
+                    if (chunk_index_ >= arch->GetChunkCount()) {
+                        ++arch_index_;
                         chunk_index_ = 0u;
-                        slot_index_ = 0u;
                         continue;
                     }
 
-                    auto* chunk = arch->chunks_[chunk_index_];
-                    if (slot_index_ >= chunk->entity_count_)
-                    {
+                    auto* chunk = arch->GetChunk(chunk_index_);
+                    if (slot_index_ >= chunk->entity_count_) {
                         ++chunk_index_;
                         slot_index_ = 0u;
                         continue;
                     }
-                    ++slot_index;
+
+                    uint32_t curr_slot = static_cast<uint32_t>(slot_index_);
+
+                    // Changed<T>  
+                    bool changed_ok = true;
+                    size_type ch_idx = 0;
+                    for (auto ch_id : query_->req_changed_ids_) {
+                        size_type local_idx = arch->GetComponentIndex(ch_id);
+                        if (local_idx != INVALID_INDEX) {
+                            uint8_t* mask = chunk->slot_change_mask_[local_idx];
+                            size_type byte_idx = curr_slot / 8;
+                            size_type bit_idx = curr_slot % 8;
+                            if ((mask[byte_idx] & (1 << bit_idx)) == 0) {
+                                changed_ok = false;
+                                break;
+                            }
+                        }
+                        ++ch_idx;
+                    }
+
+                    // Added<T>  only sparseset repo 
+                    bool added_ok = true;
+                    size_type add_idx = 0;
+                    for (auto add_id : query_->req_added_ids_) {
+                        auto* repo = query_->world_.GetComponentRepo(add_id);
+                        if (!repo) {
+                            added_ok = false;
+                            break;
+                        }
+
+                        // ¼ÙÉè slot ¶ÔÓ¦ entity
+                        Entity entity = chunk->GetEntityAt(curr_slot);
+                        auto local_idx = repo->sparse_set_.Get(entity.id_);
+                        if (local_idx == SparseSet<uint32_t, Allocator>::INVALID_INDEX) {
+                            added_ok = false;
+                            break;
+                        }
+
+                        uint16_t added_at = repo->component_version_[local_idx].added_at_.load(std::memory_order_relaxed);
+                        if (added_at < query_->last_change_tick_) {
+                            added_ok = false;
+                            break;
+                        }
+                        ++add_idx;
+                    }
+
+                    if (!changed_ok || !added_ok) {
+                        ++slot_index_;
+                        continue;
+                    }
+
+                    ++slot_index_;
                     return;
                 }
+
                 is_end_ = true;
             }
             void UpdateCurrentElement() {
@@ -2349,55 +2469,77 @@ namespace Shard
 
                 //fill sparse optional
                 index = 0u;
-                ((std::get<Optional*>(current_element_.optional_) = query->world_., ...);
+                ((std::get<Optional*>(current_element_.optional_) = query->world_.GetComponent<Optional>(entity), ...);
             }
         };
 
-        template<template<class> class World, class Allocator, class... Required, class... Optional, class... Excluded>
-        class QueryTT
+
+        template<template<class> class World, class Allocator, class... Markers>
+        class QueryTT final 
         {
-            //because all sparseset component in Optional, so just test whether Required is empty 
-            static constexpr auto IS_PURE_SPARSE = sizeof...(Required) == 0u;
+            friend class QueryIterator<World, Allocator, Markers...>;
+            friend class SparseQueryIterator<World, Allocator, Markers...>;
 
             using World = World<Allocator>;
-            using RequireTuple = std::tuple<Required...>;
-            using OptionalTuple = std::tuple<Optional...>;
-            using ExcluededTuple = std::tuple <Excluded...>;
+            using Traits = QueryTraits<Markers...>;
+
+            //extract tuples
+            using RequireTuple = typename Traits::require_t;
+            using OptionalTuple = typename Traits::optional_t;
+            using ChangedTuple = typename Traits::changed_t;
+            using AddedTuple = typename Traits::added_t;
+            using ExcludeTuple = typename Traits::exclude_t;
+
+            //because all sparseset component in Optional, so just test whether Required is empty 
+            static constexpr auto IS_PURE_SPARSE = (std::tuple_size_v<RequireTuple> == 0u);
+
             using Iterator = std::conditional_t<IS_PURE_SPARSE, QueryIterator<World, Allocator, Required..., Optional..., Excluded...>,
                                                         SparseQueryIterator<>>;
-
-            const World& world_;
+        
+            World& world_;
             Utils::BloomFilter<QUEY_BLOOM_EXPECTN> bloom_filter;
 
-            SmallVector<ComponentID> req_ids_;
-            SmallVector<ComponentID> opt_ids_; 
-            SmallVector<ComponentID> excl_ids_; 
+            //type component ids
+            SmallVector<ComponentID> req_dense_ids_;
+            SmallVector<ComponentID> req_changed_ids_;
+            SmallVector<ComponentID> req_added_ids_;
+            SmallVector<ComponentID> opt_ids_;
+            SmallVector<ComponentID> excl_ids_;
 
             Vector<ArcheTypeTable*> matched_archetypes_;
             Ticks last_change_tick_;
 
-            uint8_t cached_ : 1;
-            uint8_t dirty_ : 1;
+            uint8_t cached_ : 1{0u};
+            uint8_t dirty_ : 1{0u};
         public:
             explicit QueryTT(World& world):world_(world), cached_(0), dirty_(0) {
-
+                Finalize();
             }
             QueryTT& Finalize() {
-                req_ids_ = { world_->template GetComponentID<Required>()... };
-                opt_ids_ = { world_->template GetComponentID<Required>()... };
-                excl_ids_ = { world_->template GetComponentID<Required>()... };
+                req_dense_ids_.clear();
+                req_changed_ids_.clear();
+                req_added_ids_.clear();
+                opt_ids_.clear();
+                excl_ids_.clear();
+
+                // Extract IDs from markers
+                ExtractIds<RequireTuple>(req_dense_ids_);
+                ExtractIds<ChangedTuple>(req_changed_ids_);
+                ExtractIds<AddedTuple>(req_added_ids_);
+                ExtractIds<OptionalTuple>(opt_ids_);
+                ExtractIds<ExcludeTuple>(excl_ids_);
 
                 //pre-sort ids for match
-                eastl::sort(req_ids_.begin(), req_ids_.end());
-                eastl::sort(opt_ids_.begin(), opt_ids_.end());
+                eastl::sort(req_dense_ids_.begin(), req_dense_ids_.end());
                 eastl::sort(excl_ids_.begin(), excl_ids_.end());
 
+#ifdef ARCHETYPE_BLOOM_FILTER_ENABLED
                 //build bloom filter
                 bloom_filter_.Clear();
                 for(const auto req_id : req_ids_){
                     bloom_filter.Insert(req_id);
                 }
-
+#endif
                 Cache();
                 last_change_tick_ = world.GetLastChangeTick();
                 return *this;
@@ -2439,9 +2581,14 @@ namespace Shard
             }
 
         protected:
+            template<typename... Ts>
+            void ExtractIds(SmallVector<ComponentID>& dense, SmallVector<ComponentID>& changed, SmallVector<ComponentID>& added) {
+                
+            }
+
             void MatchArcheTypes() {
                 matched_archetypes_.clear();
-                for (const auto& [_, arch] : world_.) {
+                for (const auto& [_, arch] : world_) {
                     //bloom filter only check required
                     if (!arch->bloom_filter_->MayMatch(bloom_filter))
                     {
@@ -2453,6 +2600,14 @@ namespace Shard
                         matched_archetypes_.emplace_back(arch);
                     }
                 }
+            }
+
+            //helper to extract IDs from tuple of types
+            template<typename Tuple>
+            void ExtractIds(SmallVector<ComponentID>& ids) {
+                std::apply([&](auto... ts) {
+                    (ids.push_back(world_.template GetComponentID<decltype(ts)>()), ...);
+                    }, Tuple{});
             }
          };
 
