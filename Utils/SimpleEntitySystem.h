@@ -127,7 +127,7 @@ namespace Shard
                 return !(*this == rhs);
             }
             bool IsValid() const {
-                return generation_ > 0 && index_ != INVALID_ENTITY_INDEX;
+                return generation_ > 0 && id_ != INVALID_ENTITY_INDEX;
             }
             explicit operator bool() const {
                 return IsValid();
@@ -412,6 +412,11 @@ namespace Shard
                 if (entity.id_ >= locations_.size()) return;
                 locations_[entity.id_] = std::move(loc);
             }
+
+            void SetLocation(EntityIndex id, EntityLocation&& loc) {
+                if(id >= locations_.size()) return;
+                locations_[id] = std::move(loc);
+            }
         };
 #endif 
 
@@ -544,7 +549,7 @@ namespace Shard
             template<class Component>
             const ComponentTypeInfo* GetComponentTypeInfo() const
             {
-                return GetComponentTypeInfo(typeid(Ccomponenet));
+                return GetComponentTypeInfo(typeid(Component));
             }
         };
 
@@ -1141,6 +1146,10 @@ namespace Shard
                 }       
             }
 
+            auto& GetAllArcheTypeTable() {
+                return signature_to_archetype_;
+            }
+
             ~ArcheTypeGraph()
             {
                 //release all archetype
@@ -1245,7 +1254,7 @@ namespace Shard
                 if (index != ~0u) {
                     return Element(index);
                 }
-                return Append(index, std::forward<Args&&...>(args));
+                return Add(index, std::forward<Args&&...>(args));
             }
 
             bool IsContain(Entity e) const {
@@ -1427,7 +1436,7 @@ namespace Shard
             enum class EType
             {
                 eUnkown,
-                eContruct,
+                eConstruct,
                 eUpdate,
                 eRelease,
                 eNum,
@@ -1450,36 +1459,36 @@ namespace Shard
         class ComponentCommandBuffer final
         {
         public:
-            using CmdBufferContainer = Vector<ComponentCommandIR, std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>>;
+            using CmdBufferContainer = Queue<ComponentCommandIR, std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>>;
             using ConstIterator = CmdBufferContainer::const_iterator;
 
             explicit ComponentCommandBuffer(Allocator& alloc, size_type int_size=1u):cmd_buffer_(int_size, alloc) {
             }
             ConstIterator CBegin() const {
                 assert(std::this_thread::get_id() == xx && "current on engine main thread");  
-                return cmd_buffers_.cbegin();
+                return cmd_buffer_.cbegin();
             }
             ConstIterator CEnd() const {
                 assert(std::this_thread::get_id() == xx && "current on engine main thread");  
-                return cmd_buffers_.cend();
+                return cmd_buffer_.cend();
             }
             size_type Size() const {
                 assert(std::this_thread::get_id() == xx && "current on engine main thread");  
-                return cmd_buffers_.size();
+                return cmd_buffer_.size();
             }
             void Push(ECSComponentCommandIR&& cmd) { 
                 Utils::SpinLock lock(write_lock_);
-                cmd_buffers_.emplace_back(cmd);
+                cmd_buffer_.push(cmd);
             }
             Optional<ECSComponentCommandIR> Poll() {
-                assert(std::this_thread::get_id() == xx && "current on engine main thread");  
-                if (cmd_buffers_.empty()) {
+                //assert(std::this_thread::get_id() == xx && "current on engine main thread");  
+                if (cmd_buffer_.empty()) {
                     return {};
                 }
                 else
                 {
                     auto temp = std::move(cmd_buffer_.front());
-                    cmd_buffer_.pop_front();
+                    cmd_buffer_.pop();
                     return temp;
                 }
             }
@@ -1509,12 +1518,12 @@ namespace Shard
 
             bool IsEmpty() const {
                 Utils::SpinLock(write_lock_);
-                return cmd_buffers_.empty();
+                return cmd_buffer_.empty();
             }
 
         private:
             std::atomic_bool write_lock_; //read in main thread
-            CmdBufferContainer cmd_buffers_;
+            CmdBufferContainer cmd_buffer_;
         };
 
         template<typename Allocator, typename Function>
@@ -1592,7 +1601,7 @@ namespace Shard
                             co_await sys->Update(ctx);
                             sys->ticks_counter_.store(ctx.current_tick, std::memory_order_relaxed);
                             co_return;
-                            };
+                        };
 
                         // Schedule
                         auto handle = Schedule(std::move(job_func), nullptr, 0xFFFFFFFF, true);
@@ -1902,6 +1911,10 @@ namespace Shard
                 }
             }
 
+            void SortSystemGroups() {
+                //todo
+            }
+
             void Update(SystemUpdateContext ctx) {
                 //update all systems/group
                 for (auto sys : systemes_) {
@@ -1985,7 +1998,7 @@ namespace Shard
 
             void ResetChangeMasks() noexcept
             {
-                for (auto& [_, arche_tpye] : ) {
+                for (auto& [_, arche_type] : archetype_graph_.GetAllArcheTypeTable()) {
                     for (size_type chunk_index = 0u; chunk_index < arche_type->GetChunkCount(); ++chunk_index) {
                         auto* chunk = arche_type->GetChunk(chunk_index);
                         chunk->ResetAllChange();
@@ -2176,7 +2189,7 @@ namespace Shard
             Entity Clone(Entity prefab) {
                 auto new_entity = NewEntity();
                 auto prefab_loc = entity_manager_->GetLocation(prefab);
-                const auto* arche_type = preface_loc.arche_type_;
+                const auto* arche_type = prefab_loc.arche_type_;
                 const auto* arche_chunk = arche_type->GetChunk(prefab_loc.chunk_index_);
                 const auto& signaure = arche_type->GetSignature();
 

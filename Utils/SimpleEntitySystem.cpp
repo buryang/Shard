@@ -574,7 +574,19 @@ namespace Shard
         const auto last_slot = chunk->entity_count - 1u;
         //move last entity to current slot
         if (last_slot != slot) {
+            EntityId moved_id = chunk->entity_ids[last];
+            chunk->entity_ids[slot] = moved_id;
 
+            // Move all components
+            for (size_t i = 0; i < component_sizes_.size(); ++i) {
+                size_t stride = component_sizes_[i];
+                std::byte* dst = chunk->component_storage_[i] + slot * stride;
+                std::byte* src = chunk->component_storage_[i] + last * stride;
+                std::memcpy(dst, src, stride);  // or std::move if movable
+            }
+
+            // Update location of the MOVED entity
+            entity_manager_->SetLocation(moved_id, { this, chunk_idx, slot });
         }
 
         chunk->entity_count--;
