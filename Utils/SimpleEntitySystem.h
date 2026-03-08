@@ -4,7 +4,6 @@
 #include "Utils/Memory.h"
 #include "Utils/Algorithm.h"
 #include "Utils/SimpleJobSystem.h"
-#include "Delegate/Delegate/MulticastDelegate.h"
 #include <limits>
 #include <type_traits>
 #include <typeindex>
@@ -1393,13 +1392,22 @@ namespace Shard
 
         enum class EUpdatePhase : uint8_t
         {
-            eFrameStart,
-            ePaused, //idle mode, u have to do render/resource streaming etc
-            eFrameEnd,
-            ePrePhysX,
-            eDuringPhysX,
-            ePostPhysX,
-            eNum,
+            ePrePhysics = 0,   // input, early logic
+            ePhysics = 1,
+            ePostPhysics = 2,   // animation, late logic
+            ePreRender = 3,   // camera, UI prep
+            eRender = 4,
+            ePostRender = 5,   // effects, debug overlays
+
+            eCount
+        };
+
+        struct SystemUpdateContext
+        {
+            float delta_time{ 0.0f };
+            Ticks current_tick{ 0 };
+            EUpdatePhase phase{ EUpdatePhase::eCount };
+            bool is_parallel{ false };  // hint: safe to run in parallel?
         };
 
         enum class EQueryCacheStragegy : uint8_t
@@ -1410,11 +1418,6 @@ namespace Shard
             eDefault,   //based on context
         };
 
-        struct SystemUpdateContext {
-            float   delta_time_{ 0.f };//in seconds
-            uint64_t    frame_index_{ 0u }; //frame index
-            EUpdatePhase    phase_{ EUpdatePhase::eFrameStart };
-        };
         
         using CommandFunc = std::function<void(void)>;
 
@@ -1432,12 +1435,19 @@ namespace Shard
             EType type_{ EType::eUnkown };
             String debug_name_;
             CommandFunc task_; //command work
+
+            ECSComponentCommandIR() = default;
+            explicit ECSComponentCommandIR(EType t, String name = "", CommandFunc f = {})
+                : type_(t), debug_name_(std::move(name)), task_(std::move(f))
+            {
+            }
+            bool Valid() const { return type_ != EType::Unknown && task_; }
         };
 
         /*collect component add/rm/update commands*/
         //MPSC like unity consumer command only on main thread, producers on each job system
         template<typename Allocator>
-        class ComponentCommandBuffer
+        class ComponentCommandBuffer final
         {
         public:
             using CmdBufferContainer = Vector<ComponentCommandIR, std::allocator_traits<Allocator>::rebind_alloc<ECSComponentCommandIR>>;
@@ -1473,8 +1483,37 @@ namespace Shard
                     return temp;
                 }
             }
+            //flush all commands(main thread)
+            void Flush() {
+                assert("this is in main thread"); //todo
+                while (auto cmd_opt = Poll()) {
+                    auto& cmd = *cmd_opt;
+                    if (cmd.task_) {
+                        cmd.task_();
+                    }
+                }
+            }
+
+            //clear in a worker thread
+            void Clear() {
+     
+                Utils::SpinLock lock(write_lock_);
+                cmd_buffer_.clear();
+            }
+
+            size_type Size() const
+            {
+                Utils::SpinLock(write_lock_);
+                return cmd_buffers_.size();
+            }
+
+            bool IsEmpty() const {
+                Utils::SpinLock(write_lock_);
+                return cmd_buffers_.empty();
+            }
+
         private:
-            std::atomic_bool write_lock_;
+            std::atomic_bool write_lock_; //read in main thread
             CmdBufferContainer cmd_buffers_;
         };
 
@@ -1487,41 +1526,293 @@ namespace Shard
         class System
         {
         public:
-            virtual void Init() = 0;
-            virtual void UnInit() = 0;
-            virtual void Update(SystemUpdateContext& ctx) = 0;
-            //default return true for all phase/all other system
-            virtual bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase)const { return IsPhaseUpdateEnabled(phase); }
-            virtual bool IsPhaseUpdateEnabled(EUpdatePhase phase)const { return true; }
             virtual ~System() = default;
-        private:
-            std::atomic<Ticks> ticks_counter_{ 0u }; //atomic to sync
+
+            // Lifecycle
+            virtual void Init() {}
+            virtual void UnInit() {}
+
+            // Core update - can be coroutine (Coro<void>)
+            virtual Coro<void> Update(SystemUpdateContext& ctx) = 0;
+
+            // Phase control
+            virtual bool IsPhaseUpdateEnabled(EUpdatePhase phase) const {
+                return true;  // default: run in every phase
+            }
+
+            // Dependency: return true if *this* must run BEFORE 'other' in the given phase
+            virtual bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase) const {
+                return false;
+            }
+
+            virtual const char* GetName() const { return "UnnamedSystem"; }
+
+        protected:
+            std::atomic<Ticks> last_update_tick_{ 0 };
         };
 
-        //similar to unity system group & flecs schedule
-        class SystemGroup : public System
+        //system group, manager all inner systemes
+        class SystemGroup final : public System
         {
         public:
-            void Init() override;
-            void UnInit() override;
-            void Update(SystemUpdateContext& ctx) override;
-            bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase)const override;
-            bool IsPhaseUpdateEnabled(EUpdatePhase phase)const override;
+            explicit SystemGroup(const char* name = "DefaultGroup")
+                : group_name_(name ? name : "DefaultGroup")
+            {
+            }
+
+            ~SystemGroup() override {
+                UnInit();
+            }
+
+            void Init() override {
+                for (auto* sys : sub_systems_) {
+                    sys->Init();
+                }
+            }
+
+            void UnInit() override {
+                // Reverse order cleanup
+                for (auto it = sub_systems_.rbegin(); it != sub_systems_.rend(); ++it) {
+                    (*it)->UnInit();
+                }
+                sub_systems_.clear();
+            }
+
+            Coro<void> Update(SystemUpdateContext& ctx) override {
+                if (need_sort_) {
+                    Sort();
+                }
+
+                SmallVector<JobHandle> phase_jobs;
+
+                for (auto* sys : sub_systems_) {
+                    if (sys->IsPhaseUpdateEnabled(ctx.phase)) {
+                        // Wrap in job for parallel if allowed
+                        auto job_func = [sys, ctx]() mutable -> Coro<void> {
+                            co_await sys->Update(ctx);
+                            sys->ticks_counter_.store(ctx.current_tick, std::memory_order_relaxed);
+                            co_return;
+                            };
+
+                        // Schedule
+                        auto handle = Schedule(std::move(job_func), nullptr, 0xFFFFFFFF, true);
+                        phase_jobs.push_back(std::move(handle));
+                    }
+                }
+
+                // Await all in parallel
+                for (auto& job : phase_jobs) {
+                    co_await job;
+                }
+
+                co_return;
+            }
+
+            bool IsPhaseUpdateBefore(const System& other, EUpdatePhase phase) const override {
+                for (auto* sys : sub_systems_) {
+                    if (sys->IsPhaseUpdateBefore(other, phase)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            bool IsPhaseUpdateEnabled(EUpdatePhase phase) const override {
+                for (auto* sys : sub_systems_) {
+                    if (sys->IsPhaseUpdateEnabled(phase)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            const char* GetName() const override { return group_name_.c_str(); }
+
+            void AddSubSystem(System* sub_system) {
+                if (!sub_system || IsSubSystemIncluded(sub_system)) return;
+                sub_systems_.push_back(sub_system);
+                need_sort_ = true;
+            }
+
+            void RemoveSubSystem(System* sub_system) {
+                auto it = eastl::find(sub_systems_.begin(), sub_systems_.end(), sub_system);
+                if (it != sub_systems_.end()) {
+                    sub_systems_.erase(it);
+                    need_sort_ = true;
+                }
+            }
+
             template<typename Function>
             void Enumerate(Function&& func) {
-                for (auto sys : sub_sys_) {
+                for (auto* sys : sub_systems_) {
                     func(sys);
                 }
             }
-            void AddSubSystem(System* sub_system);
-            //todo change the interface
-            void RemoveSubSystem(System* sub_system);
-            virtual ~SystemGroup();
+
+            // Inside class SystemGroup
+            void DumpDependencyGraph(const char* filename = "system_dependencies.dot") const
+            {
+                std::ofstream file(filename);
+                if (!file.is_open()) {
+                    LOG(ERROR) << "Failed to open " << filename << " for writing";
+                    return;
+                }
+
+                file << "digraph SystemDependencies {\n";
+                file << "  rankdir=LR;\n";               // left-to-right layout
+                file << "  node [shape=box, style=filled, fillcolor=lightblue];\n";
+                file << "  edge [arrowsize=1.2];\n";
+
+                // Assign unique IDs to avoid name collisions
+                HashMap<const System*, std::string> node_ids;
+                int node_counter = 0;
+
+                // Helper to get or create node ID
+                auto get_node_id = [&](const System* sys) -> std::string {
+                    auto it = node_ids.find(sys);
+                    if (it != node_ids.end()) return it->second;
+
+                    std::string id = "sys_" + std::to_string(node_counter++);
+                    node_ids[sys] = id;
+
+                    std::string label = sys->GetName();
+                    if (dynamic_cast<const SystemGroup*>(sys)) {
+                        label = "[Group] " + label;
+                    }
+
+                    file << "  " << id << " [label=\"" << label << "\"];\n";
+                    return id;
+                    };
+
+                // Add edges based on dependencies (per phase)
+                for (const auto* sys_a : sub_systems_) {
+                    std::string id_a = get_node_id(sys_a);
+
+                    for (const auto* sys_b : sub_systems_) {
+                        if (sys_a == sys_b) continue;
+
+                        // Check if sys_a must run before sys_b in ANY phase
+                        bool depends = false;
+                        std::string edge_label;
+                        for (int p = 0; p < static_cast<int>(EUpdatePhase::Count); ++p) {
+                            auto phase = static_cast<EUpdatePhase>(p);
+                            if (sys_a->IsPhaseUpdateBefore(*sys_b, phase)) {
+                                depends = true;
+                                if (!edge_label.empty()) edge_label += ", ";
+                                edge_label += PhaseToString(phase);
+                            }
+                        }
+
+                        if (depends) {
+                            std::string id_b = get_node_id(sys_b);
+                            file << "  " << id_a << " -> " << id_b
+                                << " [label=\"" << edge_label << "\"];\n";
+                        }
+                    }
+                }
+
+                // If there are sub-groups, show cluster
+                for (const auto* sys : sub_systems_) {
+                    if (auto* group = dynamic_cast<const SystemGroup*>(sys)) {
+                        std::string cluster_id = "cluster_" + std::to_string(node_counter++);
+                        file << "  subgraph " << cluster_id << " {\n";
+                        file << "    label = \"" << group->GetName() << "\";\n";
+                        file << "    style = filled;\n";
+                        file << "    fillcolor = lightgrey;\n";
+
+                        group->Enumerate([&](const System* sub) {
+                            auto id = get_node_id(sub);
+                            file << "    " << id << ";\n";
+                            });
+
+                        file << "  }\n";
+                    }
+                }
+
+                file << "}\n";
+                file.close();
+
+                LOG(INFO) << "Dependency graph written to: " << filename;
+                LOG(INFO) << "Open with: dot -Tpng " << filename << " -o systems.png";
+            }
+
+            // Helper for phase names
+            static const char* PhaseToString(EUpdatePhase phase) {
+                switch (phase) {
+                case EUpdatePhase::ePrePhysics:  return "PrePhysics";
+                case EUpdatePhase::ePhysics:     return "Physics";
+                case EUpdatePhase::ePostPhysics: return "PostPhysics";
+                case EUpdatePhase::ePreRender:   return "PreRender";
+                case EUpdatePhase::eRender:      return "Render";
+                case EUpdatePhase::ePostRender:  return "PostRender";
+                default:                         return "Unknown";
+                }
+            }
+
         private:
-            bool IsSubSystemIncluded(System* sub_system);
-            void Sort();
+            bool IsSubSystemIncluded(System* sys) const {
+                return eastl::find(sub_systems_.begin(), sub_systems_.end(), sys) != sub_systems_.end();
+            }
+
+            // Topological sort for dependency ordering
+            void Sort()
+            {
+                if (sub_systems_.size() <= 1) {
+                    need_sort_ = false;
+                    return;
+                }
+
+                SmallVector<System*> sorted;
+                SmallVector<int> indegree(sub_systems_.size(), 0);
+                HashMap<System*, SmallVector<System*>> graph;
+
+                // Build graph
+                for (size_t i = 0; i < sub_systems_.size(); ++i) {
+                    auto* sys_i = sub_systems_[i];
+                    for (size_t j = 0; j < sub_systems_.size(); ++j) {
+                        if (i == j) continue;
+                        auto* sys_j = sub_systems_[j];
+                        if (sys_i->IsPhaseUpdateBefore(*sys_j, EUpdatePhase::Count)) {
+                            graph[sys_i].push_back(sys_j);
+                            ++indegree[j];
+                        }
+                    }
+                }
+
+                // Kahn's algorithm
+                eastl::queue<System*> q;
+                for (size_t i = 0; i < sub_systems_.size(); ++i) {
+                    if (indegree[i] == 0) q.push(sub_systems_[i]);
+                }
+
+                while (!q.empty()) {
+                    auto* sys = q.front(); q.pop();
+                    sorted.push_back(sys);
+
+                    auto it = graph.find(sys);
+                    if (it != graph.end()) {
+                        for (auto* dep : it->second) {
+                            auto dep_idx = eastl::find(sub_systems_.begin(), sub_systems_.end(), dep) - sub_systems_.begin();
+                            if (--indegree[dep_idx] == 0) q.push(dep);
+                        }
+                    }
+                }
+
+                if (sorted.size() != sub_systems_.size()) {
+                    // Cycle detected - log warning or keep original order
+                    LOG(WARNING) << "SystemGroup cycle detected in " << group_name_;
+                }
+                else {
+                    sub_systems_ = std::move(sorted);
+                }
+
+                need_sort_ = false;
+            }
+
         private:
             SmallVector<System*>    sub_systems_;
+            String                  group_name_;
+            bool                    need_sort_{ true };
         };
 
         using ObserverCallback = std::funcction<void(Entity)>;
@@ -1589,46 +1880,33 @@ namespace Shard
             // system mamnagement
             //---------------------------------------------------------------------------------
 
-            template<typename System, typename... Args>
-                requires std::is_convertible_v<System, System>
-            System* RegisterSystem(Args&&... args) {
-                auto ptr = new System(std::forward<Args>(args)...);
-                systems_.insert(std::make_pair(std::type_inex(typeid(System), ptr);
-                //if constexpr (has_component<System>) {
-                //    RegisterComponentMessage(ptr, ,std::bool_constant<>());
-                //}
-                //FIXME message handler
-                {
-                    //auto dummy[] = { (RegisterMessageHandler<System, T...>(ptr), 0)... };
-                }
+            template<typename SystemClass, typename... Args>
+                requires std::is_convertible_v<SystemClass, System>
+            System* RegisterSystem(const String& group_name, Args&&... args) {
+                auto* ptr = new(allocator_->allocate(sizeof(System)))System(std::forward<Args>(args)...);
+                SystemGroup* group = GetOrCreateSystemGroup(group_name);
+                group.AddSubSystem(ptr);
+                ptr->Init();
                 return ptr;
             }
-            template<typename System>
-                requires std::is_base_of_v<System, System>
-            System* GetSystem() {
-                static const auto key = std::type_index(typeid(System));
-                if (auto iter = systems_.find(key)) {
-                    return static_cast<System*>(iter->second);
-                }
-                return nullptr;
-            }
 
-            SystemGroup& GetSystemGroup(const String& group_name) {
-                if (auto iter = groups_.find(group_name); iter != groups_.end()) {
+            SystemGroup& GetOrCreateSystemGroup(const String& group_name) {
+                if (auto iter = system_groups_.find(group_name); iter != groups_.end()) {
                     return *iter->second;
                 }
                 else {
                     auto* group = new (allocator_->allocate(sizeof(SystemGroup))SystemGroup;
-                    groups_.insert(std::make_pair(group_name, group));
+                    system_groups_.insert(std::make_pair(group_name, group));
+                    systems_.emplace_back(group);
                     return *group;
                 }
             }
 
-            void UpdateSystems() {
-
-            }
-            void UpdateSystemGroup(const String& group_name) {
-
+            void Update(SystemUpdateContext ctx) {
+                //update all systems/group
+                for (auto sys : systemes_) {
+                    sys->Update(ctx);
+                }
             }
 
             //----------------------------------------------------------------------------------
@@ -1722,23 +2000,6 @@ namespace Shard
                 }
             }
 
-            template<typename... System>
-            void ClearSystems() {
-                if constexpr (sizeof...(System) == 0u) {
-                    for (auto [_, sys] : systems_) {
-                        delete sys;
-                    }
-                }
-                else {
-                    if constexpr (sizeof...(System) == 1u) {
-                        //todo finalize system
-                        systems_.erase(std::type_index(typeid(System)));
-                    }
-                    else {
-                        (ClearSystems<System>(), ...);
-                    }
-                }
-            }
             //----------------------------------------------------------------------------------
             // entity manger logc
             //----------------------------------------------------------------------------------
@@ -1983,33 +2244,11 @@ namespace Shard
             //we just use component id to index sparse components 
             SparseComponentRepoBase* sparse_components_data_[MAX_SPARSE_COMPONENT_ID + 1u];
 
-            template <typename... Components>
-            struct ComponenentCollector
-            {
-                static constexpr const uint32_t COMP_SIZE = sizeof...(Components);
-                ComponentCollector(ThisType& world) {
-                    Fill<0, Components...>(world);
-                }
-                ComponentRepoBase* components_data_[COMP_SIZE];
-                template<uint32_t index>
-                ComponentRepoBase* Get() { return components_data_[index]; }
-                template <uint32_t index>
-                void Fill(Map<std::type_index, ComponentRepoBase*>& components) {
-                    return;
-                }
-                template <uint32_t index, typename T, typename... Ts>
-                void Fill(Map<std::type_index, ComponentRepoBase*>& components) {
-                    components_data_[index] = components[std::type_index(typeid(T))];
-                    Fill<index + 1, Ts...>(components);
-                }
-            };
-
             //according to entt, type_index/type_info.hash_code both not unique
-            Map<std::type_index, System*> systems_;
-            //ecs group define 
-            Map<std::type_index, ECSComponentGroupBase*> groups_;
+            Vector<System*> systems_;
+            Map<String, SystemGroup*> system_groups_;
             //command buffers
-            SmallVector<ECSComponentCommandBuffer<Allocator>> command_buffers_;
+            SmallVector<ComponentCommandBuffer<Allocator>> command_buffers_;
 
             //world Ticks
             std::atomic<Ticks> change_tick_{ 1u };

@@ -52,11 +52,19 @@ namespace Shard
                     uint32_t target_;
                     uint32_t relation_ : 31;
                     uint32_t pair_flags_ : 1;
-
                 };
                 uint64_t packed_;
             }
         };
+
+        //parent-child hierarchy
+        struct ECSChildOf {};
+
+        //owned-by ownership relationship
+        struct ECSOwnedBy {};
+
+        //linked-to generic link
+        struct ECSLinkedTo {};
 
 
         //https://ajmmertens.medium.com/building-games-in-ecs-with-entity-relationships-657275ba2c6c
