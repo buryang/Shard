@@ -1,0 +1,106 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "HLSL: Compile current file to DXIL",
+            "type": "process",
+            "command": "C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64\\dxc.exe",
+            "args": [
+                "-T",
+                "cs_6_6",
+                "-E",
+                "${input:entry}",
+                "-HV",
+                "2021",
+                "-enable-16bit-types",
+                "-I",
+                "${workspaceFolder}",
+                "-I",
+                "${workspaceFolder}/..",
+                "-Fo",
+                "${workspaceFolder}/../.tmp/${fileBasenameNoExtension}.dxil",
+                "${file}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "HLSL: Compile current file to SPIR-V",
+            "type": "process",
+            "command": "D:\\Tools\\DXC\\1.9.2609\\bin\\x64\\dxc.exe",
+            "args": [
+                "-T",
+                "cs_6_6",
+                "-E",
+                "${input:entry}",
+                "-HV",
+                "2021",
+                "-enable-16bit-types",
+                "-I",
+                "${workspaceFolder}",
+                "-I",
+                "${workspaceFolder}/..",
+                "-spirv",
+                "-fspv-target-env=vulkan1.2",
+                "-Fo",
+                "${workspaceFolder}/../.tmp/${fileBasenameNoExtension}.spv",
+                "${file}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "HLSL: Validate current SPIR-V",
+            "type": "process",
+            "command": "D:\\VulkanSDK\\1.2.162.0\\Bin\\spirv-val.exe",
+            "args": [
+                "--target-env",
+                "vulkan1.2",
+                "${workspaceFolder}/../.tmp/${fileBasenameNoExtension}.spv"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Nsight Compute: Launch executable",
+            "type": "process",
+            "command": "C:\\Program Files\\NVIDIA Corporation\\Nsight Compute 2022.3.0\\target\\windows-desktop-win7-x64\\ncu.exe",
+            "args": [
+                "--set",
+                "full",
+                "--target-processes",
+                "all",
+                "${input:exe}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/.."
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "entry",
+            "type": "promptString",
+            "description": "HLSL entry point. For example: CSUpfrontHist",
+            "default": "CSUpfrontHist"
+        },
+        {
+            "id": "exe",
+            "type": "promptString",
+            "description": "Executable path for Nsight Compute"
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "*.hlsl": "hlsl",
+        "*.hlsli": "hlsl",
+        "*.fx": "hlsl",
+        "*.fxh": "hlsl"
+    },
+    "shader-validator.includes": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/.."
+    ],
+    "shader-validator.hlsl.shaderModel": "ShaderModel6_6",
+    "shader-validator.hlsl.version": "V2021",
+    "shader-validator.hlsl.enable16bitTypes": true,
+    "shader-validator.hlsl.spirv": true,
+    "editor.rulers": [
+        160
+    ],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+}

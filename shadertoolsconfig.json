@@ -1,4 +1,4 @@
-　{
+{
   "hlsl": {
     "preprocessorDefinitions": {
       "__SHADER_TARGET_MAJOR": 6,
@@ -7,8 +7,8 @@
       "ENABLE_DEBUG": 0
     },
     "additionalIncludeDirectories": [
-      "./shaders",
+      "./Shaders"
     ],
-	"hlslVersion": "2021"
+    "hlslVersion": "2021"
   }
 }

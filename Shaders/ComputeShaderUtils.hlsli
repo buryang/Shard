@@ -338,7 +338,6 @@ uint2 GetSwizzleTiledUnwarpedGroupID(uint3 groupID /*SV_GroupID*/, uint2 group_s
 
 inline uint GetWaveIndex(uint thread_index)
 {
-    const uint lane_count = WaveGetLaneCount();
-    return (thread_index + lane_count - 1) / lane_count;
+    return thread_index / THREAD_WARP_SIZE;
 }
 #endif //_COMPUTE_SHADER_UTILS_INC_

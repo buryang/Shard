@@ -456,3 +456,16 @@ FodyWeavers.xsd
 
 .DS_Store
 **/CMakeFiles/*
+
+# Shard HLSL sort tooling artifacts
+.tmp/
+*.spv
+*.dxil
+*.cso
+Test/ShaderSort/gpu/build/
+Test/ShaderSort/gpu/shaders/
+Test/ShaderSort/gpu/out.txt
+Test/ShaderCompile/out/
+
+# Keep the HLSL debug tasks
+!Shaders/.vscode/

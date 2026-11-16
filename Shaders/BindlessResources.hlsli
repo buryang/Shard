@@ -8,7 +8,9 @@
 */
 
 //whether support globallycoherent memory
+#ifndef USE_GLOBALLY_CORHERENT
 #define USE_GLOBALLY_CORHERENT 1
+#endif
 
 //space macro defines
 #define SHARD_BINDLESS_TEXTURE_SPACE 0
@@ -19,9 +21,8 @@
 #define SHARD_DEDICATE_SPACE_BEGIN 10
 
 #ifndef __cplusplus
-#include "CommonUtils.hlsli"
-
-#define GLUE(str, n) str##n 
+#define GLUE_IMPL(str, n) str##n
+#define GLUE(str, n) GLUE_IMPL(str, n)
 #define TEXTURE_SPACE GLUE(space, SHARD_BINDLESS_TEXTURE_SPACE)
 #define BUFFER_SPACE GLUE(space, SHARD_BINDLESS_BUFFER_SPACE)
 #define SAMPLER_SPACE GLUE(space, SHARD_BINDLESS_SAMPLER_SPACE)
@@ -41,16 +42,17 @@ cbuffer BindLessConstants
 */
 //for vulkan so we use array method for beblow SM6.6
 #define BINDLESS_BEGIN_INDEX(bindless_handle_byte) (bindless_handle_byte >> 4)  //according to re-engine: u'd beter do manual scalarazation
-StructuredBuffer<uint4> bindless_buffers : register(b0, BUFFER_SPACE);           //about 32 MiB according to re-engine : https://www.youtube.com/watch?v=7XWdiktsVyo
-Texture2D bindless_textures2Ds[] : register(t0, TEXTURE_SPACE);
-RWTexture2D bindless_rwtextures2Ds[] : register(u0, TEXTURE_SPACE);
-RasterizerOrderedTexture2D bindless_rov_textures[] : register(t1, TEXTURE_SPACE);
-ByteAddressBuffer bindless_byte_buffers[] : register(b1, BUFFER_SPACE);
-RWByteAddressBuffer bindless_rwbyte_buffers[] : register(u1, BUFFER_SPACE);
-SamplerState bindless_immutable_samplers[] : register(t0, SAMPLER_SPACE);
+StructuredBuffer<uint4> bindless_buffers : register(t0, BUFFER_SPACE);
+//about 32 MiB according to re-engine : https://www.youtube.com/watch?v=7XWdiktsVyo
+Texture2D<float4> bindless_textures2Ds[] : register(t0, TEXTURE_SPACE);
+globallycoherent RWTexture2D<float4> bindless_rwtextures2Ds[] : register(u0, TEXTURE_SPACE);
+RasterizerOrderedTexture2D<float4> bindless_rov_textures2Ds[] : register(u1, TEXTURE_SPACE);
+ByteAddressBuffer bindless_byte_buffers[] : register(t1, BUFFER_SPACE);
+globallycoherent RWByteAddressBuffer bindless_rwbyte_buffers[] : register(u1, BUFFER_SPACE);
+SamplerState bindless_immutable_samplers[] : register(s0, SAMPLER_SPACE);
 
 #define GetBindlessTexture2D(index) bindless_textures2Ds[NonUniformResourceIndex(index)]
-#define GetBindlessROVTexture2D(index) bindless_rov_texture2Ds[NonUniformResourceIndex(index)]
+#define GetBindlessROVTexture2D(index) bindless_rov_textures2Ds[NonUniformResourceIndex(index)]
 #define GetBindlessByteBufferUniform(index) bindless_byte_buffers[index]
 #define GetBindlessRWByteBufferUniform(index) bindless_rwbyte_buffers[index]
 #define SampleBindlessTexture2D(tex_index, samp_index, uv) bindless_textures2Ds[NonUniformResourceIndex(tex_index)].Sample(bindless_immutable_samplers[NonUniformResourceIndex(samp_index)], uv)
@@ -60,24 +62,12 @@ SamplerState bindless_immutable_samplers[] : register(t0, SAMPLER_SPACE);
 * globallycoherent is a modifier that can be applied to a resource (like a RWBuffer or RWTexture) 
 * to ensure that writes to the resource are visible across all shader invocations in the entire GPU
 */
-globallycoherent RWTexture2D bindless_coherent_rwtexture2D[] : register(u2, TEXTURE_SPACE);
-globallycoherent RWByteAddressBuffer bindless_coherent_rwbyte_buffers[] : register(u3, BUFFER_SPACE);
-#define GetCoherentBindlessRWTexture2D(index) bindless_coherent_rwtexture2Ds[index]
-#define GetCoherentBindlessRWByteBuffer(index) bindless_coherent_rwbyte_buffers[index]
+#define GetCoherentBindlessRWTexture2D(index) bindless_rwtextures2Ds[index]
+#define GetCoherentBindlessRWByteBuffer(index) bindless_rwbyte_buffers[index]
+#else
+#define GetCoherentBindlessRWTexture2D(index) bindless_rwtextures2Ds[index]
+#define GetCoherentBindlessRWByteBuffer(index) bindless_rwbyte_buffers[index]
 #endif
-
-/**
-*structure load/store help functions declare
-*/
-#define DECLARE_STRUCTURE_ACESS(struct_type, struct_size) \
-inline void Store##struct_type(uint buffer_index, uint index, struct_type data) {\
-    const uint offset = index * struct_size; \
-    xx.Store##struct_size(offset, data);\
-}\
-inline struct_type Load##struct_type(uint buffer_index, uint index) {\
-    const uint offset = index * struct_size; \
-    return xx.Load##struct_size(offset);\
-}
 
 #endif
 

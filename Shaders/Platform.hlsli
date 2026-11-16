@@ -1,5 +1,5 @@
 ﻿#ifndef _PLATFORM_INC_
-#define _PLATFOTM_INC_
+#define _PLATFORM_INC_
 
 #if defined(__DXC__) && defined(__spirv__) //dxc inner define for spir-v
 #define VULKAN_BACKEND
@@ -10,7 +10,7 @@
 #ifdef __DXC__ //for dxc compile
 #define SM_MAJOR __SHADER_TARGET_MAJOR
 #define SM_MINOR __SHADER_TARGET_MINOR
-#endif 
+#endif
 
 #ifndef SM_MAJOR 
 #define SM_MAJOR 6 //default enable shader model 6
@@ -59,7 +59,7 @@
 #define BRANCH
 #define FLATTEN
 #define ALLOW_UAV_CONDITION 
-#endif 
+#endif
 
 #define LIKELY [likely]
 #define UNLIKELY [unlikely]
@@ -198,4 +198,4 @@ void CalculateCmaskIndexAndShift(uint2 tile_coord, out uint cmask_index, out uin
     
 }
 
-#endif 
+#endif
